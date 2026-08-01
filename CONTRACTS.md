@@ -106,6 +106,16 @@ package. `geometry`, `materials` and `layout` depend on no sibling package.
 - Money: prices flow as `number` in the price list's MAJOR units, exactly like
   the reference (to-the-cent parity); `toMinor`/`fromMinor` helpers convert at
   the DB boundary (DB stores integer minor units + ISO currency)
+- Lead routing (Phase 2.3): `routeLead` (pure cascade
+  `pinned? → territory → nearest → round-robin → manual`; unroutable = null +
+  reason, never a guess; boundary/vertex = inside; antimeridian-safe polygon
+  and haversine; round-robin = hash of the dedupe key over the id-sorted
+  eligible list — no mutable counter), `routingStamp`, `parseRoutingConfig`,
+  `parseTerritory`, `parsePolygon`, `pointInPolygon`, `haversineKm`, `geoOf`,
+  `leadGeo`, `routingKeyOf`, `hash32`, `ROUTING_POLICIES`,
+  `DEFAULT_ROUTING_CASCADE`, `DEFAULT_ROUTING_CONFIG` (+ the Routing* types).
+  Junk policy config falls back to `['territory','nearest','manual']`;
+  round-robin is opt-in.
 
 ## `@veta/rules` (Phase 1)
 
@@ -141,6 +151,57 @@ test.
 - Both protocol halves live HERE (`createWidgetBridge` is the app's half) so
   host and widget can never disagree on the wire format
 
+## `@veta/billing` (Phase 3)
+
+- Plans as data: `DEFAULT_PLANS`, `planById`, `parsePlan`/`parsePlans`
+  (drop-and-report), `METER_KINDS`, `moneyFromMajor`/`moneyToMajor` (via
+  catalog's minor-unit converters — never reimplemented)
+- Metering: `parseInstant` (offset-less date-times are UTC — pinned),
+  `monthPeriod`/`periodFor` (half-open `[start, end)`), `aggregateUsage`
+  (counters SUM, gauges PEAK — `model_live` takes the period peak),
+  `usageAgainstPlan`, `assessAll`
+- Stripe boundary (pure, no live calls): `buildSubscriptionSpec`,
+  `buildUsageRecords` (reports OVERAGE units, never gross),
+  `parseWebhookEvent` (signature validity is an INPUT; refused before body
+  read), `subscriptionStateFrom` (replay-safe fold, clocks from event stamps,
+  never Date.now), `entitlementsFor`, `GRACE_DAYS`
+- THE INVARIANT: widget/read/session entitlements are true in EVERY
+  subscription state — locked is read-only, never offline
+
+## `@veta/analytics` (Phase 3)
+
+- `EVENT_KINDS`, `EVENT_KIND_LIST`, `isEventKind` — the canonical event
+  vocabulary the widget beacons and analytics reads (widget.open · piece.place
+  · material.pick · price.view · lead.submit · ar.open · share.create)
+- `resolveFunnel` (cumulative-by-furthest-stage — drop-off can never go
+  negative; order-independence pinned), `resolvePopularConfigurations`
+  (per-design pair counting, never crosses collections),
+  `resolveDealerConversion` (roster in, zeros out; rates null when nothing
+  divides), `resolveSeries`/`resolveTrend` (UTC complete series — a quiet day
+  is a 0 point), `resolvePeriod`, `normalizeEvents`, `sumMinorByCurrency`,
+  `topN`
+- Report laws BY SHAPE: never silently cap (`TopList.truncated`), never sum
+  across currencies (`MoneySummary` has no grand-total field), never drop a
+  row (`excluded.*`/`untracked` buckets)
+
+## `@veta/connect-shopify` (Phase 3)
+
+- `encodeConfiguredSku`/`decodeConfiguredSku`/`verifyConfiguredSku` —
+  deterministic, order-independent, ≤255 chars, hash over the FULL canonical
+  form
+- `buildCartLine` — ONE attribute list, three wire shapes (Storefront line /
+  ajax / draft order); only `draft` may state a price; `_veta_`-prefixed
+  properties (the underscore IS the hiding mechanism); currency crossing
+  REFUSED without an explicit matching rate
+- `resolveFeedPlan` — idempotent per-collection placeholder products; fields
+  clamped BEFORE diffing (compare-truncated), over-long URLs dropped not cut,
+  `implausibleDeletes` guard, foreign products never planned against
+- `parseOrderWebhook` — order lines → configuration refs; `not-ours` is an
+  explicit result; `price_set.shop_money` is the money authority, our own
+  declared amount only ever flags a mismatch
+- Injected seam: `renderUrlOf(build, angle)` MUST be stable per build (a
+  cache-buster makes every plan an update forever)
+
 ## `@veta/api` (apps/api — Phase 1)
 
 - `createApp`, `withTenant(orgId, keyKind, fn)` (transaction-scoped
@@ -155,6 +216,12 @@ test.
   replays `packages/rules/test/fixtures/*` through the HTTP path (version-skew
   pin). A wire pick is trimmed to `{code,grade,fabric}` before pricing — a
   client-set unitPrice never survives.
+- Routing wiring (Phase 2.3): `routeLeadInTenant`, `routableLead` (a body may
+  suggest a dealer SLUG, never a dealer_id — pinned), `sourceWithRouting`
+  (stamp at `leads.source.routing`), `dealerRoutes`
+  (`GET /v1/dealers/locations` — name/geo/address/hours only, never contact or
+  pricing config), lead filters `?dealer=<slug>` and `?unrouted=1`. Routing
+  failure is NON-FATAL — the lead stores with `outcome:'error'`.
 - Migration 0001 policy style: plain boolean arms, no `using (true)` anywhere,
   composite `(id, org_id)` child FKs, `create policy` deliberately
   non-idempotent (transactional applier; a drop-loop would eat S2 grant arms)

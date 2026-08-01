@@ -307,6 +307,191 @@ describe('GET /v1/leads', { skip: blocked }, () => {
     assert.deepEqual(body.leads, []);
     assert.equal(body.limit, 100);
   });
+
+  it('filters by dealer slug — and an unknown slug is a 404, never an unfiltered list', async () => {
+    const { a, b } = F();
+    const mine = await app.request(`/v1/leads?dealer=${a.slug}-d1`, { headers: auth(a.sk) });
+    assert.equal(mine.status, 200);
+    const body = (await mine.json()) as { leads: Array<{ id: string; dealer_id: string }>; dealer: string };
+    assert.equal(body.dealer, `${a.slug}-d1`);
+    assert.ok(body.leads.length >= 1);
+    for (const lead of body.leads) assert.equal(lead.dealer_id, a.dealerId);
+    assert.ok(!body.leads.some((l) => l.id === a.leadOtherId), "another dealer's lead was listed");
+
+    assert.equal((await app.request('/v1/leads?dealer=nope', { headers: auth(a.sk) })).status, 404);
+    // Another tenant's dealer slug is just as unknown — the lookup rides RLS.
+    assert.equal((await app.request(`/v1/leads?dealer=${b.slug}-d1`, { headers: auth(a.sk) })).status, 404);
+  });
+
+  it('?unrouted=1 is the pile a brand admin still has to assign', async () => {
+    const { a } = F();
+    const res = await app.request('/v1/leads?unrouted=1', { headers: auth(a.sk) });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { leads: Array<{ dealer_id: string | null }> };
+    for (const lead of body.leads) assert.equal(lead.dealer_id, null);
+  });
+});
+
+/* --------------------------------- routing --------------------------------- */
+
+describe('POST /v1/leads routes to a dealer', { skip: blocked }, () => {
+  /** The lead as the brand admin's plane sees it — dealer and stamp included. */
+  async function storedLead(orgId: string, adminUserId: string, id: string) {
+    return asMember(P(), adminUserId, async (c) => {
+      const r = await c.query<{ dealer_id: string | null; source: Record<string, unknown> }>(
+        'select dealer_id, source from public.leads where id = $1', [id],
+      );
+      return r.rows[0]!;
+    });
+  }
+
+  it('the default cascade routes by proximity and stamps the reason on the row', async () => {
+    const { a } = F();
+    // Seeded: org A's dealer one has the only location (18.47, -69.9).
+    const res = await app.request('/v1/leads', {
+      method: 'POST',
+      headers: auth(a.pk),
+      body: JSON.stringify({
+        contact: { name: 'Near SD', email: 'near@test.example' },
+        geo: { lat: 18.5, lng: -69.95 },
+        dedupeKey: `route-near-${Date.now()}`,
+      }),
+    });
+    assert.equal(res.status, 201);
+    const body = (await res.json()) as { id: string; routing: { dealerId: string; policy: string; reason: string } };
+    assert.equal(body.routing.dealerId, a.dealerId);
+    assert.equal(body.routing.policy, 'nearest');
+
+    const row = await storedLead(a.orgId, a.adminUserId, body.id);
+    assert.equal(row.dealer_id, a.dealerId);
+    const stamp = row.source.routing as Record<string, unknown>;
+    assert.equal(stamp.reason, 'nearest:routed');
+    assert.equal(stamp.outcome, 'routed');
+    assert.ok(typeof stamp.at === 'string');
+  });
+
+  it('a lead with no position is stored UNROUTED, with the reason — never guessed at', async () => {
+    const { a } = F();
+    const res = await app.request('/v1/leads', {
+      method: 'POST',
+      headers: auth(a.pk),
+      body: JSON.stringify({
+        contact: { name: 'No Geo', email: 'nogeo@test.example' },
+        source: { utm_source: 'ig' },
+        dedupeKey: `route-nogeo-${Date.now()}`,
+      }),
+    });
+    assert.equal(res.status, 201);
+    const body = (await res.json()) as { id: string; routing: { dealerId: string | null; reason: string } };
+    assert.equal(body.routing.dealerId, null);
+    assert.equal(body.routing.reason, 'manual:manual');
+
+    const row = await storedLead(a.orgId, a.adminUserId, body.id);
+    assert.equal(row.dealer_id, null);
+    assert.equal(row.source.utm_source, 'ig', 'the widget’s own provenance was dropped');
+  });
+
+  it('a widget may name its dealer by SLUG; a body-asserted dealer_id is ignored', async () => {
+    const { a } = F();
+    const res = await app.request('/v1/leads', {
+      method: 'POST',
+      headers: auth(a.pk),
+      body: JSON.stringify({
+        contact: { name: 'Pinned', email: 'pin@test.example' },
+        dealerSlug: `${a.slug}-d2`,
+        dealer_id: a.dealerId,          // must not survive
+        dealerId: a.dealerId,
+        dedupeKey: `route-pin-${Date.now()}`,
+      }),
+    });
+    assert.equal(res.status, 201);
+    const { id, routing } = (await res.json()) as { id: string; routing: { dealerId: string; policy: string } };
+    assert.equal(routing.policy, 'pinned');
+    assert.equal(routing.dealerId, a.otherDealerId);
+    const row = await storedLead(a.orgId, a.adminUserId, id);
+    assert.equal(row.dealer_id, a.otherDealerId);
+  });
+
+  it('a pin naming ANOTHER tenant’s dealer routes nothing — the network is the org’s own', async () => {
+    const { a, b } = F();
+    const res = await app.request('/v1/leads', {
+      method: 'POST',
+      headers: auth(a.pk),
+      body: JSON.stringify({
+        contact: { name: 'Cross', email: 'cross@test.example' },
+        dealerSlug: `${b.slug}-d1`,
+        dedupeKey: `route-cross-${Date.now()}`,
+      }),
+    });
+    assert.equal(res.status, 201);
+    const { id, routing } = (await res.json()) as { id: string; routing: { dealerId: string | null } };
+    assert.equal(routing.dealerId, null);
+    const row = await storedLead(a.orgId, a.adminUserId, id);
+    assert.equal(row.dealer_id, null);
+  });
+
+  it('the brand’s stored policy decides the cascade', async () => {
+    const { a } = F();
+    await asMaintenance(P(), (c) =>
+      c.query(`update public.brands set routing_policy = '{"cascade":["round-robin"]}'::jsonb where id = $1`, [a.brandId]),
+    );
+    try {
+      const key = `route-rr-${Date.now()}`;
+      const res = await app.request('/v1/leads', {
+        method: 'POST',
+        headers: auth(a.pk),
+        body: JSON.stringify({ contact: { name: 'Spread', email: 'rr@test.example' }, dedupeKey: key }),
+      });
+      const { routing } = (await res.json()) as { routing: { dealerId: string; policy: string } };
+      assert.equal(routing.policy, 'round-robin');
+      assert.ok([a.dealerId, a.otherDealerId].includes(routing.dealerId));
+    } finally {
+      await asMaintenance(P(), (c) =>
+        c.query(`update public.brands set routing_policy = '{}'::jsonb where id = $1`, [a.brandId]),
+      );
+    }
+  });
+});
+
+/* ------------------------------ store locator ------------------------------ */
+
+describe('GET /v1/dealers/locations', { skip: blocked }, () => {
+  it('publishes where a showroom is — and nothing about what it charges', async () => {
+    const { a, b } = F();
+    const res = await app.request('/v1/dealers/locations', { headers: auth(a.pk) });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as {
+      locations: Array<{ id: string; dealerSlug: string; lat: number | null; lng: number | null }>;
+    };
+    assert.equal(body.locations.length, 1);
+    const [location] = body.locations;
+    assert.equal(location!.dealerSlug, `${a.slug}-d1`);
+    assert.equal(location!.lat, 18.47);
+
+    const serialized = JSON.stringify(body);
+    for (const forbidden of ['pricing', 'multiplier', 'territory', 'contact']) {
+      assert.equal(serialized.includes(forbidden), false, `the locator leaked ${forbidden}`);
+    }
+    // …and it is the TENANT's network, like every other read on this plane.
+    const other = await app.request('/v1/dealers/locations', { headers: auth(b.pk) });
+    const otherBody = (await other.json()) as { locations: Array<{ dealerSlug: string }> };
+    assert.equal(otherBody.locations[0]!.dealerSlug, `${b.slug}-d1`);
+  });
+
+  it('an inactive dealer drops off the map without losing its rows', async () => {
+    const { a } = F();
+    await asMaintenance(P(), (c) =>
+      c.query("update public.dealers set status = 'inactive' where id = $1", [a.dealerId]),
+    );
+    try {
+      const res = await app.request('/v1/dealers/locations', { headers: auth(a.pk) });
+      assert.deepEqual((await res.json()) as unknown, { locations: [] });
+    } finally {
+      await asMaintenance(P(), (c) =>
+        c.query("update public.dealers set status = 'active' where id = $1", [a.dealerId]),
+      );
+    }
+  });
 });
 
 /* ------------------------------ configurations ----------------------------- */

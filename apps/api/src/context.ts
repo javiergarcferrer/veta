@@ -116,6 +116,29 @@ export interface DealerRow {
   pricing: Record<string, unknown> | null;
 }
 
+/** A dealer as ROUTING and the store locator read it. Deliberately narrower
+ *  than `DealerRow`: neither surface has any business with `pricing`, and the
+ *  locator's payload is assembled from these columns alone. */
+export interface DealerNetworkRow {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  brand_id: string;
+}
+
+export interface DealerLocationRow {
+  id: string;
+  dealer_id: string;
+  name: string;
+  lat: string | number | null;
+  lng: string | number | null;
+  territory: unknown;
+  address: Record<string, unknown> | null;
+  hours: Record<string, unknown> | null;
+  routing_priority: number;
+}
+
 /* ------------------------------- shapes ----------------------------------- */
 
 /** The brand-wide money half: one active price list, its rows, its grammar. */
@@ -413,6 +436,48 @@ export async function loadDealer(client: PoolClient, slug: string): Promise<Deal
     [slug],
   );
   return r.rows[0] ?? null;
+}
+
+/**
+ * A dealer by slug WHATEVER its status — the leads filter's lookup. A retired
+ * dealer still owns the leads it was routed, so the presentation read above
+ * (active-only, by design) is the wrong door for that question.
+ */
+export async function loadDealerBySlug(client: PoolClient, slug: string): Promise<DealerNetworkRow | null> {
+  const r = await client.query<DealerNetworkRow>(
+    'select id, slug, name, status, brand_id from public.dealers where slug = $1 limit 1',
+    [slug],
+  );
+  return r.rows[0] ?? null;
+}
+
+/** The whole network, for routing and the store locator. Ordered for
+ *  determinism; the routing engine sorts again, and does not trust this. */
+export async function loadDealers(client: PoolClient): Promise<DealerNetworkRow[]> {
+  const r = await client.query<DealerNetworkRow>(
+    'select id, slug, name, status, brand_id from public.dealers order by id',
+  );
+  return r.rows;
+}
+
+export async function loadDealerLocations(client: PoolClient): Promise<DealerLocationRow[]> {
+  const r = await client.query<DealerLocationRow>(
+    `select id, dealer_id, name, lat, lng, territory, address, hours, routing_priority
+       from public.dealer_locations order by routing_priority desc, id`,
+  );
+  return r.rows;
+}
+
+/**
+ * The brand's lead-routing cascade, as stored. Never validated here — the
+ * engine's own `parseRoutingConfig` is the one place that decides what a junk
+ * policy means, so the API and the admin preview cannot disagree.
+ */
+export async function loadRoutingPolicy(client: PoolClient): Promise<unknown> {
+  const r = await client.query<{ routing_policy: unknown }>(
+    'select routing_policy from public.brands limit 1',
+  );
+  return r.rows[0]?.routing_policy ?? null;
 }
 
 /**

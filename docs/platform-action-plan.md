@@ -1,5 +1,20 @@
 # Platform Action Plan — from the RosetSoft configurator to a multi-brand SaaS
 
+> **STATUS LEDGER (2026-08-01).** Phases 0–3 are BUILT in this repo, every
+> work package green under `pnpm run check` (typecheck + tests incl. the
+> live-Postgres RLS red-team suite and a live headless-chromium render +
+> builds). Per-WP state: 0.1–0.6 ✔ · 1.1–1.4 ✔ · 2.1 ✔ · 2.2 ✔ · 2.3 ✔ ·
+> 2.4 ✔ · 3.1 ✔ (core; live Stripe wiring pending connector authorization) ·
+> 3.2 ✔ (core; admin dashboard wiring pending) · 3.3 ✔ (runbook:
+> `docs/onboarding.md`; self-serve UI partial via admin/studio) · 3.4 ✔
+> (core; live Shopify app shell pending) · **3.5 deferred** (RosetSoft
+> cutover — belongs in a RosetSoft session, per §1.2) · **Phases 4–5 not
+> started by design** (gated on S1 tenant traction, per §3).
+> Known deferred items live in each app's NOTES.md and the WP reports.
+> Deploy topology: Supabase (DB/auth/storage) + static hosts for
+> widget/studio/admin + a container host for api/render; CI is
+> `.github/workflows/ci.yml` with the live suite required.
+
 Working codename: **VETA** (Spanish for the vein/grain in wood, stone and cloth —
 the one concept that spans furniture, flooring, stone and finishes; rename
 freely, the codename only names the repo and npm scope until branding exists).

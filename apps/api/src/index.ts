@@ -36,8 +36,13 @@ export {
   loadCollectionBySlug,
   loadCollectionContext,
   loadCollections,
+  loadDealer,
+  loadDealerBySlug,
+  loadDealerLocations,
+  loadDealers,
   loadModels,
   loadPriceContext,
+  loadRoutingPolicy,
   mountOf,
   productsFrom,
   ruleCatalogOf,
@@ -45,10 +50,27 @@ export {
 export type {
   CollectionContext,
   CollectionRow,
+  DealerLocationRow,
+  DealerNetworkRow,
+  DealerRow,
   ModelRow,
   PriceContext,
   RulesetRow,
 } from './context.ts';
+
+// Lead routing: the DECISION is `@veta/catalog`'s pure cascade; this is the
+// seam that feeds it the tenant's own network and stamps the answer.
+export {
+  routableDealer,
+  routableLead,
+  routableLocation,
+  routeLeadInTenant,
+  sourceWithRouting,
+} from './routing.ts';
+export type { LeadRoutingBody, RoutingDecision } from './routing.ts';
+
+export { dealerRoutes, shapeStoreLocation } from './routes/dealers.ts';
+export type { StoreLocationView } from './routes/dealers.ts';
 
 export { priceBuild, resolvePieces, sanitizeMaterial, toPlacement } from './pricing.ts';
 export type { BuildPiece, PricingLine, PricingPart, PricingSnapshot } from './pricing.ts';

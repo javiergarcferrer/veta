@@ -82,6 +82,41 @@ export type { ParsedSubtype, GradeGroup } from './subtype.ts';
 export { sanitizePartMaterials, sanitizePartFinishes } from './sanitize.ts';
 export type { PartMaterial } from './sanitize.ts';
 
+// ── Lead routing (the dealer network's decision, as a pure cascade) ───────
+export {
+  ROUTING_POLICIES,
+  DEFAULT_ROUTING_CASCADE,
+  DEFAULT_ROUTING_CONFIG,
+  EARTH_RADIUS_KM,
+  parseRoutingConfig,
+  parsePolygon,
+  parseTerritory,
+  pointInPolygon,
+  haversineKm,
+  lngDelta,
+  geoOf,
+  postalKey,
+  hash32,
+  leadGeo,
+  routingKeyOf,
+  routeLead,
+  routingStamp,
+} from './routing.ts';
+export type {
+  GeoPoint,
+  RoutableDealer,
+  RoutableLead,
+  RoutableLocation,
+  RoutingConfig,
+  RoutingDecision,
+  RoutingOutcome,
+  RoutingPolicy,
+  RoutingStage,
+  RoutingStamp,
+  RoutingStep,
+  Territory,
+} from './routing.ts';
+
 // ── The DB money boundary ─────────────────────────────────────────────────
 export {
   ZERO_DECIMAL_CURRENCIES,

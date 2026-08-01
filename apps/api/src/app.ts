@@ -3,6 +3,7 @@ import { apiKeyAuth, type AuthEnv } from './auth.ts';
 import { createRateLimiter, type RateLimitConfig, type RateLimiter } from './rateLimit.ts';
 import { healthRoutes } from './routes/health.ts';
 import { catalogRoutes } from './routes/catalog.ts';
+import { dealerRoutes } from './routes/dealers.ts';
 import { configurationRoutes } from './routes/configurations.ts';
 import { eventRoutes } from './routes/events.ts';
 import { leadRoutes } from './routes/leads.ts';
@@ -45,6 +46,7 @@ export function createApp(options: AppOptions = {}) {
   }
 
   app.route('/v1/catalog', catalogRoutes);
+  app.route('/v1/dealers', dealerRoutes);
   app.route('/v1/configurations', configurationRoutes);
   app.route('/v1/leads', leadRoutes);
   app.route('/v1/events', eventRoutes);

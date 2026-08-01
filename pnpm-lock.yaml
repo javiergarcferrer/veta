@@ -29,6 +29,9 @@ importers:
       '@veta/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
+      '@veta/geometry':
+        specifier: workspace:*
+        version: link:../../packages/geometry
       '@veta/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -286,6 +289,10 @@ importers:
         version: 6.0.3
 
   packages/billing:
+    dependencies:
+      '@veta/catalog':
+        specifier: workspace:*
+        version: link:../catalog
     devDependencies:
       '@types/node':
         specifier: ^22.10.0

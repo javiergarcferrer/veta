@@ -1,0 +1,98 @@
+/* The admin's whole stylesheet. Two surfaces, one plain layout: a header with
+   the plane switch, a tab rail, and a scrolling panel. No framework — the app
+   is forms and tables, and a design system would be the biggest dependency in
+   the repo for the least value. */
+
+:root {
+  --ink: #16161a;
+  --ink-soft: #5a5a66;
+  --line: #e2e2e8;
+  --surface: #ffffff;
+  --canvas: #f6f6f8;
+  --accent: #3600ff;
+  --warn: #a86400;
+  --bad: #b3261e;
+  --good: #146c2e;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; background: var(--canvas); }
+
+.shell { display: flex; flex-direction: column; min-height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.topbar h1 { font-size: 15px; margin: 0; letter-spacing: 0.12em; text-transform: uppercase; }
+.topbar .spacer { flex: 1; }
+
+.plane-switch { display: flex; gap: 4px; background: var(--canvas); padding: 3px; border-radius: 8px; }
+.plane-switch button {
+  border: 0; background: transparent; padding: 6px 12px; border-radius: 6px;
+  font: inherit; font-size: 13px; cursor: pointer; color: var(--ink-soft);
+}
+.plane-switch button[aria-pressed='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+
+.tabs { display: flex; gap: 2px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.tabs button {
+  border: 0; border-bottom: 2px solid transparent; background: transparent;
+  padding: 10px 14px; font: inherit; font-size: 13px; cursor: pointer; color: var(--ink-soft);
+}
+.tabs button[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--accent); }
+
+.panel { padding: 20px; display: grid; gap: 16px; align-content: start; }
+.panel.split { grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr); align-items: start; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px; display: grid; gap: 12px; align-content: start;
+}
+.card h2 { margin: 0; font-size: 14px; }
+.card h3 { margin: 0; font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--ink-soft); font-weight: 600; font-size: 12px; }
+tbody tr[data-selected='true'] { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+
+label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-soft); }
+input, select, textarea {
+  font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--surface); color: var(--ink); width: 100%;
+}
+textarea { min-height: 68px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+button.action {
+  font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--surface); cursor: pointer;
+}
+button.action.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.action:disabled { opacity: 0.5; cursor: not-allowed; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.pill {
+  display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px;
+  border: 1px solid var(--line); color: var(--ink-soft); white-space: nowrap;
+}
+.pill.flag { color: var(--warn); border-color: currentColor; }
+.pill.bad { color: var(--bad); border-color: currentColor; }
+.pill.good { color: var(--good); border-color: currentColor; }
+
+.msg { font-size: 12px; margin: 0; }
+.msg.error { color: var(--bad); }
+.msg.warn { color: var(--warn); }
+.msg.muted { color: var(--ink-soft); }
+
+.token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  padding: 8px; background: var(--canvas); border-radius: 6px; word-break: break-all;
+}
+.stages { display: grid; gap: 6px; }
+.stage { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.stage span.label { flex: 1; font-size: 12px; }
+.stage input { width: auto; }

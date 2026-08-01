@@ -17,8 +17,8 @@ what is listed without updating every dependent in the same change.
   importing package's `package.json`.
 
 Dependency direction: `geometry` ← `mesh-pipeline`, `layout`, `scene`;
-`materials` ← `scene`. `geometry`, `materials` and `layout` depend on no
-sibling package.
+`materials` ← `scene`, `catalog`; `layout` ← `rules`. Apps may depend on any
+package. `geometry`, `materials` and `layout` depend on no sibling package.
 
 ## `@veta/geometry`
 
@@ -81,6 +81,38 @@ sibling package.
   regexes move INTO the spec objects; current six templates exported as
   `SOFA_QUICK_STARTS`
 - `encodeBuild`, `decodeBuild`, `BUILD_SHARE_VERSION` (was buildShare)
+
+## `@veta/catalog` (Phase 1)
+
+- `SkuGrammar` (interface): `splitSku(sku) → { root, grade } | null`,
+  `composeSku(root, grade)`, `grades` (ordered ladder), `gradeRank(grade)` —
+  adapters: `lr8DigitGrade` (the 23-letter A–X ladder, `/^(\d{8})([A-Za-z])$/`)
+  and `simpleSku` (SKU verbatim, single `''` grade)
+- Pricing (ported money rules, byte-parity with the reference fixtures):
+  `baseProductFor`, `familyFor`, `buildPriceIndex`, `clampPct`,
+  `applyDealerPricing` (non-mutating), `applyPricingMode` (`full|from|hidden`),
+  `materializedBase` (bicolor re-grades the base SKU, dearest zone wins),
+  `resolveCompleteSku` (same-fabric collapse to the model's own SKU),
+  `piecePartsTotal`, `placementTotal` (was placementTotalUsd),
+  `placementBreakdown` (MUST foot to `placementTotal` — pinned),
+  `compoundSubtotal`, `firstWithoutFabric`, `sanitizePartMaterials`
+- `composeSubtype` (grade label composition, was lib/subtype)
+- Money: prices flow as `number` in the price list's MAJOR units, exactly like
+  the reference (to-the-cent parity); `toMinor`/`fromMinor` helpers convert at
+  the DB boundary (DB stores integer minor units + ISO currency)
+
+## `@veta/rules` (Phase 1)
+
+Per `docs/design-phase1.md` Deliverable 1 — implement THAT design, not a
+variation: `RULES_SCHEMA_VERSION`, `parseRuleset` (strict-at-write /
+lenient-at-read, drop-and-report), `contactGraph` (AABB edge contacts in the
+piece's local frame, nesting-overlap aware, seat-mount excluded),
+`evaluateRules` → `Verdict` (deterministic, throw-free, unknown types reported
+never silently valid), the five rule types (`count`, `adjacency`, `option`,
+`uniform`, `extent`) + `Selector`/`Cond`/`Violation` types, engine hard cap
+`COUNT_MAX = 20`. Depends on `@veta/layout` for `footprintOf` only. Fixtures
+under `test/fixtures/` are authored share-ready for the WP-1.4 HTTP parity
+test.
 
 ## `@veta/scene`
 

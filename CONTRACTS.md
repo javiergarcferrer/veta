@@ -29,6 +29,21 @@ sibling package.
 - `cleanMeshNodes` (was meshClean; label/shadow-mesh classifiers take the
   name-regex as a parameter with the current regex as default)
 
+## `@veta/mesh-pipeline`
+
+- `exportPieceGlb`, `optimizeGlbBuffer`, `bakeGeometry`, `quantizeGeometry`,
+  `isOptimizableMeshUrl`, `CREASE_ANGLE`, `MAX_ORIGIN_RATIO`
+- `stampGlbAsset`, `stampMeshVersion`, `readGlbMeshVersion`, `meshVersionOf`,
+  `MESH_VERSION`, `MESH_VERSION_KEY`, `LEGACY_MESH_VERSION_KEY` (reads the
+  legacy `alcoverMeshV` stamp so an already-optimized fleet never re-runs)
+- `splitScene`, `collectMeshes`, `MIN_PIECE_CM`, `CLUSTER_GAP_CM`
+- `bundleTextures`, `bakeBundledMaps`, `imageSettled`, `texturesOf`,
+  `texturesByFolder`, `FileLike`, `TEXTURE_TIMEOUT_MS`, `MAX_TEXTURE_PX`
+- `loadPiecesFromFiles`, `libraryProposalFor`, `summarizeFolderProposals`
+- `LibraryLayout`, `LibraryPathFields`, `lrArchvizLayout` (+ `LR_GROUPS`,
+  `LIBRARY_ROOTS`, `LR_VARIANT_MARKERS`, `parseLibraryPath`,
+  `resolveLibraryShape`, `prettifyLibraryName`)
+
 ## `@veta/materials`
 
 - `MaterialSource` (interface): `resolveColor(code) →
@@ -48,6 +63,11 @@ sibling package.
   `partRoleFor`, `baseKeyOf`, `hasParts`, `accessoryRoleFor`, `partCount`,
   `COUNT_MAX` (was meshParts — role taxonomy; Phase 1 makes the role LIST
   data-driven, Phase 0 keeps the current seven as the default set)
+- The FINISH layer (rest of meshParts): `mergedKeyOf`, `partLabelOf`,
+  `roleLabelOf`, `finishSpecOf`, `finishOptionOf`, `structureStarterFinish`,
+  `structureGroupsOf`, `structureGroupFor`, `sanitizePartFinishes` —
+  scene's `DEFAULT_PARTS_TAXONOMY` binds these; widget + API share the
+  sanitizer as the ONE rule for stored finish picks
 
 ## `@veta/layout`
 
@@ -77,6 +97,7 @@ sibling package.
 - `proceduralTogoParts` (was togoParts) + `inferForm`, `inferKind` — moved
   under `src/fallbacks/togo.ts`, reachable only via `RenderParams.fallback`
 - `exportGlbBlob`, `buildArGroup`, `CM_TO_M`
-- `maskToOutline`, `traceGridLoops` re-export (silhouette utilities)
+- `maskToOutline` (+ `resampleUniform`, `smoothLoopConstrained`) — silhouette
+  utilities; `traceGridLoops` is OWNED by `@veta/geometry`, scene re-exports it
 - `makeFabricMaterial(THREE, tex, opts)` — consumes `@veta/materials`
   appearance output; scene owns the three.js side only

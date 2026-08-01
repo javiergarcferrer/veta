@@ -9,5 +9,5 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": { "fflate": "^0.8.2" },
-  "devDependencies": { "tsx": "^4.22.3", "typescript": "^6.0.3", "@types/node": "^22.10.0", "@types/three": "^0.180.0", "three": "^0.184.0" }
+  "devDependencies": { "tsx": "^4.22.3", "typescript": "^6.0.3", "@types/node": "^22.10.0"}
 }

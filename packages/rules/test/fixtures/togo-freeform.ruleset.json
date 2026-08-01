@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "params": { "rotationStepDeg": 0 },
+  "rules": [
+    { "id": "max-pieces", "type": "count", "max": 20, "severity": "error" },
+    { "id": "fabric-picked", "type": "option", "severity": "warning",
+      "require": [{ "path": "material.code", "op": "set" }] },
+    { "id": "bicolor-complete", "type": "option", "severity": "warning",
+      "select": { "tags": ["ottoman"] },
+      "when":    [{ "path": "partMaterials.interior.code", "op": "set" }],
+      "require": [{ "path": "partMaterials.exterior.code", "op": "set" }] }
+  ]
+}

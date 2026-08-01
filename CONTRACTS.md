@@ -89,13 +89,19 @@ package. `geometry`, `materials` and `layout` depend on no sibling package.
   adapters: `lr8DigitGrade` (the 23-letter A–X ladder, `/^(\d{8})([A-Za-z])$/`)
   and `simpleSku` (SKU verbatim, single `''` grade)
 - Pricing (ported money rules, byte-parity with the reference fixtures):
-  `baseProductFor`, `familyFor`, `buildPriceIndex`, `clampPct`,
-  `applyDealerPricing` (non-mutating), `applyPricingMode` (`full|from|hidden`),
+  `baseProductFor`, `familyFor`, `productForGrade`, `buildPriceIndex`,
+  `priceItems` (was priceInboxItems), `listPriceOf`, `clampPct` (default
+  ceiling 500 — a discount caller passes 100 explicitly), `safeMultiplier`,
+  `validPricingMode`, `applyDealerPricing` (non-mutating),
+  `applyPricingMode` (`full|from|hidden`),
   `materializedBase` (bicolor re-grades the base SKU, dearest zone wins),
   `resolveCompleteSku` (same-fabric collapse to the model's own SKU),
   `piecePartsTotal`, `placementTotal` (was placementTotalUsd),
   `placementBreakdown` (MUST foot to `placementTotal` — pinned),
-  `compoundSubtotal`, `firstWithoutFabric`, `sanitizePartMaterials`
+  `compoundSubtotal`, `componentSubtotal`, `isPricedComponent`,
+  `partFamiliesFrom`, `partPricesFor`, `firstWithoutFabric`,
+  `sanitizePartMaterials` (finish sanitizer re-exported from materials),
+  `splitSkuOrRoot`, `parseSubtype`
 - `composeSubtype` (grade label composition, was lib/subtype)
 - Money: prices flow as `number` in the price list's MAJOR units, exactly like
   the reference (to-the-cent parity); `toMinor`/`fromMinor` helpers convert at
@@ -113,6 +119,20 @@ never silently valid), the five rule types (`count`, `adjacency`, `option`,
 `COUNT_MAX = 20`. Depends on `@veta/layout` for `footprintOf` only. Fixtures
 under `test/fixtures/` are authored share-ready for the WP-1.4 HTTP parity
 test.
+
+## `@veta/api` (apps/api — Phase 1)
+
+- `createApp`, `withTenant(orgId, keyKind, fn)` (transaction-scoped
+  `set local role veta_api` + `set_config` — the ONLY tenant plane the request
+  path may use; service-role never appears in a request path), `apiKeyAuth`,
+  `requireScope`, `resolveApiKey`, `deriveVerdict`, `priceBuild`
+- `deriveVerdict`/`priceBuild` are WP-1.4 seams: they MUST come to import
+  `@veta/rules`' `evaluateRules` and `@veta/catalog`'s `placementTotal` — one
+  module, two callers; the HTTP parity test replays
+  `packages/rules/test/fixtures/*` through the API
+- Migration 0001 policy style: plain boolean arms, no `using (true)` anywhere,
+  composite `(id, org_id)` child FKs, `create policy` deliberately
+  non-idempotent (transactional applier; a drop-loop would eat S2 grant arms)
 
 ## `@veta/scene`
 

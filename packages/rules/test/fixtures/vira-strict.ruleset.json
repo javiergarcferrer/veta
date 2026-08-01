@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "params": { "rotationStepDeg": 90, "minContactCm": 30 },
+  "rules": [
+    { "id": "seats", "type": "count", "select": { "tags": ["seat"] }, "min": 1, "max": 8 },
+    { "id": "one-corner-max", "type": "count", "select": { "tags": ["corner"] }, "max": 2 },
+    { "id": "seat-links", "type": "adjacency", "freeform": "violate",
+      "select": { "tags": ["seat"] },
+      "edges": {
+        "left":  { "required": true, "allow": { "tags": ["seat", "corner", "arm"] } },
+        "right": { "required": true, "allow": { "tags": ["seat", "corner", "arm"] } },
+        "front": { "forbid": { "tags": ["seat", "corner", "arm", "ottoman"] } } } },
+    { "id": "arm-terminates", "type": "adjacency",
+      "select": { "tags": ["arm"] },
+      "edges": { "right": { "allow": { "tags": ["seat", "corner"] } } } },
+    { "id": "leather-legs", "type": "option",
+      "when":    [{ "path": "material.family", "op": "eq", "value": "CUIR" }],
+      "require": [{ "path": "partFinishes.legs", "op": "in", "value": ["noir", "acero-negro"] }] },
+    { "id": "one-fabric-run", "type": "uniform", "severity": "warning",
+      "select": { "tags": ["seat", "corner"] }, "path": "material.code" },
+    { "id": "rail-span", "type": "extent", "select": { "tags": ["seat", "corner", "arm"] },
+      "maxWidthCm": 420, "maxDepthCm": 420 }
+  ]
+}

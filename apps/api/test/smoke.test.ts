@@ -42,7 +42,9 @@ test('the server verdict ignores what the payload claims', () => {
   const verdict = deriveVerdict({ pieces, ok: true });
   assert.equal(verdict.ok, false);
   assert.equal(verdict.derivedBy, 'server');
-  assert.equal(verdict.violations[0]?.ruleId, 'engine.count-max');
+  // `engine.countMax` is @veta/rules' OWN id — this is the real engine judging,
+  // not a placeholder that happens to agree with it.
+  assert.equal(verdict.violations[0]?.ruleId, 'engine.countMax');
   assert.equal(deriveVerdict({ pieces: pieces.slice(0, 3) }).ok, true);
 });
 

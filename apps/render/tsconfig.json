@@ -1,4 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "test"]
+  "include": ["src", "test", "scripts"],
+  // `src/harness.ts` is the BROWSER half of this service: it imports three and
+  // three's addons, which are a different dependency graph from the node
+  // service's (the same split the monorepo already keeps between Deno edge
+  // functions and the Vite app — see CONTRACTS.md). esbuild compiles it into
+  // `dist/harness.html`; `tsconfig.harness.json` typechecks it once `three` is
+  // installed (`pnpm -F @veta/render typecheck:harness`). Keeping it in this
+  // program would make the service's signal depend on a browser-only install.
+  "exclude": ["src/harness.ts", "dist", "node_modules"]
 }

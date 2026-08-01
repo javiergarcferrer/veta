@@ -1,0 +1,162 @@
+/*
+ * The widget's skin — token-driven, so a brand re-skins it without a fork.
+ *
+ * Every colour is a CSS variable on `:root`; theming later means overriding
+ * those from the collection's `render_params`, never editing rules here. The
+ * default palette is deliberately quiet: this UI sits inside somebody else's
+ * page and must not fight their design.
+ */
+
+:root {
+  --veta-ink: #1f1d1a;
+  --veta-ink-soft: #6b665e;
+  --veta-line: #e2ded6;
+  --veta-surface: #ffffff;
+  --veta-canvas: #f7f5f1;
+  --veta-accent: #3600ff;
+  --veta-warn: #9a6b00;
+  --veta-error: #a11c1c;
+  --veta-radius: 10px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--veta-ink);
+  background: var(--veta-canvas);
+}
+
+.widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  min-height: 520px;
+}
+
+.widget--loading,
+.widget--error,
+.widget--card,
+.widget--done { align-items: center; justify-content: center; text-align: center; }
+
+/* The launch card: the embed's first screen, sized by its own content so the
+   host page's iframe can shrink-wrap to it. */
+.widget--card { gap: 14px; min-height: 320px; }
+.card__title { margin: 0; font-size: clamp(24px, 4vw, 38px); letter-spacing: -0.01em; }
+.card__tagline { margin: 0; max-width: 46ch; color: var(--veta-ink-soft); }
+
+/* ── toolbar ─────────────────────────────────────────────────────────────── */
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.toolbar__tabs, .toolbar__actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.tab, .btn, .chip {
+  font: inherit;
+  border: 1px solid var(--veta-line);
+  background: var(--veta-surface);
+  color: var(--veta-ink);
+  border-radius: var(--veta-radius);
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.tab.is-on, .chip.is-on { border-color: var(--veta-accent); color: var(--veta-accent); }
+.btn--primary { background: var(--veta-accent); border-color: var(--veta-accent); color: #fff; font-weight: 600; }
+.btn--quiet { background: transparent; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── workspace ───────────────────────────────────────────────────────────── */
+.workspace {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 260px;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: 1fr; }
+}
+
+.palette__title, .panel__title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--veta-ink-soft); margin: 0 0 8px; }
+.palette__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.palette__item {
+  width: 100%; text-align: left; display: grid; gap: 2px;
+  font: inherit; border: 1px solid var(--veta-line); background: var(--veta-surface);
+  border-radius: var(--veta-radius); padding: 8px 10px; cursor: pointer;
+}
+.palette__dims { font-size: 12px; color: var(--veta-ink-soft); }
+
+/* ── the plan ────────────────────────────────────────────────────────────── */
+.canvas { display: grid; gap: 10px; }
+.plan { background: var(--veta-surface); border: 1px solid var(--veta-line); border-radius: var(--veta-radius); overflow: hidden; }
+.plan__svg { width: 100%; height: clamp(280px, 46vh, 520px); display: block; touch-action: none; }
+.plan__dot { fill: rgba(59, 56, 48, 0.28); }
+.plan__room { fill: rgba(54, 0, 255, 0.04); stroke: var(--veta-accent); stroke-width: 2; stroke-dasharray: 8 6; }
+.plan__body { fill: #ded7cb; stroke: #b9b0a2; stroke-width: 1.5; }
+.plan__front { stroke: #8d8375; stroke-width: 2; }
+.plan__label { font-size: 11px; text-anchor: middle; fill: #4a453d; pointer-events: none; }
+.plan__piece { cursor: grab; }
+.plan__piece:focus-visible .plan__body, .plan__piece.is-selected .plan__body { stroke: var(--veta-accent); stroke-width: 2.5; }
+.plan__piece.is-flagged .plan__body { stroke: var(--veta-error); stroke-dasharray: 6 4; }
+.plan__rotate { fill: var(--veta-surface); stroke: var(--veta-accent); stroke-width: 2; cursor: grab; }
+.plan__dims { margin: 0; padding: 8px 12px; font-size: 13px; color: var(--veta-ink-soft); }
+
+/* ── the 3D stage ────────────────────────────────────────────────────────── */
+.stage { position: relative; background: var(--veta-surface); border: 1px solid var(--veta-line); border-radius: var(--veta-radius); overflow: hidden; }
+.stage__host { width: 100%; height: clamp(280px, 46vh, 520px); }
+.stage__host canvas { display: block; width: 100%; height: 100%; }
+.stage__status { position: absolute; inset: auto 0 12px; text-align: center; color: var(--veta-ink-soft); margin: 0; }
+
+/* ── panels ──────────────────────────────────────────────────────────────── */
+.panel { background: var(--veta-surface); border: 1px solid var(--veta-line); border-radius: var(--veta-radius); padding: 12px; }
+.panel__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.panel__filters { display: grid; gap: 8px; margin-bottom: 10px; }
+.panel__empty, .panel__note { color: var(--veta-ink-soft); font-size: 13px; }
+.panel__foot { display: grid; gap: 8px; margin-top: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 4px 9px; font-size: 12px; }
+
+.input { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--veta-line); border-radius: var(--veta-radius); background: var(--veta-surface); }
+
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.tile { display: grid; gap: 4px; width: 100%; font: inherit; text-align: left; padding: 6px; border: 1px solid var(--veta-line); border-radius: var(--veta-radius); background: var(--veta-surface); cursor: pointer; }
+.tile.is-on { border-color: var(--veta-accent); }
+.tile__swatch { display: block; height: 44px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.08); }
+.tile__name { font-size: 12px; font-weight: 600; }
+.tile__meta { font-size: 11px; color: var(--veta-ink-soft); }
+
+/* ── rules ───────────────────────────────────────────────────────────────── */
+.rules { border: 1px solid var(--veta-line); border-left: 3px solid var(--veta-warn); border-radius: var(--veta-radius); background: var(--veta-surface); padding: 10px 12px; }
+.rules--blocking { border-left-color: var(--veta-error); }
+.rules__title { font-size: 14px; margin: 0 0 6px; }
+.rules__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rules__item { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 13px; align-items: baseline; }
+.rules__badge { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--veta-warn); }
+.rules__item--error .rules__badge { color: var(--veta-error); }
+
+/* ── estimate deck ───────────────────────────────────────────────────────── */
+.deck { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: var(--veta-surface); border: 1px solid var(--veta-line); border-radius: var(--veta-radius); padding: 12px; }
+.deck__figures { display: grid; gap: 2px; }
+.deck__count { font-size: 13px; color: var(--veta-ink-soft); }
+.deck__total { font-size: 20px; display: grid; gap: 2px; }
+.deck__label { font-size: 12px; font-weight: 400; color: var(--veta-ink-soft); }
+.deck__pending { font: inherit; font-size: 13px; text-align: left; background: none; border: 0; color: var(--veta-accent); cursor: pointer; display: grid; gap: 2px; }
+.deck__hint { font-size: 12px; color: var(--veta-ink-soft); }
+.deck__blocked { font-size: 13px; color: var(--veta-error); margin: 0; }
+
+/* ── lead form ───────────────────────────────────────────────────────────── */
+.lead { display: grid; gap: 10px; max-width: 460px; margin: 0 auto; }
+.lead__title { margin: 0; font-size: 20px; }
+.lead__subtitle, .lead__hint { margin: 0; color: var(--veta-ink-soft); font-size: 13px; }
+.field { display: grid; gap: 4px; }
+.field__label { font-size: 13px; color: var(--veta-ink-soft); }
+.field__error { font-size: 12px; color: var(--veta-error); }
+
+/* ── modal (AR) ──────────────────────────────────────────────────────────── */
+.modal { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.6); display: grid; place-items: center; padding: 16px; }
+.modal__panel { background: var(--veta-surface); border-radius: var(--veta-radius); width: min(720px, 100%); max-height: 90vh; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+.modal__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--veta-line); }
+.modal__head h2 { margin: 0; font-size: 16px; }
+.modal__body { min-height: 320px; }
+.modal__status { text-align: center; color: var(--veta-ink-soft); }
+.modal__qr { margin: 0; padding: 12px; display: grid; justify-items: center; gap: 6px; border-top: 1px solid var(--veta-line); font-size: 12px; color: var(--veta-ink-soft); }

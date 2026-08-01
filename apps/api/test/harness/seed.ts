@@ -200,13 +200,21 @@ async function seedOrg(c: pg.Client | pg.PoolClient, slug: string, priceMinor: n
     [org.id, priceList.id, sku, '', priceMinor],
   );
 
+  // A FREE-FORM collection on purpose (every rule a warning): the sandbox stays
+  // a sandbox, so a flagged build SAVES and the red-team suite can read back the
+  // verdict the server recomputed it into. The strict save gate — a ruleset
+  // carrying an ERROR rule refusing the save with 422 — is a different
+  // collection's law, exercised in parity.test.ts, which seeds its own.
+  //
+  // The engine's own COUNT_MAX cap still reports as an ERROR violation here:
+  // `ok:false` on a free-form collection is a flag, never a refusal.
   await c.query(
     `insert into public.rulesets (org_id, collection_id, version, status, rules)
      values ($1,$2,1,'active',$3::jsonb)`,
     [
       org.id,
       collection.id,
-      JSON.stringify({ schema: 1, rules: [{ id: 'max-pieces', type: 'count', max: 20, severity: 'error' }] }),
+      JSON.stringify({ schema: 1, rules: [{ id: 'max-pieces', type: 'count', max: 20, severity: 'warning' }] }),
     ],
   );
 

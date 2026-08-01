@@ -34,6 +34,10 @@ const packagesDir = join(ROOT, 'packages');
 const pkgNames = existsSync(packagesDir)
   ? readdirSync(packagesDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)
   : [];
+const appsDir = join(ROOT, 'apps');
+const appNames = existsSync(appsDir)
+  ? readdirSync(appsDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)
+  : [];
 
 test('packages/*/src obey the layering rules', () => {
   const breaches = [];
@@ -69,4 +73,28 @@ test('packages/*/src obey the layering rules', () => {
     }
   }
   assert.deepEqual(breaches, [], `Layering breaches:\n${breaches.join('\n')}`);
+});
+
+// App view-model layering: apps/*/src/vm is the pure projection layer — no
+// React, no three (value OR dynamic), no store/DOM imports. Same MVVM rule the
+// packages enforce, extended to the apps that adopted a vm/ directory.
+test('apps/*/src/vm stay pure (no react/three/store imports)', () => {
+  const breaches = [];
+  for (const app of appNames) {
+    const vmDir = join(appsDir, app, 'src', 'vm');
+    for (const file of walk(vmDir)) {
+      const rel = relative(ROOT, file);
+      const src = readFileSync(file, 'utf8');
+      for (const { spec } of importsOf(file)) {
+        if (spec.startsWith('react') || spec === 'three' || spec.startsWith('three/')) {
+          breaches.push(`${rel}: vm imports '${spec}'`);
+        }
+        if (/\.\.\/(store|ui|workers|lib)\//.test(spec)) {
+          breaches.push(`${rel}: vm reaches outside the vm layer ('${spec}')`);
+        }
+      }
+      if (/await import\(\s*['"]three['"]/.test(src)) breaches.push(`${rel}: vm dynamic-imports three`);
+    }
+  }
+  assert.deepEqual(breaches, [], `VM layering breaches:\n${breaches.join('\n')}`);
 });

@@ -120,16 +120,41 @@ never silently valid), the five rule types (`count`, `adjacency`, `option`,
 under `test/fixtures/` are authored share-ready for the WP-1.4 HTTP parity
 test.
 
+## `@veta/i18n` (Phase 2)
+
+- `t(locale, key, params?)`, `SUPPORTED_LOCALES`, `DEFAULT_LOCALE`, `Locale`,
+  `TranslationKey`, `resolveLocale`, `isLocale`, `hasKey`, `piecesLabel`,
+  `localeKeys`, `dictionary`, `RULES_MESSAGE_KEYS`
+- `es` is the source of truth; non-source locales are
+  `Record<TranslationKey, string>` — a missing translation is a COMPILE error,
+  plus a runtime parity test
+
+## `@veta/widget-sdk` (Phase 2)
+
+- `mount` (`VetaWidget.mount(el, options)`), `widgetUrl`, `modalUrl`,
+  `shareUrl`, `handoffUrl`, `widgetBase`, `withQuery`, `WIDGET_PARAMS` (the
+  canonical param names the app parses — the wire cannot drift), `EMBED_ALLOW`,
+  `embedSnippet`, `EMBED_MARKER`, `DEFAULT_SEED_HEIGHT_PX`, `WIDGET_EVENTS`,
+  `HOST_COMMANDS`, `WIDGET_SOURCE`, `HOST_SOURCE`, `parseWidgetMessage`,
+  `parseHostMessage`, `isTrustedWidgetEvent`, `readHeight`, `widgetMessage`,
+  `hostMessage`, `createWidgetBridge`, `originOf`
+- Both protocol halves live HERE (`createWidgetBridge` is the app's half) so
+  host and widget can never disagree on the wire format
+
 ## `@veta/api` (apps/api — Phase 1)
 
 - `createApp`, `withTenant(orgId, keyKind, fn)` (transaction-scoped
   `set local role veta_api` + `set_config` — the ONLY tenant plane the request
   path may use; service-role never appears in a request path), `apiKeyAuth`,
-  `requireScope`, `resolveApiKey`, `deriveVerdict`, `priceBuild`
-- `deriveVerdict`/`priceBuild` are WP-1.4 seams: they MUST come to import
-  `@veta/rules`' `evaluateRules` and `@veta/catalog`'s `placementTotal` — one
-  module, two callers; the HTTP parity test replays
-  `packages/rules/test/fixtures/*` through the API
+  `requireScope`, `resolveApiKey`, `deriveVerdict`, `priceBuild`,
+  `loadCollectionContext`, `parseStoredRuleset`, `blocksSave`,
+  `createRateLimiter`
+- `deriveVerdict`/`priceBuild` are PURE over a `CollectionContext` (DB reads
+  hoisted into context.ts); the WP-1.4 seam is CLOSED — they import
+  `@veta/rules` and `@veta/catalog` directly, and `apps/api/test/parity.test.ts`
+  replays `packages/rules/test/fixtures/*` through the HTTP path (version-skew
+  pin). A wire pick is trimmed to `{code,grade,fabric}` before pricing — a
+  client-set unitPrice never survives.
 - Migration 0001 policy style: plain boolean arms, no `using (true)` anywhere,
   composite `(id, org_id)` child FKs, `create policy` deliberately
   non-idempotent (transactional applier; a drop-loop would eat S2 grant arms)

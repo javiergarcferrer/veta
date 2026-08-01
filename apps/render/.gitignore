@@ -1,0 +1,3 @@
+# Build output: the harness page is generated (scripts/bundleHarness.ts).
+# A deploy image builds it; a checkout must not carry 800 KB of bundled three.
+dist/

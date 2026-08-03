@@ -26,6 +26,7 @@ import ArViewer from './components/ArViewer.tsx';
 import { parseWidgetParams, paramsError } from './vm/params.ts';
 import { createApiClient } from './vm/client.ts';
 import { resolveWidgetCatalog, type WidgetCatalog } from './vm/catalog.ts';
+import { DEMO_CATALOG } from './vm/demo.ts';
 import {
   editorCanRedo, editorCanUndo, editorReducer, initialEditorState,
   type EditorAction, type EditorContext,
@@ -96,8 +97,21 @@ export default function App() {
   );
   const dispatch = useCallback((action: EditorAction) => rawDispatch(action), []);
 
-  // ── the catalog: ONE bootstrap read ───────────────────────────────────────
+  // DEMO MODE: an explicit ?demo=1, or a build with no tenant key at all,
+  // runs on the bundled fixture catalog (vm/demo) — the engine with no API
+  // behind it. A keyed embed can never fall into it by accident: the key wins.
+  const demo = useMemo(() => {
+    const href = globalThis.location?.href ?? '';
+    return /[?&#]demo=1\b/.test(href) || !params.publishableKey;
+  }, [params.publishableKey]);
+
+  // ── the catalog: ONE bootstrap read (or the demo fixture, no network) ─────
   useEffect(() => {
+    if (demo) {
+      setCatalog(resolveWidgetCatalog({ payload: DEMO_CATALOG, collectionSlug: params.collection }));
+      setLoading(false);
+      return undefined;
+    }
     if (paramsError(params)) { setLoading(false); return undefined; }
     let alive = true;
     (async () => {
@@ -113,7 +127,7 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [client, params]);
+  }, [client, params, demo]);
 
   // ── restore a handed-off / stored build once the catalog is known ─────────
   const restoredRef = useRef(false);
@@ -230,7 +244,9 @@ export default function App() {
         dedupeKey: leadDedupeKey(form, build),
         source: { locale, embed: params.context, referrer: globalThis.document?.referrer ?? '' },
       });
-      const result = await client.submitLead(payload);
+      // In demo mode there is no API to receive the lead — the flow completes
+      // locally so the funnel can be walked end to end without storing anyone.
+      const result = demo ? { id: 'demo', deduped: false } : await client.submitLead(payload);
       bridge.emit('submitted', { id: result.id ?? null, deduped: !!result.deduped });
       setScreen('done');
     } catch {
@@ -262,7 +278,7 @@ export default function App() {
   };
 
   // ── render ────────────────────────────────────────────────────────────────
-  const fatal = paramsError(params);
+  const fatal = demo ? null : paramsError(params); // demo needs no tenant key
   if (fatal || loadError) {
     return (
       <div className="widget widget--error" ref={rootRef}>

@@ -13,6 +13,13 @@
  *   • A PIECE WITHOUT A FABRIC is not priced yet. It is counted (`pending`) and
  *     excluded from the total, because a total that silently omits pieces reads
  *     as the price of the whole design.
+ *   • A PIECE THAT IS DRESSED AND STILL HAS NO PRICE is a third state, and the
+ *     quiet one: the cloth on it (or on one of its parts) sits at a grade that
+ *     ladder never sold, so `placementTotal` answers null. It is NOT "pending" —
+ *     that counter names a fabric nobody chose, and this piece has one. What it
+ *     costs the BUILD is the point: folding it in as 0 states a real-looking
+ *     total that is simply short by whatever that piece is worth. So the deck
+ *     says «sin precio» instead of a confident figure.
  *
  * The estimate is DISPLAY ONLY. The server re-prices every lead from its own
  * catalog, so nothing here is ever the number a brand invoices.
@@ -32,6 +39,10 @@ export interface EstimateLine {
   code: string;
   /** True when the piece has no fabric and therefore no price. */
   pendingFabric: boolean;
+  /** Dressed, and nothing can price it: an off-ladder pick (or an unbound
+   *  model). The row reads «sin precio» — never a blank, which reads as a piece
+   *  still waiting for a fabric it already has. */
+  unresolved: boolean;
 }
 
 export interface Estimate {
@@ -42,6 +53,10 @@ export interface Estimate {
   mode: PricingMode;
   /** How many placed pieces still need a fabric before they can be priced. */
   pending: number;
+  /** How many are DRESSED and still unpriceable — while this is > 0 there is no
+   *  honest total, and `total` is null for that reason rather than for lack of
+   *  pieces. */
+  unpriced: number;
   pieces: number;
   /** True when the deck should show money at all. */
   visible: boolean;
@@ -85,11 +100,21 @@ export function resolveEstimate(
       total,
       code,
       pendingFabric: !code,
+      // Dressed and unpriceable — `placementTotal` refuses rather than billing
+      // the ladder's cheapest grade for a cloth nobody chose.
+      unresolved: visible && !!code && total == null,
     };
   });
 
   const priced = lines.filter((l) => l.total != null);
-  const total = visible && priced.length
+  const unpriced = lines.filter((l) => l.unresolved).length;
+  // NO CONFIDENT NUMBER OVER A GAP: with an unpriceable piece on the plan the
+  // sum would be short by exactly what that piece is worth, and a total that
+  // looks right is worse than no total at all. (Hidden pricing does the same
+  // thing for the opposite reason.) The lead still sends — losing the lead is
+  // the one unacceptable outcome — and it asserts no price anyway: the API
+  // re-derives the estimate from the build.
+  const total = visible && !unpriced && priced.length
     ? Math.round(priced.reduce((sum, l) => sum + (l.total ?? 0), 0) * 100) / 100
     : null;
 
@@ -99,6 +124,7 @@ export function resolveEstimate(
     currency,
     mode,
     pending: lines.filter((l) => l.pendingFabric).length,
+    unpriced,
     pieces: lines.length,
     visible,
   };

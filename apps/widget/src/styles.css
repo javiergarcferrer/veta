@@ -118,6 +118,23 @@ body {
 
 .input { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--veta-line); border-radius: var(--veta-radius); background: var(--veta-surface); }
 
+/* The two kinds a piece is made of — cloth componentes, then the estructura's
+   acabado. The eyebrows are what stop the fabric rows reading as the unnamed
+   default half of a pair. */
+.parts { display: grid; gap: 6px; margin-bottom: 10px; }
+.parts__eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--veta-ink-soft); }
+.parts__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.parts__row { display: flex; align-items: center; gap: 6px; }
+.parts__pick {
+  flex: 1; display: grid; gap: 1px; font: inherit; text-align: left; padding: 5px 8px;
+  border: 1px solid var(--veta-line); border-radius: var(--veta-radius); background: var(--veta-surface);
+}
+button.parts__pick { cursor: pointer; }
+.parts__pick.is-on { border-color: var(--veta-accent); }
+.parts__name { font-size: 12px; font-weight: 600; }
+.parts__wearing { font-size: 11px; color: var(--veta-ink-soft); }
+.parts__note { font-size: 10px; color: var(--veta-ink-soft); }
+
 .tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
 .tile { display: grid; gap: 4px; width: 100%; font: inherit; text-align: left; padding: 6px; border: 1px solid var(--veta-line); border-radius: var(--veta-radius); background: var(--veta-surface); cursor: pointer; }
 .tile.is-on { border-color: var(--veta-accent); }

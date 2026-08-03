@@ -27,6 +27,8 @@ export interface ThreeLike {
   Vector3: typeof ThreeNS.Vector3;
   Matrix4: typeof ThreeNS.Matrix4;
   BufferAttribute: typeof ThreeNS.BufferAttribute;
+  /** Constructed by the solid split, which emits one sub-geometry per mass. */
+  BufferGeometry: typeof ThreeNS.BufferGeometry;
   Group: typeof ThreeNS.Group;
   Mesh: typeof ThreeNS.Mesh;
   LoadingManager: typeof ThreeNS.LoadingManager;

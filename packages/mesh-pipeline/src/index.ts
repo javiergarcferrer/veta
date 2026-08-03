@@ -43,12 +43,21 @@ export type { BakedGeometry, ExportPieceDeps, OptimizeGlbDeps, OptimizeGlbResult
 export {
   CREASE_ANGLE,
   MAX_ORIGIN_RATIO,
+  MAX_SOLIDS_PER_MESH,
   bakeGeometry,
   exportPieceGlb,
   isOptimizableMeshUrl,
   optimizeGlbBuffer,
+  pinnedMaterial,
   quantizeGeometry,
+  splitGeometryBySolid,
 } from './optimize.ts';
+
+// The segmentation engine itself lives in @veta/geometry (pure triangle work);
+// re-exported here because this is the pipeline that consumes it, and a caller
+// wiring the export path should not have to learn which package owns the math.
+export { TRIM_AREA_RATIO, WELD_RATIO, splitSolids } from '@veta/geometry';
+export type { Solid, SplitSolidsInput, SplitSolidsResult } from '@veta/geometry';
 
 // Scene splitting.
 export type { SceneSplit, ScenePiece, SplitSceneOpts, UpAxis } from './splitScene.ts';

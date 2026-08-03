@@ -13,7 +13,7 @@
  * file to import from.
  */
 import { useMemo } from 'react';
-import { PART_LABELS, PART_ROLES, structureStarterFinish } from '@veta/materials';
+import { PART_LABELS, PART_ROLES, mergedKeyOf, structureStarterFinish } from '@veta/materials';
 import { planFinishCommit, resolveStructureFinish, structureFinishesOf, structureKeysOf } from '../vm/finishes.ts';
 import type { PartGroupBox } from '../vm/parts.ts';
 import { resolvePublishChecks } from '../vm/publish.ts';
@@ -39,13 +39,20 @@ export interface InspectorProps {
   groups: readonly PartGroupBox[];
   busy: string | null;
   error: string | null;
-  onDetect: () => void;
+  /** What the write is doing. There is no «Save» button — see vm/save. */
+  saveStatus: { show: boolean; level: 'ok' | 'warn' | 'bad'; label: string };
+  /** The part the join gesture joins INTO. */
+  selectedKey: string | null;
+  joinMode: boolean;
+  onSelectKey: (key: string | null) => void;
+  onToggleJoinMode: () => void;
+  onJoin: (target: string, memberKeys: string[]) => void;
+  onSeparate: (memberKeys: string[]) => void;
   onSetRole: (groupKey: string, role: string) => void;
   onBindPart: (groupKey: string, role: string, root: string) => void;
   onCount: (role: string, n: number) => void;
   onBindBase: (root: string) => void;
   onSetFinish: (groupKey: string, spec: unknown) => void;
-  onCommit: () => void;
   onPublish: (want: 'draft' | 'published') => void;
 }
 
@@ -56,6 +63,14 @@ export function Inspector(props: InspectorProps) {
       <div className="pane">
         {props.error ? <div className="tiny level-bad">{props.error}</div> : null}
         {props.busy ? <div className="tiny muted">{props.busy}…</div> : null}
+        {/* THE STATUS STRIP. It used to hold «Save parts» and «Discard» — a
+            button the dealer had to find for the one part of this screen that
+            did not save itself, while every other control commits as you type.
+            It saves itself now, so all that is left to say is whether the write
+            is out, what the collection took with it, and what broke. */}
+        {props.saveStatus.show
+          ? <div role="status" className={`tiny level-${props.saveStatus.level}`}>{props.saveStatus.label}</div>
+          : null}
         {tab === 'parts' ? <PartsTab {...props} /> : null}
         {tab === 'sku' ? <SkuTab {...props} /> : null}
         {tab === 'finishes' ? <FinishesTab {...props} /> : null}
@@ -68,7 +83,9 @@ export function Inspector(props: InspectorProps) {
 
 /* ── Parts ──────────────────────────────────────────────────────────────────*/
 
-function PartsTab({ model, draft, groups, busy, onDetect, onSetRole, onCommit }: InspectorProps) {
+function PartsTab({
+  draft, groups, selectedKey, joinMode, onSelectKey, onToggleJoinMode, onJoin, onSeparate, onSetRole,
+}: InspectorProps) {
   const mats = (draft.mats as Record<string, string>) || {};
   // The stored tagging is the truth; a detect only ever ADDS keys, so the list
   // is the union — a group the dealer tagged before the last detect must not
@@ -77,19 +94,38 @@ function PartsTab({ model, draft, groups, busy, onDetect, onSetRole, onCommit }:
     () => [...new Set([...groups.map((g) => g.key), ...Object.keys(mats)])].sort(),
     [groups, mats],
   );
+  // WHAT THE SELECTED PART IS MADE OF — every key that resolves into it, minus
+  // its own. Read as inventory, not as history: a member can be another material
+  // the dealer folded in OR a split island of this one's own material, and the
+  // list must not care which. That is the whole of separating something you did
+  // not group yourself.
+  const members = useMemo(
+    () => (selectedKey ? keys.filter((k) => k !== selectedKey && mergedKeyOf(draft, k) === selectedKey) : []),
+    [keys, selectedKey, draft],
+  );
+  const others = useMemo(
+    () => (selectedKey ? keys.filter((k) => mergedKeyOf(draft, k) !== selectedKey) : []),
+    [keys, selectedKey, draft],
+  );
+
   return (
     <>
-      <div className="row">
-        <button type="button" onClick={onDetect} disabled={!model.mesh?.url || !!busy}>Detect parts</button>
-        <button type="button" onClick={onCommit} disabled={!!busy}>Save</button>
-      </div>
       <div className="card">
         <h3>Part groups</h3>
-        {!keys.length ? <div className="tiny muted">No tagging yet — run detect on a model with a mesh.</div> : null}
+        {!keys.length ? <div className="tiny muted">No tagging yet — it runs itself once the mesh is current.</div> : null}
         <ul className="list">
           {keys.map((key) => (
-            <li key={key} className="row">
-              <span className="tiny" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }} title={key}>{key}</span>
+            <li key={key} className={`row${key === selectedKey ? ' on' : ''}`}>
+              <button
+                type="button"
+                className="tiny"
+                style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}
+                title={key}
+                aria-pressed={key === selectedKey}
+                onClick={() => onSelectKey(key === selectedKey ? null : key)}
+              >
+                {key}
+              </button>
               <select value={mats[key] || 'base'} onChange={(e) => onSetRole(key, e.target.value)}>
                 {PART_ROLES.map((role) => (
                   <option key={role} value={role}>{PART_LABELS[role] || role}</option>
@@ -99,6 +135,71 @@ function PartsTab({ model, draft, groups, busy, onDetect, onSetRole, onCommit }:
           ))}
         </ul>
       </div>
+
+      {/* ── JOIN AND SEPARATE — one control, both directions.
+          It HAS to be one control because the dealer cannot see the difference
+          it used to depend on. A CAD export hands over MATERIAL groups and the
+          studio then splits a material whose meshes are different shapes into
+          islands; so "the cushion" and "the frame" can be two materials (a
+          merge) or two islands of one material (an un-split), and on screen
+          they look identical. Joining wrote `merges`, which does nothing for an
+          island's ROLE — so the one case he actually had, a seat cushion tagged
+          out of the frame's own material, had no route at all. */}
+      {selectedKey ? (
+        <div className="card">
+          <h3>Join and separate</h3>
+          <button
+            type="button"
+            aria-pressed={joinMode}
+            className={joinMode ? 'primary' : ''}
+            onClick={onToggleJoinMode}
+          >
+            {joinMode ? 'Done' : 'Join and separate'}
+            <kbd style={{ marginLeft: 6, opacity: 0.6, fontSize: '0.75em' }}>U</kbd>
+          </button>
+          <div className="tiny muted">
+            {joinMode
+              ? 'Pick a group below to fold it into this part; pick one of its own to separate it.'
+              : 'Everything you fold in becomes this part; anything already its own separates back out.'}
+          </div>
+
+          {members.length ? (
+            <>
+              <ul className="list">
+                {members.map((m) => (
+                  <li key={m} className="row">
+                    <span className="tiny" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }} title={m}>{m}</span>
+                    <button type="button" onClick={() => onSeparate([m])}>Separate</button>
+                  </li>
+                ))}
+              </ul>
+              {members.length > 1 ? (
+                <button type="button" onClick={() => onSeparate(members)}>Separate them all</button>
+              ) : null}
+              <div className="tiny muted">
+                Each becomes its own part again, keeping the role it has now. The finish stays with this part.
+              </div>
+            </>
+          ) : null}
+
+          {joinMode && others.length ? (
+            <ul className="list">
+              {others.map((k) => (
+                <li key={k} className="row">
+                  <span className="tiny" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }} title={k}>{k}</span>
+                  <button type="button" onClick={() => onJoin(selectedKey, [k])}>Join</button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {!members.length && !others.length ? (
+            <div className="tiny muted">A single mesh: nothing to join it to and nothing to separate from it.</div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="tiny muted">Pick a part group to join or separate it.</div>
+      )}
     </>
   );
 }
@@ -155,7 +256,7 @@ function SkuTab({ model, draft, onBindBase, onBindPart, onCount }: InspectorProp
 
 /* ── Finishes ───────────────────────────────────────────────────────────────*/
 
-function FinishesTab({ model, models, draft, onSetFinish, onCommit }: InspectorProps) {
+function FinishesTab({ model, models, draft, onSetFinish }: InspectorProps) {
   const groups = useMemo(() => structureKeysOf(draft), [draft]);
   const collectionSpec = useMemo(
     () => structureFinishesOf(models.filter((m) => m.id !== model.id), model.collection),
@@ -177,12 +278,9 @@ function FinishesTab({ model, models, draft, onSetFinish, onCommit }: InspectorP
         <h3>Collection reach</h3>
         <div className="tiny">
           {plan.blastRadius === 0
-            ? 'This save changes no other model.'
-            : `Saving also rewrites ${plan.blastRadius} other model(s) in "${model.collection || 'no collection'}".`}
+            ? 'Editing this palette changes no other model.'
+            : `The next save also rewrites ${plan.blastRadius} other model(s) in "${model.collection || 'no collection'}".`}
           {plan.structureMoved ? ' The structure palette moved (shared by role).' : ''}
-        </div>
-        <div className="row" style={{ marginTop: 6 }}>
-          <button type="button" className="primary" onClick={onCommit}>Save + fan out</button>
         </div>
       </div>
       {!groups.length ? <div className="tiny muted">No structure groups. Tag a part as “Estructura” in Parts first.</div> : null}

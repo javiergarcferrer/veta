@@ -111,6 +111,26 @@ export function meshLoopsFromTriangles(
  * filled region kept on the LEFT (→ CCW outer loops, CW holes), then follows each
  * vertex's outgoing edge to close every loop, and Douglas–Peucker-simplifies it.
  *
+ * THE PINCH. A vertex where two cells meet only at a CORNER is the one place the
+ * walk has a choice: four boundary edges cross there, two in and two out, and
+ * taking the wrong pair welds two separate islands into a single self-touching
+ * figure-eight. That loop is wrong at every downstream step — it visits the pinch
+ * twice, so an outward offset pushes the two visits in opposite directions and
+ * the stroke draws an X across the empty gap; a band smoother is handed a
+ * self-crossing curve and drags one lobe through the other; and the caller is
+ * told there is one island where the eye plainly sees two. A perspective mask of
+ * a joined part hits dozens of these per frame and re-shuffles them as the camera
+ * moves — which is exactly the "tangled scribble" the selection outline drew over
+ * a multi-island selection.
+ *
+ * So the successor is not whichever edge happens to be on top: at a vertex with a
+ * choice the walk takes the LEFT-MOST turn (left > straight > right > reverse),
+ * which is the side the filled region is on and therefore always hugs the island
+ * it arrived on. That pairing is a permutation of the edges at the vertex, so
+ * every walk still closes — and diagonal contact now reads as what it looks like,
+ * two islands with two loops. An island whose OWN boundary genuinely touches
+ * itself (a C whose arms meet at a corner) is still one loop, as it should be.
+ *
  * `eps` overrides the DP tolerance (default 0.9 of a cell — the plan-SVG's
  * compaction). Pass 0 to keep the RAW pixel-true boundary: DP trades the stairs'
  * HIGH-frequency ±half-cell error for LOW-frequency ±eps endpoint error at
@@ -147,25 +167,57 @@ export function traceGridLoops(
     }
   }
   if (out.size === 0) return [];
-  const toPt = (k: number): PlanPoint => ({ x: Math.floor(k / stride) * cx, y: (k % stride) * cz });
+  const gxOf = (k: number) => Math.floor(k / stride);
+  const gzOf = (k: number) => k % stride;
+  const toPt = (k: number): PlanPoint => ({ x: gxOf(k) * cx, y: gzOf(k) * cz });
+
+  // The successor of the edge `from → at`, CONSUMED as it is handed back. With a
+  // single option there is nothing to decide; with two (the pinch) the left-most
+  // turn wins — "left" of travel (dx,dz) is (dz,−dx) in this y-down grid, which
+  // is the side the filled cells are on (check the top edge: travel (−1,0),
+  // filled below at +z ✓). Returns −1 when nothing is left, which is how a walk
+  // learns its cycle just closed.
+  const step = (from: number, at: number): number => {
+    const arr = out.get(at);
+    if (!arr || !arr.length) return -1;
+    if (arr.length === 1) return arr.pop() as number;
+    const dx = gxOf(at) - gxOf(from), dz = gzOf(at) - gzOf(from);
+    const lx = dz, lz = -dx;
+    let bestAt = 0, bestRank = -1;
+    for (let i = 0; i < arr.length; i++) {
+      const ex = gxOf(arr[i]!) - gxOf(at), ez = gzOf(arr[i]!) - gzOf(at);
+      const side = ex * lx + ez * lz;
+      const rank = side > 0 ? 3 : (side < 0 ? 1 : (ex === dx && ez === dz ? 2 : 0));
+      if (rank > bestRank) { bestRank = rank; bestAt = i; }
+    }
+    return arr.splice(bestAt, 1)[0] as number;
+  };
+
   const loops: PlanLoop[] = [];
   for (const from of [...out.keys()]) {
-    let arr = out.get(from);
-    while (arr && arr.length) {
+    for (;;) {
+      const arr = out.get(from);
+      if (!arr || !arr.length) break;
+      // Any outgoing edge is a valid start: the turn rule pairs each incoming
+      // edge with one outgoing, so the walk rides that permutation's cycle and
+      // comes back to `from` on the partner of the one popped here.
       const loop = [from];
-      let cur = arr.pop() as number;
-      let guard = 0;
-      while (cur !== from && guard++ < 4_000_000) {
+      let prev = from, cur = arr.pop() as number, guard = 0;
+      while (guard++ < 4_000_000) {
         loop.push(cur);
-        const nx = out.get(cur);
-        if (!nx || !nx.length) break;
-        cur = nx.pop() as number;
+        const nx = step(prev, cur);
+        if (nx < 0) break;
+        prev = cur; cur = nx;
       }
-      if (loop.length >= 4) {
-        const poly = eps > 0 ? simplifyClosed(loop.map(toPt), eps) : loop.map(toPt);
-        if (poly.length >= 3) loops.push(poly);
-      }
-      arr = out.get(from);
+      // Closed loops only. Degrees are balanced by construction (every boundary
+      // vertex has as many edges in as out), so a walk can only run out of edges
+      // back at its start; anything else is a malformed grid and emitting it
+      // would draw an OPEN polyline as if it were a closed silhouette.
+      if (loop[loop.length - 1] !== from) continue;
+      loop.pop();
+      if (loop.length < 4) continue;
+      const poly = eps > 0 ? simplifyClosed(loop.map(toPt), eps) : loop.map(toPt);
+      if (poly.length >= 3) loops.push(poly);
     }
   }
   return loops;

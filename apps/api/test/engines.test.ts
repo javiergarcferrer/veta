@@ -107,9 +107,13 @@ test('a graded ladder prices by the piece’s own grade, never by the payload’
   assert.equal(lying.amount_minor, 310_000);
   assert.ok(!JSON.stringify(lying).includes('"9"'));
 
-  // An invented grade cannot invent a price — it falls back to the base rung.
+  // An invented grade prices NOTHING (upstream 447bade): a grade the model's
+  // own ladder never priced must not fall back to a rung nobody chose — the
+  // piece reads «sin precio», never a wrong figure.
   const invented = priceBuild({ pieces: [{ uid: 'p1', modelId: 'm1', material: { grade: 'ZZ' } }] }, ctx);
-  assert.equal(invented.amount_minor, 250_000);
+  assert.equal(invented.amount_minor, 0);
+  assert.deepEqual(invented.unpriced_models, ['m1']);
+  assert.equal(invented.priced_pieces, 0);
 });
 
 test('an unpriced or foreign model contributes nothing and says so', () => {

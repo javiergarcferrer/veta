@@ -14,8 +14,14 @@
  * IDEMPOTENT BY THE FILE'S OWN STAMP: a GLB already at the current mesh version
  * comes back `skipped` for the price of its download and nothing is written — so
  * an interrupted run resumes for free and a re-run is not a rewrite.
+ *
+ * …and IDEMPOTENT BY THE ROW'S STAMP BEFORE THAT (`owesReExport`, vm/pipeline):
+ * once the run has recorded the version a model was exported through, an
+ * up-to-date catalogue costs no downloads AT ALL. Which is what made the run
+ * safe to fire by itself on open.
  */
 import { MESH_VERSION, isOptimizableMeshUrl } from '@veta/mesh-pipeline';
+import { owesReExport } from './pipeline.ts';
 import type { QueueItem, QueueState, QueueTask } from './queue.ts';
 import { createQueueState } from './queue.ts';
 import type { StudioModel } from './types.ts';
@@ -30,9 +36,11 @@ export interface OptimizeReport {
   meshVersion: number;
 }
 
-/** The models a run would touch, in the order they will be touched. */
+/** The models a run would touch, in the order they will be touched — the same
+ *  predicate the automatic pass fires on, so a read-out can never advertise work
+ *  the run would skip. */
 export function optimizableModels(models: readonly StudioModel[] | null | undefined): StudioModel[] {
-  return (models || []).filter((m) => isOptimizableMeshUrl(m?.mesh?.url));
+  return (models || []).filter((m) => owesReExport(m));
 }
 
 /** The run's task list — one per optimizable model, payload = its mesh URL. */

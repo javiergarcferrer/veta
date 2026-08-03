@@ -118,6 +118,14 @@ export interface RenderParams extends SeamBleedParams {
   fallback?: 'placeholder' | 'procedural-togo';
   /** A flat framing-height override (cm), skipping the measurement. */
   frameHeightCm?: number;
+  /**
+   * Opt in to the QUALITY TIER's grounding: no shadow maps, a product-photo
+   * contact pool instead (`setupStage`'s `quality`, drawn per `contactPool.ts`).
+   * A device-class decision the app usually makes, carried here so a collection
+   * can state its own default. Absent/false ⇒ the shipped shadow-map rig,
+   * byte-for-byte.
+   */
+  qualityTier?: boolean;
 }
 
 /** Anything with a `.min.y` / `.max.y` — a THREE.Box3 satisfies it structurally. */

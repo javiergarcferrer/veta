@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { buildSceneGroup, disposeGroup, setupStage } from '@veta/scene';
+import { buildSceneGroup, disposeGroup, fabricAnisotropy, setupStage } from '@veta/scene';
 import { t, type Locale } from '@veta/i18n';
 import type { SceneView as SceneViewModel } from '../vm/scene.ts';
 import { sceneFabricCodes } from '../vm/scene.ts';
@@ -52,13 +52,22 @@ export default function SceneView({ view, source, imageOps, renderParams, locale
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
         renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1));
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = THREE.PCFShadowMap; // r184 deprecates PCFSoft and rewrites it to this anyway — naming it keeps a customer-facing console clean
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         host.appendChild(renderer.domElement);
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(38, 1, 1, 20000);
-        const stage = setupStage(THREE, renderer, scene, view.radius, { RoomEnvironment, grid: true });
+        // The collection's own render data reaches the RIG too, not just the
+        // build: `qualityTier` swaps the shadow-map grounding for the contact
+        // pool (@veta/scene's `contactPool`), and the plate is fed below.
+        const stage = setupStage(THREE, renderer, scene, view.radius, {
+          RoomEnvironment, grid: true, params: (renderParams ?? null) as never,
+        });
+        // THE DEVICE'S REAL anisotropy level, for the cloth AND for a model's own
+        // factory maps: a GLB's maps arrive at three's default of 1, and a wood
+        // top seen at a raking angle is exactly the surface that ruins.
+        const anisotropy = fabricAnisotropy(renderer);
 
         let maps: FabricMaps | null = null;
         let group: any = null;
@@ -70,6 +79,7 @@ export default function SceneView({ view, source, imageOps, renderParams, locale
           group = buildSceneGroup(THREE, { pieces: view.pieces as never }, {
             RoundedBoxGeometry,
             params: (renderParams ?? null) as never,
+            anisotropy,
             colorFor: (code: string) => maps?.colors.get(code) ?? null,
             textureFor: (code: string) => maps?.textures.get(code) ?? null,
             normalFor: (code: string) => maps?.normals.get(code) ?? null,
@@ -78,6 +88,12 @@ export default function SceneView({ view, source, imageOps, renderParams, locale
           scene.add(group);
           stage.retarget({ x: 0, z: 0 }, view.radius);
           stage.setShadow('3d');
+          // The contact pool is fed FOOTPRINTS, not geometry — and only when the
+          // WORLD changed, which here is exactly a rebuild (this view has no
+          // dragging; a camera-only frame never pays the plate's redraw).
+          stage.updatePool?.(view.pieces.map((p) => ({
+            x: p.x, z: p.z, w: p.widthCm, d: p.depthCm, deg: p.rotationDeg,
+          })));
           render();
         };
 

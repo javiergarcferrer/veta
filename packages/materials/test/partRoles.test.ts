@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PART_ROLES, PART_LABELS, MATERIALIZATION_ROLES, UNPRICED_ROLES, COUNT_MAX,
+  PART_ROLES, PART_LABELS, MATERIALIZATION_ROLES, UNPRICED_ROLES, BILLED_ROLES, COUNT_MAX,
   DEFAULT_PART_ROLES, DEFAULT_ROLE_SET,
   partKeyFor, partRoleFor, baseKeyOf, hasParts, accessoryRoleFor, partKeysFor, partCount,
 } from '../src/index.ts';
@@ -62,6 +62,30 @@ test('the taxonomy is DATA: the seven roles are the DEFAULT, not the only ones',
   // typed count rides straight through. `unpriced` is the only list partCount
   // reads, and a collection that has one must say so.
   assert.equal(partCount(parts, 'bracket'), 4);
+});
+
+test('the label is presentation; `base` is the TOKEN and never moves', () => {
+  // «Cuerpo» is the trade word for the upholstered shell. «Base» named the same
+  // thing as the metal bases the estructura rows offer, so the two vocabularies
+  // collided on screen. What changed is ONLY what a human reads: the role KEY
+  // stays `base` — it is the money rule's own name (base SKU + componentes) and
+  // the token every stored tagging, price path and payload is keyed on, so
+  // renaming it would silently re-file every tagged model as untagged.
+  assert.equal(PART_LABELS.base, 'Cuerpo');
+  assert.ok(PART_ROLES.includes('base'), 'the token is untouched by the rename');
+  assert.equal(partRoleFor({ mats: { m: 'base' } }, 'm', 0), 'base');
+});
+
+test('BILLED_ROLES: the billable slots, derived so an unpriced role can never leak in', () => {
+  // The slots a model can bind a part SKU to = the roles MINUS `base` (it bills
+  // as the model itself) MINUS the price-neutral ones. Derived rather than
+  // listed, so adding an unpriced role can't accidentally open a billing slot.
+  assert.deepEqual([...BILLED_ROLES], ['cushion', 'bolster', 'armCushion']);
+  for (const role of BILLED_ROLES) {
+    assert.ok(!UNPRICED_ROLES.includes(role), `${role} must never be a billed slot`);
+    assert.equal(partCount({ mats: { m: role } }, role), 1, `${role} can bill`);
+  }
+  assert.ok(!BILLED_ROLES.includes('base'));
 });
 
 test('partKeysFor: a material covering TWO part types splits by shape, first cluster keeps the name', () => {

@@ -71,8 +71,15 @@ export const es = {
   'fabric.paneMatchOne': '1 color coincide',
   'fabric.paneMatchOther': '{n} colores coinciden',
   'fabric.paneSearchColor': 'Buscar color o código…',
-  'fabric.baseDefault': 'tela base',
-  'part.base': 'Base',
+  // What a zone whispers when it rides the piece's own cloth. «tela base» named
+  // the same thing the estructura rows call a base, so it read as the metal's —
+  // it is the PIECE's cloth, and it says so.
+  'fabric.baseDefault': 'tela de la pieza',
+  // `part.base` is the upholstered shell — «Cuerpo», the trade word. The role
+  // KEY stays `base` (that is the money rule's own name: base SKU + componentes),
+  // only the reading changes: «Base» named the same thing as the metal bases the
+  // estructura rows offer, so the two vocabularies collided on screen.
+  'part.base': 'Cuerpo',
   'part.exterior': 'Exterior',
   'part.interior': 'Interior',
   'part.cushion': 'Cojín',
@@ -83,6 +90,11 @@ export const es = {
   'part.structure': 'Estructura',
   'parts.wholePiece': 'Tela de toda la pieza',
   'parts.customize': 'Personalizar por partes',
+  // The eyebrow over the cloth rows — the two kinds, each named where the pick
+  // is made: what wears cloth (COMPONENTES) and what wears an acabado
+  // (ESTRUCTURA, which reuses `part.structure`). Without it the fabric rows read
+  // as the unnamed default rather than one half of a pair.
+  'parts.components': 'Componentes',
   'parts.samePiece': 'Igual que la pieza',
   'parts.useSamePiece': 'Volver a la tela de la pieza',
   'parts.pickFinish': 'Elegir el acabado de {name}',

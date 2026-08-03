@@ -65,6 +65,10 @@ export interface PricingPart {
   complete?: boolean;
   /** Nothing was picked — the price is the family's cheapest grade. */
   default_grade?: boolean;
+  /** A pick whose grade its own ladder never priced — «sin precio», kept
+   *  visible (upstream 3e1ea3e no-vanish), distinguishable from a model the
+   *  collection simply carries no price for. */
+  unresolved?: boolean;
 }
 
 export interface PricingLine {
@@ -282,6 +286,7 @@ function breakdownOf(
     if (line.included) part.included = true;
     if (line.complete) part.complete = true;
     if (line.defaultGrade) part.default_grade = true;
+    if (line.unresolved) part.unresolved = true;
     return part;
   });
 }

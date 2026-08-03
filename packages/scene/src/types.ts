@@ -128,6 +128,9 @@ export interface PlacementFootprint {
   partFinishes?: Record<string, string> | null;
   materialForRole?: (role: string) => ThreeMaterial;
   finishMaterialFor?: (groupKey: string, option: FinishOption) => ThreeMaterial | null;
+  /** The DEVICE's real anisotropy level (`fabricAnisotropy(renderer)`) — what a
+   *  FACTORY finish's own maps sample at. Absent ⇒ the fabric path's constant. */
+  anisotropy?: number;
 }
 
 /** A piece as the scene spec describes it (plan cm; x/z are world, y is up). */

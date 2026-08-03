@@ -56,9 +56,29 @@ export const MATERIALIZATION_ROLES: readonly string[] = ['exterior', 'interior']
  */
 export const UNPRICED_ROLES: readonly string[] = [...MATERIALIZATION_ROLES, 'structure'];
 
+/**
+ * The BILLED roles — the slots a model can bind a part SKU to. Derived from the
+ * role list MINUS `base` (it bills as the model itself) and the price-neutral
+ * ones, so a new unpriced role can never leak in as an extra billable slot. A
+ * studio reads it as its billable-slot list; the join/split planner reads it to
+ * know which `roots`/`counts` a vacated role must give back.
+ *
+ * The DEFAULT taxonomy's answer. A collection with its own `PartRoleSet` asks
+ * the same question of its own set (`all` minus `base` minus `unpriced`).
+ */
+export const BILLED_ROLES: readonly string[] = PART_ROLES.filter(
+  (r) => r !== 'base' && !UNPRICED_ROLES.includes(r),
+);
+
 /** Spanish labels the pickers/chips render (the app copy is Spanish-first). */
 export const PART_LABELS: Readonly<Record<string, string>> = {
-  base: 'Base',
+  // «Cuerpo» — the trade word for the upholstered shell. The role KEY stays
+  // `base`: that token is the money rule's own name (base SKU + componentes)
+  // and the internal parity rule everything else is keyed on — only what a
+  // human READS changes. «Base» named the same thing as the metal bases the
+  // estructura rows offer, so the two vocabularies collided on screen. A
+  // dealer's own studio label (`roleLabelOf`) still outranks this.
+  base: 'Cuerpo',
   structure: 'Estructura',
   exterior: 'Exterior',
   interior: 'Interior',

@@ -6,8 +6,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMaterialSource, pickFromColor, resolveMaterialPicker } from '../src/vm/materials.ts';
-import { resolveMaterialFamilies } from '../src/vm/catalog.ts';
+import { createMaterialSource, pickFromColor, pickLaddersFor, resolveMaterialPicker } from '../src/vm/materials.ts';
+import { resolveMaterialFamilies, resolveWidgetCatalog } from '../src/vm/catalog.ts';
 import { catalogPayload } from './fixtures.ts';
 
 const { families, colorByCode } = resolveMaterialFamilies(catalogPayload.materials);
@@ -82,4 +82,68 @@ test('no materials at all is a valid, empty picker (not a crash)', () => {
   assert.deepEqual(empty.families, []);
   assert.deepEqual(empty.categories, []);
   assert.equal(empty.empty, true);
+});
+
+// ── THE WALL IS THE TARGET'S OWN LADDER ─────────────────────────────────────
+// Owner rule: only the fabrics that really correspond to a model come up for it.
+// A tile the price gate would refuse is a trap — the pick stores, the piece
+// reads «sin precio», and the visitor is left holding a piece nobody can quote.
+const fireside = resolveWidgetCatalog({ payload: catalogPayload }).modelById['m-fireside'];
+const ottoman = resolveWidgetCatalog({ payload: catalogPayload }).modelById['m-ottoman'];
+
+test('the picker offers only the grades the target\'s ladder sells', () => {
+  // The Fireside's ladder sells A and C; TISSU is grade C, CUIR is grade X.
+  const ladders = pickLaddersFor({ scope: 'piece', model: fireside });
+  const walled = resolveMaterialPicker(families, { locale: 'es', ladders });
+  assert.deepEqual(walled.families.map((f) => f.id), ['mat-tissu'], 'the off-ladder leather never renders as a tile');
+  // …and the drilled-in family shows only its own offered colours.
+  const open = resolveMaterialPicker(families, { locale: 'es', ladders, openFamilyId: 'mat-tissu' });
+  assert.deepEqual(open.colors.map((c) => c.code), ['B0021', 'B0032']);
+});
+
+test('a ladder-less family constrains NOTHING — a catalogue with no grades keeps its wall', () => {
+  // The Ottoman is unbound: it prices any grade by construction.
+  const ladders = pickLaddersFor({ scope: 'piece', model: ottoman });
+  assert.deepEqual(
+    resolveMaterialPicker(families, { locale: 'es', ladders }).families.map((f) => f.id),
+    ['mat-tissu', 'mat-cuir'],
+  );
+  assert.deepEqual(view().families.map((f) => f.id), ['mat-tissu', 'mat-cuir'], 'and no ladders at all is the same');
+});
+
+test('«apply to all» is the INTERSECTION of every placed piece\'s ladder', () => {
+  const ladders = pickLaddersFor({ scope: 'all', models: [fireside, ottoman] });
+  const walled = resolveMaterialPicker(families, { locale: 'es', ladders });
+  // A cloth that prices on one model and not the other would leave that one
+  // silently at its cheapest grade — the same lie, spread thinner.
+  assert.deepEqual(walled.families.map((f) => f.id), ['mat-tissu']);
+});
+
+test('a PART picks against its own family — a zone re-grades the base SKU', () => {
+  const withParts = {
+    ...fireside,
+    partFamilies: { cushion: { root: 'CUSH', name: 'CUSH', graded: true, grades: ['X'], byGrade: { X: { priceUsd: 90, reference: 'CUSHX' } } } },
+  } as unknown as typeof fireside;
+  // The cushion ladder sells X only ⇒ the leather is the offer and the tissu is out.
+  const part = pickLaddersFor({ scope: 'part', model: withParts, role: 'cushion' });
+  assert.deepEqual(resolveMaterialPicker(families, { locale: 'es', ladders: part }).families.map((f) => f.id), ['mat-cuir']);
+  // A materialization ZONE has no family of its own: it re-grades the model's.
+  const zone = pickLaddersFor({ scope: 'part', model: withParts, role: 'exterior' });
+  assert.deepEqual(resolveMaterialPicker(families, { locale: 'es', ladders: zone }).families.map((f) => f.id), ['mat-tissu']);
+});
+
+test('NO-VANISH at the door: an empty offer ships the catalogue whole', () => {
+  // Disjoint ladders across an «apply to all» can reach this. A picker with
+  // nothing on it answers no question at all, so the gates downstream take over.
+  const disjoint = pickLaddersFor({
+    scope: 'all',
+    models: [
+      fireside,
+      { ...fireside, baseFamily: { root: 'Z', name: 'Z', graded: true, grades: ['Q'], byGrade: { Q: { priceUsd: 1, reference: 'ZQ' } } } } as unknown as typeof fireside,
+    ],
+  });
+  assert.deepEqual(
+    resolveMaterialPicker(families, { locale: 'es', ladders: disjoint }).families.map((f) => f.id),
+    ['mat-tissu', 'mat-cuir'],
+  );
 });

@@ -499,7 +499,11 @@ export function generateBoxUvs(THREE: ThreeApi, geometry: any, tileLocal: number
  * once; flagging them `shared` is what stops `disposeGroup` freeing the cache's
  * pixels along with the clone.
  */
-function factoryMaterialFor(source: ThreeMaterial, cache: Map<any, any>): ThreeMaterial | null {
+function factoryMaterialFor(
+  source: ThreeMaterial,
+  cache: Map<any, any>,
+  anisotropy: number = FABRIC_ANISOTROPY,
+): ThreeMaterial | null {
   const mats: any[] = Array.isArray(source) ? source : (source ? [source] : []);
   if (!mats.some((m) => m?.map?.isTexture && (m.map.image || m.map.source?.data))) return null;
   const clones = mats.map((m) => {
@@ -507,6 +511,20 @@ function factoryMaterialFor(source: ThreeMaterial, cache: Map<any, any>): ThreeM
     if (hit) return hit;
     const c = m.clone();
     if (c.map) c.map.userData.shared = true;
+    // ANISOTROPY — the same lever the fabric path already pulls
+    // (`makeFabricMaterial`). A GLB's own maps arrive at three's default of 1,
+    // and a factory finish is exactly the surface that default ruins: a table
+    // top or a lacquered plinth is seen at a RAKING angle, where isotropic mip
+    // selection has to pick a mip for the compressed axis and blurs the other
+    // one with it — the oak reads as a soft smear next to its own source bitmap.
+    // It costs one sampler flag, and it is per-MAP (not per-material) so every
+    // slot follows the albedo. Textures are cached/shared, hence set once here
+    // on the clone's own maps.
+    const aniso = Math.max(1, Number(anisotropy) || 1);
+    for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap']) {
+      const t = (c as any)[slot];
+      if (t?.isTexture && t.anisotropy !== aniso) { t.anisotropy = aniso; t.needsUpdate = true; }
+    }
     c.userData.factoryFinish = true;
     cache.set(m, c);
     return c;
@@ -657,7 +675,7 @@ export function placeRealModel(
       const finishMat = finishMatFor(groupKey);
       const factoryMat = (finishMat || isTaggedPart(tax, footprint?.parts, rawKey))
         ? null
-        : factoryMaterialFor(o.material, factoryMats);
+        : factoryMaterialFor(o.material, factoryMats, footprint?.anisotropy);
       o.material = finishMat || factoryMat
         || (footprint?.materialForRole ? footprint.materialForRole(role) : material);
       // clone(true) shares the source geometry by reference; clone it so the group
@@ -906,6 +924,10 @@ export function buildSceneGroup(THREE: ThreeApi, scene3d: SceneSpec | null | und
       placeRealModel(THREE, real.object, material, real.desc, inner, {
         widthCm: piece.widthCm, depthCm: piece.depthCm, collection: piece.collection,
         parts: piece.parts, materialForRole,
+        // The device's real anisotropy level reaches the FACTORY maps too — the
+        // cloth path has always had it (makeFabricMaterial), and a raking wood
+        // top is precisely the surface that suffers without it.
+        anisotropy: opts.anisotropy,
         // The piece's own finish picks (group key → option id). Absent on every
         // piece today, which resolves to each spec's default — and with no spec
         // at all, to today's fabric-everywhere render, unchanged.

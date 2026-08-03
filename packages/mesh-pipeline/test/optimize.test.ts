@@ -30,7 +30,13 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-import { CREASE_ANGLE, exportPieceGlb, isOptimizableMeshUrl } from '../src/optimize.ts';
+import {
+  CREASE_ANGLE,
+  MAX_SOLIDS_PER_MESH,
+  exportPieceGlb,
+  isOptimizableMeshUrl,
+  splitGeometryBySolid,
+} from '../src/optimize.ts';
 import {
   LEGACY_MESH_VERSION_KEY,
   MESH_VERSION,
@@ -295,4 +301,139 @@ test('isOptimizableMeshUrl: GLB only — a raw CAD upload has no stamp to read',
   assert.equal(isOptimizableMeshUrl('https://x/y/abc.fbx'), false);
   assert.equal(isOptimizableMeshUrl('https://x/y/abc.3ds'), false);
   assert.equal(isOptimizableMeshUrl(null), false);
+});
+
+/* ── ONE MESH PER SOLID (v3) ────────────────────────────────────────────────*/
+
+/** Two boxes with air between them, merged into ONE non-indexed geometry — the
+ *  shape an upholstered export actually arrives as: a single primitive whose
+ *  triangles form several disconnected masses. */
+function twoMassGeometry(): THREE.BufferGeometry {
+  const a = new THREE.BoxGeometry(2, 1, 1, 2, 2, 2);
+  // Deliberately coarser: the two masses must be TELLABLE APART by vertex count,
+  // which is how the compaction pin proves neither carries the parent's buffer.
+  const b = new THREE.BoxGeometry(1, 1, 1, 1, 1, 1).translate(8, 0, 0);
+  return BufferGeometryUtils.mergeGeometries([a, b])!.toNonIndexed();
+}
+
+/** Every mesh of a parsed scene, with the facts the pins read. */
+function primitivesOf(scene: THREE.Object3D) {
+  const out: { count: number; material: string; matrix: number[]; posCtor: unknown; normalized: boolean }[] = [];
+  scene.traverse((o: any) => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position;
+    out.push({
+      count: pos.count,
+      material: Array.isArray(o.material) ? o.material[0]?.name : o.material?.name,
+      matrix: o.matrix.elements.slice(),
+      posCtor: pos.array.constructor,
+      normalized: pos.normalized,
+    });
+  });
+  return out;
+}
+
+test('a two-mass mesh exports as TWO primitives — that is what makes a cushion clickable', async () => {
+  // Every consumer downstream (the tagger, the raycast, the selection outline)
+  // already works per MESH, so making one mesh BE one connected mass is the
+  // whole integration. Grouping by MATERIAL cannot do this: one fabric covers
+  // the seat, the back, the piping and every seam.
+  const mesh = new THREE.Mesh(twoMassGeometry(), new THREE.MeshStandardMaterial({ name: 'fabric-A' }));
+  mesh.position.set(3, 0.5, -2);
+  mesh.updateMatrixWorld(true);
+
+  const buffer = await exportPieceGlb(THREE, [mesh], deps());
+  const prims = primitivesOf((await parseGlb(buffer)).scene);
+  assert.equal(prims.length, 2, 'one primitive per solid mass');
+
+  // Same node material and the SAME composed matrix on both: the masses of one
+  // node share its world transform and its dequantization fit.
+  assert.deepEqual(prims.map((p) => p.material), ['fabric-A', 'fabric-A']);
+  assert.deepEqual(prims[0]!.matrix, prims[1]!.matrix, 'every mass of a node rides one fit');
+
+  // COMPACTED VERTICES. Sharing the parent's buffers would write the whole
+  // vertex array into EVERY primitive and multiply the file by the number of
+  // masses — so each mass must carry materially fewer vertices than the pair.
+  const total = prims[0]!.count + prims[1]!.count;
+  assert.ok(prims[0]!.count < total && prims[1]!.count < total, 'each mass compacts its own vertices');
+  // Largest mass first (splitSolids orders by area), and the small one is a
+  // fraction of the pair — a shared parent buffer would make them identical.
+  assert.ok(prims[0]!.count > prims[1]!.count, 'the largest mass leads, and carries more vertices');
+
+  // ATTRIBUTE TYPES SURVIVE THE SPLIT: a quantized geometry stays quantized (the
+  // split runs AFTER crease/weld/quantize, on the integers).
+  for (const p of prims) {
+    assert.equal(p.posCtor, Int16Array);
+    assert.equal(p.normalized, true);
+  }
+  assert.equal(readGlbMeshVersion(buffer), MESH_VERSION);
+});
+
+test('an UNNAMED material is NAMED after its node BEFORE the split, cloned per node', async () => {
+  // THE HAZARD THE SPLIT HAD TO CLEAR. An unnamed material keys its part by NODE
+  // INDEX, so emitting one node per mass renumbers every node after the first
+  // split — silently re-tagging a cushion as a bolster across the catalogue.
+  // Naming freezes the key, and the clone is what keeps two nodes that SHARED
+  // one unnamed material as two distinct parts instead of collapsing to one.
+  const shared = new THREE.MeshStandardMaterial();          // no name at all
+  const meshes = [0, 1].map((i) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1, 2, 2, 2).toNonIndexed(), shared);
+    m.position.set(i * 4, 0, 0);
+    m.updateMatrixWorld(true);
+    return m;
+  });
+  const prims = primitivesOf((await parseGlb(await exportPieceGlb(THREE, meshes, deps()))).scene);
+  assert.deepEqual(prims.map((p) => p.material).sort(), ['#0', '#1'], 'two nodes, two keys');
+  assert.equal(shared.name, '', 'the SOURCE material is untouched — it may still be on screen');
+
+  // A material that already HAS a name is never renamed: the dealer's own
+  // tagging hangs on it.
+  const named = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1).toNonIndexed(), new THREE.MeshStandardMaterial({ name: 'COL0' }));
+  named.updateMatrixWorld(true);
+  const one = primitivesOf((await parseGlb(await exportPieceGlb(THREE, [named], deps()))).scene);
+  assert.deepEqual(one.map((p) => p.material), ['COL0']);
+});
+
+test('the split BAILS rather than making confetti', () => {
+  // Past the cap a mesh is scan noise or exploded seams; one primitive each
+  // would bloat the file and the draw calls for nothing, so it exports whole.
+  const geometry = twoMassGeometry();
+  assert.equal(splitGeometryBySolid(THREE, geometry).length, 2, 'the ordinary case still splits');
+
+  // Multi-material groups: a per-mass index would lose the assignment.
+  const grouped = twoMassGeometry();
+  grouped.addGroup(0, 30, 0);
+  grouped.addGroup(30, 30, 1);
+  assert.deepEqual(splitGeometryBySolid(THREE, grouped), [grouped]);
+
+  // Morph targets live in the same space as the positions; splitting one side
+  // of that pair deforms the mesh silently.
+  const morphed = twoMassGeometry();
+  morphed.morphAttributes.position = [morphed.attributes.position!.clone()];
+  assert.deepEqual(splitGeometryBySolid(THREE, morphed), [morphed]);
+
+  // A single mass is returned as itself, not as a one-element rebuild.
+  const one = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2).toNonIndexed();
+  assert.deepEqual(splitGeometryBySolid(THREE, one), [one]);
+  assert.equal(MAX_SOLIDS_PER_MESH, 64);
+});
+
+test('MESH_VERSION 3: a v2 file is renderable, stale, and owed a re-export', async () => {
+  // The bump is what makes the catalogue read as re-optimizable again. A v2 GLB
+  // still renders identically — it is creased, welded and quantized — it just
+  // cannot offer the parts until the batch runs. So the gate is a COMPARISON,
+  // never a truthy stamp, and both legacy accepts survive the bump.
+  assert.equal(MESH_VERSION, 3);
+  assert.ok(meshVersionOf({ asset: { extras: { [MESH_VERSION_KEY]: 2 } } }) < MESH_VERSION, 'our own v2 is stale');
+  assert.ok(meshVersionOf({ asset: { extras: { [LEGACY_MESH_VERSION_KEY]: 2 } } }) < MESH_VERSION, 'a legacy v2 is stale');
+  // …and a legacy stamp at the CURRENT version is current: the alias is read at
+  // face value, not treated as "old therefore stale".
+  assert.equal(meshVersionOf({ asset: { extras: { [LEGACY_MESH_VERSION_KEY]: 3 } } }), MESH_VERSION);
+
+  const plain = await new GLTFExporter().parseAsync(fixtureMesh('v2'), { binary: true }) as ArrayBuffer;
+  const v2 = stampGlbAsset(plain, { [MESH_VERSION_KEY]: 2 });
+  assert.equal(readGlbMeshVersion(v2), 2);
+  let meshes = 0;
+  (await parseGlb(v2)).scene.traverse((o: any) => { if (o.isMesh) meshes++; });
+  assert.equal(meshes, 1, 'still a perfectly good file');
 });

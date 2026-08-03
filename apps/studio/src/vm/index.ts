@@ -89,6 +89,123 @@ export {
   retryFailed,
   runQueue,
 } from './queue.ts';
+// The pipeline that runs itself — the automatic re-export and the tagging that
+// waits for it, plus the row-level mesh stamp that makes both free.
+export type { AutoDetectPlan, AutoOptimizePlan } from './pipeline.ts';
+export {
+  meshVersionOfRow,
+  owesReExport,
+  planAutoDetect,
+  planAutoOptimize,
+  resolvePipelineStatus,
+  stampFreshUpload,
+  stampOptimized,
+} from './pipeline.ts';
+
+// Saving — automatic, serialized per model, and no longer a wait.
+export type { SaveHandles, SaveQueue, SaveQueueDeps } from './save.ts';
+export {
+  AUTOSAVE_MS,
+  FANOUT_CONCURRENCY,
+  armAutosave,
+  createSaveQueue,
+  resolveSaveStatus,
+  runPool,
+} from './save.ts';
+
+// One gesture (join / separate), and the keys that arm it.
+export type { KeyEventLike, PickGesture, StageHit, StudioKeyAction } from './gesture.ts';
+export {
+  applyPickGesture,
+  resolvePickGesture,
+  resolveStudioKey,
+  separateMembers,
+} from './gesture.ts';
+
+// Collection identity — one spelling, one collection.
+export {
+  DEFAULT_COLLECTION,
+  canonicalCollection,
+  collectionKey,
+  distinctCollections,
+  matchesCollection,
+  normalizeName,
+} from './collections.ts';
+
+// Auto-link — the deterministic candidate reducer, one piece and one family.
+export type {
+  Assignment,
+  Candidate,
+  CatalogProduct,
+  CollectionAnswer,
+  CollectionChunk,
+  CollectionEntry,
+  CollectionPlan,
+  LrDimensions,
+  MatchConfidence,
+  MatchableModel,
+  MatchedProduct,
+  MergedSuggestions,
+  ModelOffer,
+  PoolRow,
+  ReviewOption,
+  ReviewRow,
+  ShapeFacts,
+} from './autoLink.ts';
+export {
+  COLLECTION_MAX_MODELS,
+  COLLECTION_MAX_POOL,
+  COLLECTION_PER_MODEL,
+  collectionCandidates,
+  indexCandidates,
+  mergeCollectionSuggestions,
+  nameTokens,
+  parseLrDimensions,
+  planCollectionBind,
+  planCollectionChunks,
+  resolveAssignmentDuplicates,
+  resolveCollectionReview,
+  resolveModelMatches,
+  shapeFacts,
+} from './autoLink.ts';
+
+// …and learning from what the dealer already bound by hand.
+export type { BindingExample, BoundModel } from './bindingExamples.ts';
+export {
+  EXAMPLE_LIMIT,
+  exampleAgreement,
+  formatBindingExamples,
+  indexProductsByRoot,
+  resolveBindingExamples,
+} from './bindingExamples.ts';
+
+// The inference seam — pure prompt in, validated answer out. Never a live call.
+export type {
+  AnswerResult,
+  MatchPartInput,
+  MatchModelInput,
+  MatchRequest,
+  ParseResult,
+  SuggestCandidate,
+  SuggestFn,
+  Suggestion,
+} from './suggest.ts';
+export {
+  CONFIDENCES,
+  MAX_CANDIDATES,
+  MAX_WHY_CHARS,
+  SYSTEM_PROMPT,
+  buildMatchPrompt,
+  candidateFrom,
+  extractJson,
+  fallbackSuggestion,
+  parseCandidates,
+  parseMatchRequest,
+  resolveCollectionAnswer,
+  resolveMatchAnswer,
+  runMatchSuggestion,
+} from './suggest.ts';
+
 export type { OptimizeReport, OptimizeRunSummary } from './optimize.ts';
 export {
   MESH_VERSION,

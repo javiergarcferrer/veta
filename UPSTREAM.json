@@ -25,5 +25,32 @@
     "src/components/togo/ModelStudio|autoLink|bindingExamples": "apps/studio",
     "src/lib/togo/i18n.js": "@veta/i18n"
   },
-  "log": []
+  "log": [
+    {
+      "range": "683eced..40ade6e",
+      "date": "2026-08-03",
+      "ported": [
+        "d5264a6 splitSolids segmentation engine -> geometry",
+        "d85fbe6 one-mesh-per-solid export, MESH_VERSION 3 -> mesh-pipeline",
+        "2715fb7 traceGridLoops pinch fix -> geometry; planPartJoin/Split -> materials; join gesture + autosave -> studio",
+        "0d047a7+f27b139 self-running pipeline, models.mesh_v (migration 0004) -> studio",
+        "7c97073 non-blocking saves (committed/done, pool 6) -> studio",
+        "40ade6e studio keyboard (U/Esc/arrows) -> studio",
+        "1ff2be9+0e051ab+51f2be4+9a072d8+14abad5+453de6c autoLink/bindingExamples/collections + injected suggest seam -> studio (first port; never extracted before)",
+        "3e1ea3e off-ladder part no-vanish -> catalog (+api pin update)",
+        "447bade whole-piece own-ladder law + offeredMaterials -> catalog",
+        "0054edd monocolor fold in stored-lead pricing -> catalog",
+        "4a02bad contact pool quality tier -> scene; MAX_EDGE 2048 -> materials",
+        "cbbe976 factory-finish anisotropy + hover-card-is-selection -> scene/widget",
+        "3427af2 highlight precedence + focusMeshes exclude -> scene",
+        "c313ecd resolvePickHit/preferPick/ring + chrome dismissal law -> scene/widget",
+        "17f8fff Cuerpo vocabulary + parts panel + tag gating -> widget/i18n/materials",
+        "17d3cc4 paging: N/A for pg API; noted for member-plane adapters (upstream-sync.md)"
+      ],
+      "skipped": [
+        "64b26ea a8aadb7 8adc178 c38e278 4c45149 b3b467e 671721a 242a023 (RosetSoft chrome/workspace)",
+        "561d42b 453de6c 8773043 35643fd f5cb044 2f64cca (experiments added-then-removed upstream; superseded)"
+      ]
+    }
+  ]
 }

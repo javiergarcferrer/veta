@@ -23,8 +23,22 @@ Ported from RosetSoft `src/components/togo/sceneImport.js` (engine parts),
   one of them read as version 0, so the loader would redo the heaviest step of
   the model load on the whole catalogue and a re-run of the batch would
   re-export files that need nothing. The alias is read-only: new files carry the
-  new key, so the old name ages out of the fleet on its own. `MESH_VERSION`
-  stays **2** for the same reason — bumping it would invalidate the fleet.
+  new key, so the old name ages out of the fleet on its own.
+- **`MESH_VERSION` is 3** (upstream d85fbe6): v3 = v2 plus the SOLID SPLIT, one
+  primitive per connected mass, with unnamed materials named after their source
+  node first so the part keys survive the renumbering. Bumping it deliberately
+  makes the whole fleet read as re-optimizable — a v2 file renders identically,
+  it simply cannot offer the parts until the batch runs. Both legacy accepts
+  survive the bump and mean different things: an `alcoverMeshV` is read at FACE
+  VALUE (a legacy v3 is current, a legacy v2 is stale) and a `vetaMeshV: 2` is a
+  file this package wrote before the split — valid, renderable, owed a
+  re-export. Every gate is `meshVersionOf(x) < MESH_VERSION`, never a truthy
+  stamp.
+- **The segmentation engine lives in `@veta/geometry`** (`splitSolids` — pure
+  triangle work, no three) and is re-exported from this barrel because this is
+  the pipeline that consumes it. `optimize.ts` therefore imports `@veta/geometry`
+  at runtime, so its test now depends on that sibling building; the isolation
+  note below is about the BARREL, which still pulls in more than the engine.
 - **`exportPieceGlb` returns an `ArrayBuffer`, not a `Blob`.** Blob/File/mime
   wrapping is the caller's (`new Blob([buf], { type: 'model/gltf-binary' })`).
 - **`optimizeGlbUrl` → `optimizeGlbBuffer`.** The `fetch`, the `File` and the

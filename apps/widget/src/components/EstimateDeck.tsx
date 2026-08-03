@@ -34,7 +34,16 @@ export default function EstimateDeck({
     <aside className="deck" aria-label={t(locale, 'estimate.label')}>
       <div className="deck__figures">
         <span className="deck__count">{piecesLabel(locale, estimate.pieces)}</span>
-        {estimate.visible && estimate.total != null ? (
+        {/* A build carrying an unpriceable piece has NO total to state: the sum
+            would be short by whatever that piece is worth, and a confident
+            figure is exactly the wrong thing to show. It says so instead. */}
+        {estimate.visible && estimate.unpriced > 0 ? (
+          <strong className="deck__total deck__total--none">
+            <span className="deck__label">{t(locale, 'estimate.label')}</span>
+            {t(locale, 'summary.noPrice')}
+          </strong>
+        ) : null}
+        {estimate.visible && estimate.unpriced === 0 && estimate.total != null ? (
           <strong className="deck__total">
             <span className="deck__label">{t(locale, 'estimate.label')}</span>
             {formatMoney(estimate.total, estimate.currency, locale)}

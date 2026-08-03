@@ -6,7 +6,7 @@
  * the raw file anywhere — the caller unzips it here (fflate), reads material.mat
  * to pick the DIFFUSE image BY NAME (`tex …`) and the NORMAL map (`bumps …`) —
  * not by size, since a `_map` normal can outweigh the diffuse — downscales each
- * to ≤1024px and re-encodes WebP (~150-300 KB — the 16 MB originals never leave
+ * to ≤`MAX_EDGE` px and re-encodes WebP (the 16 MB originals never leave
  * the machine), and averages the diffuse's pixels for the exact fabric RGB.
  * Color-only .matz (no usable image) still yield an RGB when a small swatch
  * image exists; otherwise they're skipped. Defensive throughout: a file that
@@ -22,8 +22,17 @@ import type { Awaitable, ImageLike } from '../types.ts';
 
 const IMAGE_ENTRY = /\.(jpe?g|png|webp|bmp)$/i;
 
-/** The longest edge a stored texture keeps — the 16 MB originals stay home. */
-export const MAX_EDGE = 1024;
+/**
+ * The longest edge a stored texture keeps — the 16 MB originals stay home.
+ *
+ * 2048, was 1024: at close dolly range 1024px over a ~20 cm physical tile is
+ * what made the weave read soft next to reference-grade configurators — the
+ * per-thread detail IS in the pCon scans, the import was discarding it. Costs
+ * ~4× per stored texture (webp, still well under the originals).
+ * ALREADY-IMPORTED FABRICS KEEP THEIR 1024 BAKE until they are re-imported:
+ * this is the ceiling the extractor asks the codec for, not a migration.
+ */
+export const MAX_EDGE = 2048;
 
 const toHex = (r: number, g: number, b: number): string =>
   `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;

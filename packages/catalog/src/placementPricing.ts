@@ -240,6 +240,149 @@ export function resolveCompleteSku(
   };
 }
 
+/* ------------------------- the no-vanish price gates ------------------------- */
+
+/** Does this ladder actually SELL that grade? The one question every gate below
+ *  asks — a family with no grades of its own (unbound, or a lone ungraded SKU)
+ *  prices ANY grade by construction, which is why a catalogue with no ladder
+ *  data keeps behaving exactly as it always has. */
+function familyPricesGrade(fam: PriceFamily | null | undefined, grade: string | null | undefined): boolean {
+  const prod = productForGrade(fam, grade);
+  return !!prod && prod.priceUsd != null;
+}
+
+/**
+ * THE PART PICKS THIS PLACEMENT CANNOT PRICE — the no-vanish gate.
+ *
+ * A fabric is stored as a GRADE, and a grade only means something inside the
+ * ladder that will bill it. The two ladders on a structured module are
+ * DIFFERENT: the settee's own SKU offers one set of grades, its cushion family
+ * another (measured on the reference catalogue: A,B,D,E,U,F,G,J,K,O,Q,X,R — no
+ * I). Dress the cushions in a Grade I cloth and `partPricesFor` answers null —
+ * the SAME null it answers for an UNBOUND family — so every consumer read it as
+ * "this role doesn't bill": the cushion line left the breakdown, its component
+ * left the quote seed, and the piece quoted CHEAPER than the monocolor build it
+ * is supposed to be dearer than (measured: 18,770 against 26,070, and
+ * auto-sendable). Money that vanishes is the one thing this engine never allows.
+ *
+ * So the two nulls are told apart HERE, once: with a family bound and a count to
+ * bill, a null price can ONLY mean the pick's grade is not in that ladder (an
+ * unpicked role defaults to `grades[0]`, which resolves by construction). The
+ * ZONES are asked the same question against the family they re-grade
+ * (`materializedBase`): a zone bills no line, but an unpriceable zone pick
+ * silently leaves the piece at its cheaper grade — the same lie, quieter.
+ *
+ * A MONOCOLOR build answers []: the elemento completo bills the whole piece on
+ * ONE SKU and the componentes ride it, so no componente grade can move the price
+ * and there is nothing here to fail.
+ *
+ * Roles come back in taxonomy order (stable). Empty ⇒ every pick prices, and
+ * every path below behaves exactly as it always has.
+ */
+export function unresolvedPartRoles(
+  r: ResolvedPiece | null | undefined,
+  p: Placement | null | undefined,
+  roles: PartRoleSet = DEFAULT_ROLE_SET,
+): string[] {
+  if (resolveCompleteSku(r, p, roles)) return [];
+  const partMaterials = p?.partMaterials || null;
+  const prices = partPricesFor(r, partMaterials) || {};
+  const out: string[] = [];
+  for (const role of roles.all) {
+    if (role === 'base') continue;
+    if (MATERIALIZATION_ROLES.includes(role)) {
+      const grade = partMaterials?.[role]?.grade;
+      const fam = r?.baseFamily;
+      if (!grade || !fam) continue;
+      if (!familyPricesGrade(fam, grade)) out.push(role);
+      continue;
+    }
+    // A structure wears an acabado, never cloth — it has no grade to fail.
+    if (roles.unpriced.includes(role)) continue;
+    if (!r?.partFamilies?.[role] || !partCount(r?.parts, role, roles)) continue;
+    if (prices[role] == null) out.push(role);
+  }
+  return out;
+}
+
+/**
+ * THE WHOLE-PIECE PICK THIS PLACEMENT CANNOT PRICE — `unresolvedPartRoles` one
+ * axis over, on the fabric the piece itself wears.
+ *
+ * The part gate closed the componente ladders and left the model's OWN open, and
+ * it is the same hole: a settee's family sells six grades while the material
+ * wall offered all 55 fabrics the model is linked to, so a pick in any of the
+ * other 32 stored a fabric that SKU has never been priced in. Nothing said so —
+ * a pick stamps `productForGrade(...) ?? the model's cheapest grade`, so a Grade
+ * E settee quoted at the Grade C price and the customer read a confident number
+ * for a piece nobody had costed. Worse than the part case, in fact: the fallback
+ * is SILENT money (the part at least vanished loudly enough to notice). Measured
+ * on the reference catalogue: 1,685 of 3,343 model × fabric pairs (50.4%) were
+ * mispriceable this way.
+ *
+ * The gate needs an EXPLICIT pick to fire. A piece wearing no cloth of its own
+ * prices on the family's cheapest grade by documented convention, which resolves
+ * by construction; that is the sticker price the palette has always shown and it
+ * is not a lie about anything the visitor chose.
+ *
+ * True ⇒ the placement has NO price. False ⇒ every path below is byte-identical
+ * to before.
+ */
+export function unresolvedWholePiece(
+  r: ResolvedPiece | null | undefined,
+  p: Placement | null | undefined,
+): boolean {
+  const grade = p?.material?.grade;
+  const fam = r?.baseFamily;
+  if (!grade || !fam) return false;
+  return !familyPricesGrade(fam, grade);
+}
+
+/** A pickable fabric tile, as a picker hands it over: only its grade decides
+ *  whether a ladder can price it. */
+export interface OfferableMaterial {
+  grade?: unknown;
+  [k: string]: unknown;
+}
+
+/**
+ * THE FABRICS A TARGET IS ACTUALLY OFFERED — the same question the gates above
+ * ask, asked one gesture EARLIER, at the picker.
+ *
+ * Owner rule: only the fabrics that really correspond to a model should come up
+ * for it. A wall that offers a cloth the target's ladder never priced is a wall
+ * of traps: the pick stores, the price gate answers «sin precio», and the
+ * visitor is left holding a piece nobody can quote. So the picker filters by the
+ * ladder(s) the pick is about to land on:
+ *
+ *   • ONE target        ⇒ that family's ladder;
+ *   • "apply to all"    ⇒ EVERY placed piece's, so the wall is their
+ *     INTERSECTION (a cloth that prices on four models and not the fifth would
+ *     leave the fifth silently at its cheapest grade — the same lie, thinner).
+ *
+ * A family with no real ladder (unbound, or a lone ungraded SKU) CONSTRAINS
+ * NOTHING: it prices any grade by construction, so a catalogue with no ladder
+ * data keeps its whole wall. And NO-VANISH at the door too: an empty filter —
+ * which disjoint ladders across an "apply to all" can reach — ships the wall
+ * UNFILTERED and lets the pricing gates downstream do what they already do. A
+ * picker with nothing on it answers no question at all.
+ *
+ * Pinned against `unresolvedWholePiece`: what the picker OFFERS is exactly what
+ * the price gate ACCEPTS — a normalization drift on either side shows up as a
+ * disagreement in a test rather than as builds reading «sin precio» in
+ * production.
+ */
+export function offeredMaterials<T extends OfferableMaterial>(
+  materials: readonly T[] | null | undefined,
+  families: readonly (PriceFamily | null | undefined)[] | null | undefined,
+): T[] {
+  const list = materials ? [...materials] : [];
+  const ladders = (families || []).filter((f): f is PriceFamily => !!f?.graded);
+  if (!ladders.length) return list;
+  const offer = list.filter((m) => ladders.every((fam) => familyPricesGrade(fam, String(m?.grade || ''))));
+  return offer.length ? offer : list;
+}
+
 /**
  * Price roll-up for one placed piece:
  *   base unit price (already grade-resolved by the caller)
@@ -274,7 +417,9 @@ export function piecePartsTotal(
  * ONE placement's full unit price — the single number every surface shows: the
  * elemento completo when the build is monocolor and the model has that ladder,
  * else the base (grade-resolved, zone-regraded) plus its tagged parts at their
- * own grades.
+ * own grades — or NULL when a pick can't be priced at all, which is the shape
+ * every surface already renders as "no price". Never a smaller number: a piece
+ * nobody can price must not read as a cheaper piece.
  */
 export function placementTotal(
   p: Placement | null | undefined,
@@ -282,6 +427,7 @@ export function placementTotal(
   roles: PartRoleSet = DEFAULT_ROLE_SET,
 ): number | null {
   const r = pieceFacts(p, resolvedById);
+  if (unresolvedWholePiece(r, p) || unresolvedPartRoles(r, p, roles).length) return null;
   const complete = resolveCompleteSku(r, p, roles);
   if (complete) return complete.unitUsd;
   return piecePartsTotal(materializedBase(r, p?.partMaterials).unitUsd, r.parts, partPricesFor(r, p?.partMaterials), roles);
@@ -300,6 +446,9 @@ export interface BreakdownLine {
   defaultGrade: boolean;
   /** Listed but not charged (a zone, or a componente folded into the element). */
   included?: boolean;
+  /** Listed and NOT priceable — the pick's grade is off this line's own ladder.
+   *  Never `included`: that word promises something already bought. */
+  unresolved?: boolean;
   /** The base line IS the whole piece (monocolor). */
   complete?: boolean;
   /** The bound family's name — it says whether the SKU is a single or a SET. */
@@ -321,6 +470,12 @@ export interface PlacementBreakdown {
  * `totalUsd` always equals `placementTotal` — same math, itemized. Zones and
  * componentes folded into an elemento completo carry `included` and NO money,
  * so summing the lines can never double-count.
+ *
+ * A line whose pick nothing can price (`unresolvedPartRoles` /
+ * `unresolvedWholePiece`) KEEPS ITS PLACE and says so — `unresolved: true`, no
+ * money on it — instead of quietly leaving the sheet with the customer's
+ * cushions in it. The placement's `totalUsd` then reads null, never a smaller
+ * number.
  */
 export function placementBreakdown(
   p: Placement | null | undefined,
@@ -330,20 +485,29 @@ export function placementBreakdown(
 ): PlacementBreakdown {
   const r = pieceFacts(p, resolvedById);
   const complete = resolveCompleteSku(r, p, roles);
+  const unresolved = new Set(unresolvedPartRoles(r, p, roles));
+  // The piece's OWN cloth at a grade its own ladder never sold. `mb.unitUsd`
+  // still holds a number here — the pick stamped the model's cheapest grade on
+  // the way in — and that number is precisely the lie: it is the price of a
+  // fabric nobody chose. The line stays (the customer picked that cloth and must
+  // see it named) with no money on it.
+  const badBase = unresolvedWholePiece(r, p);
   const mb = materializedBase(r, p?.partMaterials);
+  const baseUsd = complete ? complete.unitUsd : mb.unitUsd;
   const lines: BreakdownLine[] = [{
     role: 'base',
     // A monocolor build bills as ONE piece, so the first line IS the whole
     // piece — it says so, and the componentes below print "Incluido" instead of
-    // a price they are no longer being charged for.
-    label: complete ? 'Elemento completo' : (labels.base || 'Base'),
+    // a price they are no longer being charged for. (An off-ladder pick never
+    // reaches that ladder: `resolveCompleteSku` already answered null.)
+    label: complete ? 'Elemento completo' : (labels.base || 'Cuerpo'),
     qty: 1,
-    unitUsd: complete ? complete.unitUsd : mb.unitUsd,
-    totalUsd: complete ? complete.unitUsd : mb.unitUsd,
+    unitUsd: badBase ? null : baseUsd,
+    totalUsd: badBase ? null : baseUsd,
     fabric: p?.material?.fabric || '',
     code: p?.material?.code || '',
     defaultGrade: !p?.material,
-    ...(complete ? { complete: true } : {}),
+    ...(complete ? { complete: true } : (badBase ? { unresolved: true } : {})),
   }];
   // Materialization ZONES never bill — the base SKU covers the complete
   // materialization — but they must be VISIBLE: the line names each zone's
@@ -352,13 +516,16 @@ export function placementBreakdown(
   for (const role of MATERIALIZATION_ROLES) {
     if (!partMeshCount(r.parts, role)) continue;
     const pick = p?.partMaterials?.[role] || null;
+    // A zone the base ladder can't re-grade is NOT "incluido" — nothing priced
+    // it, so it says that instead of borrowing the reassuring word.
+    const bad = unresolved.has(role);
     lines.push({
       role,
       label: labels[role] || role,
       qty: 1,
       unitUsd: null,
       totalUsd: null,
-      included: true,
+      ...(bad ? { unresolved: true } : { included: true }),
       fabric: pick?.fabric || '',
       code: pick?.code || '',
       defaultGrade: !pick,
@@ -371,15 +538,24 @@ export function placementBreakdown(
     if (!fam) continue;
     const qty = partCount(r.parts, role, roles);
     const unit = prices[role];
-    if (!qty || unit == null) continue;
+    // NO-VANISH: a bound, billing role always gets its line. It used to be
+    // dropped whenever `unit` came back null, which is exactly how a cushion
+    // picked at a grade its own SKU doesn't offer left the sheet and the total.
+    if (!qty) continue;
+    const bad = unresolved.has(role);
+    // Folded into the elemento completo: still LISTED (the customer must see
+    // what the piece is made of) but not charged — the one line above already
+    // bought it. Unpriceable: listed, flagged, and charged nothing either — but
+    // as a gap to close, not as something already bought.
+    const charged = !complete && !bad && unit != null;
     const pick = p?.partMaterials?.[role] || null;
     lines.push({
       role,
       label: labels[role] || role,
       qty,
-      unitUsd: complete ? null : unit,
-      totalUsd: complete ? null : round2(unit * qty),
-      ...(complete ? { included: true } : {}),
+      unitUsd: charged ? unit : null,
+      totalUsd: charged ? round2(unit * qty) : null,
+      ...(complete ? { included: true } : (bad ? { unresolved: true } : {})),
       fabric: pick?.fabric || '',
       code: pick?.code || '',
       defaultGrade: !pick,

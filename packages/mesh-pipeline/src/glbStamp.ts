@@ -16,12 +16,23 @@
 
 /**
  * The pipeline version a stamped GLB carries. It is a claim about what is
- * ALREADY DONE in the file: v2 = normals creased at `CREASE_ANGLE`, vertices
- * welded, POSITION/NORMAL quantized. Bump it only when THAT contract changes —
- * an older file simply reports a lower version and keeps taking the runtime
- * path it always took.
+ * ALREADY DONE in the file, and only ever about THIS file:
+ *
+ *   v2 = normals creased at `CREASE_ANGLE`, vertices welded, POSITION/NORMAL
+ *        quantized.
+ *   v3 = v2 plus SOLID SPLITTING — each mesh is emitted one primitive per
+ *        connected mass, and unnamed materials are named after their source
+ *        node so the part keys survive the renumbering. That is what lets the
+ *        tagger, the raycast and the selection outline address a cushion
+ *        instead of every shred that happens to share its fabric.
+ *
+ * Bump it only when THAT contract changes. A LOWER version is not a broken
+ * file: a v2 GLB renders identically (it IS creased, welded and quantized) — it
+ * simply cannot offer the parts, so a v3-aware reader treats it as
+ * RE-OPTIMIZABLE-but-renderable until the batch runs. Which is exactly why
+ * every gate is `meshVersionOf(x) < MESH_VERSION` and never a truthy stamp.
  */
-export const MESH_VERSION = 2;
+export const MESH_VERSION = 3;
 
 /** The `asset.extras` key this package WRITES. */
 export const MESH_VERSION_KEY = 'vetaMeshV';
@@ -31,10 +42,15 @@ export const MESH_VERSION_KEY = 'vetaMeshV';
  * (every GLB the dealer published through the AlcoverSoft studio) carries
  * `alcoverMeshV`, and those files are already creased + welded + quantized. Drop
  * the alias and every one of them reads as version 0 — the loader would redo the
- * single heaviest step of the model load on the whole catalogue, and a re-run of
- * «Optimizar mallas» would re-export files that need nothing. The alias is
+ * single heaviest step of the model load on the whole catalogue. The alias is
  * READ-ONLY on purpose: new files carry the new key, so the legacy name ages out
  * of the fleet on its own instead of being written forever.
+ *
+ * BOTH LEGACY ACCEPTS SURVIVED THE v3 BUMP, and they mean different things now:
+ * an `alcoverMeshV` of ANY version is read at its face value (a legacy v3 is
+ * current, a legacy v2 is stale), and a `vetaMeshV: 2` is a file this package
+ * itself wrote before the split — valid, renderable, and owed a re-export. The
+ * comparison, not the presence, is what decides in every caller.
  */
 export const LEGACY_MESH_VERSION_KEY = 'alcoverMeshV';
 

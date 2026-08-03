@@ -36,6 +36,10 @@ export type {
   MeshPlanSummary,
 } from './meshPlan.ts';
 
+// ── Solid split (ONE mesh → its connected masses) ────────────────────────
+export { splitSolids, TRIM_AREA_RATIO, WELD_RATIO } from './solidSplit.ts';
+export type { Solid, SplitSolidsInput, SplitSolidsResult, Vec3 } from './solidSplit.ts';
+
 // ── Scene split (multi-piece export → individual pieces) ─────────────────
 export {
   detectUpAxis,

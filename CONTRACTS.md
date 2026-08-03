@@ -25,6 +25,13 @@ package. `geometry`, `materials` and `layout` depend on no sibling package.
 - `meshLoopsFromTriangles`, `meshPlanFromTriangles`, `simplifyClosed`
 - `clusterFootprints`, `detectUpAxis`, `clusterName`
 - `autoUnitScale`, `FURNITURE_SPAN_CM`, `uniformHeightFit` (was `togoMeshFit`)
+- `splitSolids`, `WELD_RATIO`, `TRIM_AREA_RATIO` (+ `Solid`,
+  `SplitSolidsInput`, `SplitSolidsResult`, `Vec3`) — one mesh → its connected
+  masses (upstream d5264a6): welded grid off the model's own bounding
+  diagonal, 26-neighbour probes, trim absorbed by AREA share, largest-first
+  deterministic ordering. Pure triangle work; `@veta/mesh-pipeline`
+  re-exports it. `traceGridLoops` takes the LEFT-MOST turn at a pinch — two
+  touching islands are two loops, never a figure-eight (upstream 2715fb7)
 - `planToDxf` (options object accepts `layerPrefix`, default `'VETA'`)
 - `cleanMeshNodes` (was meshClean; label/shadow-mesh classifiers take the
   name-regex as a parameter with the current regex as default)
@@ -34,8 +41,16 @@ package. `geometry`, `materials` and `layout` depend on no sibling package.
 - `exportPieceGlb`, `optimizeGlbBuffer`, `bakeGeometry`, `quantizeGeometry`,
   `isOptimizableMeshUrl`, `CREASE_ANGLE`, `MAX_ORIGIN_RATIO`
 - `stampGlbAsset`, `stampMeshVersion`, `readGlbMeshVersion`, `meshVersionOf`,
-  `MESH_VERSION`, `MESH_VERSION_KEY`, `LEGACY_MESH_VERSION_KEY` (reads the
-  legacy `alcoverMeshV` stamp so an already-optimized fleet never re-runs)
+  `MESH_VERSION` (**3** — v2 + solid split; the gate is
+  `meshVersionOf(x) < MESH_VERSION`, never a truthy stamp: a v2 file is
+  renderable-but-stale, owed a re-export), `MESH_VERSION_KEY`,
+  `LEGACY_MESH_VERSION_KEY` (legacy `alcoverMeshV` read at face value)
+- `splitGeometryBySolid`, `pinnedMaterial`, `MAX_SOLIDS_PER_MESH` (64) —
+  one-mesh-per-solid export (upstream d85fbe6): materials NAMED after their
+  source node BEFORE the split (cloned per node), part keys ADDITIVE
+  (`key~2`…), sub-geometries compact their own vertices, quantized stays
+  quantized, bails on multi-material/morphs/confetti. Runs after
+  crease/weld/quantize inside `exportPieceGlb`.
 - `splitScene`, `collectMeshes`, `MIN_PIECE_CM`, `CLUSTER_GAP_CM`
 - `bundleTextures`, `bakeBundledMaps`, `imageSettled`, `texturesOf`,
   `texturesByFolder`, `FileLike`, `TEXTURE_TIMEOUT_MS`, `MAX_TEXTURE_PX`
@@ -63,6 +78,13 @@ package. `geometry`, `materials` and `layout` depend on no sibling package.
   `partRoleFor`, `baseKeyOf`, `hasParts`, `accessoryRoleFor`, `partCount`,
   `COUNT_MAX` (was meshParts — role taxonomy; Phase 1 makes the role LIST
   data-driven, Phase 0 keeps the current seven as the default set)
+- Grouping (upstream 2715fb7): `planPartJoin`/`planPartSplit` — un-split
+  DELETES the island's mats entry (inherits the target's role); a true merge
+  WRITES the role explicitly; chains flatten; an emptied billed role gives
+  back its roots/counts; a palette moves-or-yields, never orphans. Plus
+  `BILLED_ROLES` (derived, never listed by hand). `PART_LABELS.base` renders
+  «Cuerpo» — the `base` TOKEN is the internal parity/money name and never
+  moves.
 - The FINISH layer (rest of meshParts): `mergedKeyOf`, `partLabelOf`,
   `roleLabelOf`, `finishSpecOf`, `finishOptionOf`, `structureStarterFinish`,
   `structureGroupsOf`, `structureGroupFor`, `sanitizePartFinishes` —
@@ -102,6 +124,13 @@ package. `geometry`, `materials` and `layout` depend on no sibling package.
   `partFamiliesFrom`, `partPricesFor`, `firstWithoutFabric`,
   `sanitizePartMaterials` (finish sanitizer re-exported from materials),
   `splitSkuOrRoot`, `parseSubtype`
+- Off-ladder law (upstream 3e1ea3e/447bade/0054edd): `unresolvedPartRoles`,
+  `unresolvedWholePiece`, `offeredMaterials` (+ `OfferableMaterial`),
+  `isCompleteElement`, `PriceEntry.billedRoles` — a pick whose grade its own
+  ladder never priced makes the piece price NULL, never a smaller number; the
+  breakdown KEEPS the line (`unresolved: true`); the picker offers exactly
+  what the price gate accepts; uniform builds fold to the complete SKU at
+  every layer including stored-lead pricing
 - `composeSubtype` (grade label composition, was lib/subtype)
 - Money: prices flow as `number` in the price list's MAJOR units, exactly like
   the reference (to-the-cent parity); `toMinor`/`fromMinor` helpers convert at
@@ -245,3 +274,18 @@ test.
   utilities; `traceGridLoops` is OWNED by `@veta/geometry`, scene re-exports it
 - `makeFabricMaterial(THREE, tex, opts)` — consumes `@veta/materials`
   appearance output; scene owns the three.js side only
+- Quality tier (upstream 4a02bad): grounding is a contact POOL, not a shadow
+  map — `contactPool.ts` owns the pass table/projection/falloff as pure data
+  (`POOL_PASSES`, `poolSpan`, `poolProject`, `poolShade`, `poolLuminance`);
+  `setupStage({quality})` builds the opaque plate (DataTexture from
+  getImageData, never CanvasTexture) and hands back `StageHandle.updatePool`
+  (null off-tier); baseline devices byte-identical, PCF everywhere
+- Picking + highlight law (upstream c313ecd/3427af2), exported PURE:
+  `resolvePickHit` (floor pad demoted), `preferPick` (tagged beats the body
+  mass; strictly-better so ties never move), `ringRadiusFor`/`ringSamples`
+  (8 spokes at r/2r; 3.5px mouse, 7px touch), `focusMeshes` (+ additive
+  `scope.exclude`, no-vanish intact), `resolveHighlightScope` (a RESTING
+  focus yields to hover, a COMMITTED one wins; structure hover lights its
+  merged group), `dressableExclusions`
+- Factory finishes take the device's real anisotropy
+  (`PlacementFootprint.anisotropy`), threaded from the same helper as cloth

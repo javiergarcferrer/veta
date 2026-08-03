@@ -16,9 +16,10 @@
  * a Spanish reader flags.
  */
 
-import type { MaterialSource, MaterialColor } from '@veta/materials';
+import { MATERIALIZATION_ROLES, type MaterialSource, type MaterialColor } from '@veta/materials';
+import { offeredMaterials, type PriceFamily } from '@veta/catalog';
 import { t, type Locale } from '@veta/i18n';
-import type { MaterialColorOption, MaterialFamily } from './catalog.ts';
+import type { MaterialColorOption, MaterialFamily, ResolvedModel } from './catalog.ts';
 
 export interface FamilyTile {
   id: string;
@@ -48,9 +49,79 @@ export interface PickerQuery {
   category?: string;
   openFamilyId?: string | null;
   locale: Locale;
+  /**
+   * The price ladder(s) the pick is about to land on — the wall shows only the
+   * grades ALL of them sell (see `pickLaddersFor`). Empty/absent constrains
+   * nothing, which is what keeps a catalogue with no ladder data whole.
+   */
+  ladders?: readonly (PriceFamily | null | undefined)[] | null;
 }
 
 const norm = (s: unknown): string => String(s ?? '').trim().toLowerCase();
+
+/** What a fabric pick is about to land on — the same three shapes the chrome
+ *  targets, since the wall must be filtered by the pick's real destination. */
+export type PickTarget =
+  | { scope: 'piece'; model: ResolvedModel | null | undefined }
+  | { scope: 'part'; model: ResolvedModel | null | undefined; role: string }
+  | { scope: 'all'; models: readonly (ResolvedModel | null | undefined)[] };
+
+/**
+ * THE LADDERS THAT MUST AGREE, read off the very dispatch that will receive the
+ * pick rather than guessed at a second time.
+ *
+ *   • one PIECE ⇒ that model's own ladder;
+ *   • one PART  ⇒ the part's bound family, except a materialization ZONE, which
+ *     re-grades the BASE SKU and therefore prices against the model's own;
+ *   • «apply to all» ⇒ EVERY placed piece's, so the wall is their INTERSECTION.
+ *     A cloth that prices on four models and not the fifth would leave the fifth
+ *     silently at its cheapest grade — the same lie, spread thinner.
+ */
+export function pickLaddersFor(target: PickTarget): Array<PriceFamily | null> {
+  const baseOf = (m: ResolvedModel | null | undefined) => (m?.baseFamily ?? null) as PriceFamily | null;
+  if (target.scope === 'all') return target.models.map(baseOf);
+  if (target.scope === 'part') {
+    if (MATERIALIZATION_ROLES.includes(target.role)) return [baseOf(target.model)];
+    return [((target.model?.partFamilies as Record<string, PriceFamily | null> | null)?.[target.role]) ?? null];
+  }
+  return [baseOf(target.model)];
+}
+
+/**
+ * ── AN UNPRICEABLE FABRIC IS NOT A CHOICE ──────────────────────────────────
+ *
+ * A wall that offers a cloth the target's ladder never priced is a wall of
+ * traps: the pick stores, the price gate answers «sin precio», and the visitor
+ * is left holding a piece nobody can quote. So the offer is filtered at the DOOR
+ * with the same question the gate asks at render time, asked one gesture
+ * earlier — `@veta/catalog`'s `offeredMaterials`, so what the picker OFFERS and
+ * what the price gate ACCEPTS are one function, not two.
+ *
+ * Filtered over the FLAT colour list and regrouped, never family by family: a
+ * per-family fallback would hand back whole families whose every grade is off
+ * the ladder. NO-VANISH is therefore global too — if the intersection empties
+ * the wall (disjoint ladders across an «apply to all» can do it), the catalogue
+ * ships whole and the downstream gates do what they already do. A picker with
+ * nothing on it answers no question at all.
+ */
+function withLadders(
+  families: readonly MaterialFamily[],
+  ladders: PickerQuery['ladders'],
+): readonly MaterialFamily[] {
+  const list = (ladders || []).filter(Boolean);
+  if (!list.length || !families.length) return families;
+  // Only the GRADE decides, so the flat list is trimmed to what the rule reads.
+  const flat = families.flatMap((f) => f.colors).map((c) => ({ code: c.code, grade: c.grade }));
+  const offered = offeredMaterials(flat, list);
+  if (offered.length === flat.length) return families;      // nothing constrained
+  const allowed = new Set(offered.map((c) => c.code));
+  const out: MaterialFamily[] = [];
+  for (const family of families) {
+    const colors = family.colors.filter((c) => allowed.has(c.code));
+    if (colors.length) out.push({ ...family, colors });
+  }
+  return out.length ? out : families;
+}
 
 /**
  * Project the families into what the picker renders. Pure: the View holds the
@@ -60,7 +131,7 @@ export function resolveMaterialPicker(
   families: readonly MaterialFamily[] | null | undefined,
   query: PickerQuery,
 ): MaterialPickerView {
-  const all = families ?? [];
+  const all = withLadders(families ?? [], query.ladders);
   const search = norm(query.search);
   const category = norm(query.category);
 

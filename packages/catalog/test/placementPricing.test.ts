@@ -29,6 +29,7 @@ import {
   isPricedComponent,
   lr8DigitGrade,
   materializedBase,
+  offeredMaterials,
   partFamiliesFrom,
   partPricesFor,
   piecePartsTotal,
@@ -37,6 +38,8 @@ import {
   productForGrade,
   resolveCompleteSku,
   splitSkuOrRoot,
+  unresolvedPartRoles,
+  unresolvedWholePiece,
 } from '../src/index.ts';
 import type { Placement, PriceFamily, ResolvedById } from '../src/index.ts';
 
@@ -266,6 +269,242 @@ test('estructura: a tagged metal part is INVISIBLE to money — same price, same
   }
 });
 
+/* ------------------ NO-VANISH: a pick nothing can price ------------------ */
+// Reproduced from the reference catalogue: a Large Square Settee whose cushions
+// were dressed in a Grade I cloth. The cushion family 11370012 offers A and C
+// and no I, so `partPricesFor` answered null — the SAME null it answers for an
+// UNBOUND family — and every consumer read it as "this role doesn't bill". The
+// cushion line left the sheet and the piece totalled 10,895 + 575 + 7,300 =
+// 18,770 for a build that is 26,070: the visitor was quoted a settee whose
+// cushions nobody had priced, CHEAPER than the monocolor version it is supposed
+// to be dearer than.
+
+const NOVANISH_PRODUCTS: ProductRow[] = [
+  { reference: '11370000A', name: 'Large Square Settee', priceUsd: 10895 },
+  { reference: '11370000C', name: 'Large Square Settee', priceUsd: 12000 },
+  // The cushion ladder — A and C, and no I. THIS is the whole bug.
+  { reference: '11370012A', name: 'Juego de cojines', priceUsd: 6000 },
+  { reference: '11370012C', name: 'Juego de cojines', priceUsd: 7300 },
+  { reference: '11370013A', name: 'Rulo', priceUsd: 575 },
+  { reference: '11370013C', name: 'Rulo', priceUsd: 700 },
+  { reference: '11370014A', name: 'Cojín de brazo', priceUsd: 7300 },
+  { reference: '11370014C', name: 'Cojín de brazo', priceUsd: 8000 },
+];
+const NOVANISH_MODELS: ModelRow[] = [{
+  id: 'settee',
+  productRoot: '11370000',
+  parts: {
+    mats: { body: 'base', cush: 'cushion', roll: 'bolster', arm: 'armCushion' },
+    roots: { cushion: '11370012', bolster: '11370013', armCushion: '11370014' },
+  },
+}];
+// Dressed in Tona (grade A) with the cushions in a DIFFERENT code, so the build
+// is sold by parts (the dearer ladder) — the case that broke.
+const NOVANISH_PLACED: Placement = {
+  uid: 'u1', pieceId: 'settee',
+  material: { grade: 'A', fabric: 'Tona · Écru', code: 'T1', unitPrice: 10895 },
+  partMaterials: { cushion: { grade: 'I', fabric: 'ARDA/FR · Gris', code: 'A9' } },
+};
+
+test('NO-VANISH: a part picked at a grade its SKU ladder never offered keeps its line', () => {
+  const resolvedById = resolveModels(NOVANISH_MODELS, NOVANISH_PRODUCTS);
+  const r = resolvedById.settee!;
+  assert.deepEqual(unresolvedPartRoles(r, NOVANISH_PLACED), ['cushion'],
+    'the cushion pick is off its ladder; the unpicked rulo/brazo default to grades[0] and resolve');
+
+  const { lines, totalUsd } = placementBreakdown(NOVANISH_PLACED, resolvedById);
+  assert.deepEqual(lines.map((l) => l.role), ['base', 'cushion', 'bolster', 'armCushion'],
+    'every componente the piece ships with is still on the sheet — nothing dropped out');
+
+  const cush = lines.find((l) => l.role === 'cushion')!;
+  assert.equal(cush.unresolved, true, 'flagged, so a View can read "sin precio"');
+  assert.equal(cush.unitUsd, null);
+  assert.equal(cush.totalUsd, null, 'no money on a line nobody priced');
+  assert.equal(cush.included, undefined, '…and never "incluido" — that would be a promise nobody costed');
+  assert.equal(cush.fabric, 'ARDA/FR · Gris', 'the customer’s own pick is named');
+  assert.equal(cush.qty, 1);
+  assert.equal(cush.defaultGrade, false, 'it IS a pick — it just has no price');
+
+  // The rest of the piece still prices normally: the gap is stated, not spread.
+  assert.equal(lines.find((l) => l.role === 'base')!.totalUsd, 10895);
+  assert.equal(lines.find((l) => l.role === 'bolster')!.totalUsd, 575);
+  assert.equal(lines.find((l) => l.role === 'armCushion')!.totalUsd, 7300);
+
+  // THE TRAP, stated: the priced lines DO foot to a perfectly plausible number.
+  const footed = lines.reduce((s, l) => s + (l.totalUsd || 0), 0);
+  assert.equal(footed, 18770, 'exactly the wrong total the dealer was shown');
+  assert.equal(totalUsd, null, '…which is why the placement has NO total, rather than that one');
+  assert.equal(placementTotal(NOVANISH_PLACED, resolvedById), null);
+
+  // An UNBOUND family is the OPPOSITE case and keeps its opposite answer: no SKU
+  // at all ⇒ the part is not sold separately ⇒ no phantom line, no gap to close.
+  const unbound = resolveModels(
+    [{ id: 'nb', productRoot: '11370000', parts: { mats: { cush: 'cushion' }, roots: {} } }],
+    NOVANISH_PRODUCTS,
+  );
+  const bare: Placement = { uid: 'u2', pieceId: 'nb' };
+  assert.deepEqual(unresolvedPartRoles(unbound.nb!, bare), []);
+  assert.equal(placementBreakdown(bare, unbound).lines.length, 1);
+});
+
+test('NO-VANISH: a resolvable grade prices exactly as before, and monocolor never fails', () => {
+  const resolvedById = resolveModels(NOVANISH_MODELS, NOVANISH_PRODUCTS);
+  // The same build with the cushions in a grade the ladder DOES sell: 10,895 +
+  // 7,300 (cushion set at C) + 575 (rulo) + 7,300 (brazo) = 26,070 — the real
+  // price of the piece the visitor was quoted 18,770 for.
+  const fixed: Placement = { ...NOVANISH_PLACED, partMaterials: { cushion: { grade: 'C', fabric: 'Steppe', code: 'S2' } } };
+  assert.deepEqual(unresolvedPartRoles(resolvedById.settee!, fixed), []);
+  assert.equal(placementTotal(fixed, resolvedById), 26070);
+  assert.ok(placementTotal(fixed, resolvedById)! > 18770, 'by-parts is DEARER than the vanished total');
+  const { lines, totalUsd } = placementBreakdown(fixed, resolvedById);
+  assert.equal(totalUsd, 26070);
+  assert.equal(lines.reduce((s, l) => s + (l.totalUsd || 0), 0), 26070, 'still foots exactly');
+  assert.ok(lines.every((l) => !l.unresolved));
+
+  // MONOCOLOR: the very same off-ladder grade, but the cushion rides the piece's
+  // own CODE ⇒ elemento completo ⇒ the componentes bill nothing, so no
+  // componente grade can move the price and there is nothing to fail.
+  const mono: Placement = { ...NOVANISH_PLACED, partMaterials: { cushion: { grade: 'I', fabric: 'Tona · Écru', code: 'T1' } } };
+  assert.deepEqual(unresolvedPartRoles(resolvedById.settee!, mono), []);
+  assert.equal(placementTotal(mono, resolvedById), 10895, 'one SKU, the cheaper answer');
+  const monoCush = placementBreakdown(mono, resolvedById).lines.find((l) => l.role === 'cushion')!;
+  assert.equal(monoCush.included, true, 'listed as bought-by-the-whole-piece, not as unpriced');
+  assert.equal(monoCush.unresolved, undefined);
+});
+
+/* ------------- WHOLE-PIECE GRADE HONESTY: the piece's own cloth ------------- */
+// The part gate above closed the componente ladders and left the model's OWN
+// open. Measured on the reference catalogue: a settee's family is priced in six
+// grades while the picker offered every one of the 55 fabrics the model is
+// linked to, spanning seventeen — so 32 of them stored a grade that SKU has
+// never been sold in, and NOTHING said so: a pick stamps the model's CHEAPEST
+// grade whenever `productForGrade` comes back empty, so a Grade E settee quoted
+// at the Grade C price and read as a perfectly normal quote. Owner's rule: only
+// the fabrics that really correspond to a model should come up for it.
+//
+// The wall below carries ONE material per grade the real wall spans, so the
+// counts are the live shape at reading size: 17 in, 5 out.
+const SETTEE_LADDER = ['C', 'D', 'L', 'M', 'S', 'V'];
+const WHOLEPIECE_PRODUCTS: ProductRow[] = SETTEE_LADDER.map((g, i) => ({
+  reference: `11370700${g}`, name: 'Large Square Settee', priceUsd: 10895 + i * 700,
+}));
+const WHOLEPIECE_WALL = [
+  { name: 'ACATE', grade: 'A' }, { name: 'SILVERTEX/FR', grade: 'B' }, { name: 'ARA', grade: 'C' },
+  { name: 'CLOUD', grade: 'D' }, { name: 'TONA', grade: 'E' }, { name: 'ROMA', grade: 'F' },
+  { name: 'LEO', grade: 'G' }, { name: 'PHLOX', grade: 'H' }, { name: 'ARDA/FR', grade: 'I' },
+  { name: 'UNIFORM MELANGE/FR', grade: 'L' }, { name: 'GENTLE/FR', grade: 'N' },
+  { name: 'BYRAM/FR', grade: 'P' }, { name: 'FLORALY', grade: 'R' },
+  { name: 'ALCANTARA - A', grade: 'S' }, { name: 'INDIANA', grade: 'U' },
+  { name: 'DIVA', grade: 'V' }, { name: 'KYOTO', grade: 'X' },
+];
+const WHOLEPIECE_MODELS: ModelRow[] = [{ id: 'settee7', productRoot: '11370700' }];
+// Dressed in TONA — Grade E. A real fabric, offered on this model, and one its
+// own SKU has never carried a price for. `unitPrice` is what the pick STAMPED:
+// `productForGrade(E)` found nothing, so the picker wrote the model's cheapest
+// grade. This row IS the bug, frozen.
+const WHOLEPIECE_PLACED: Placement = {
+  uid: 'w1', pieceId: 'settee7',
+  material: { grade: 'E', fabric: 'TONA · Écru', code: 'T1', unitPrice: 10895 },
+};
+
+test('WHOLE PIECE: the picker only offers fabrics the targeted model’s own ladder can price', () => {
+  const resolvedById = resolveModels(WHOLEPIECE_MODELS, WHOLEPIECE_PRODUCTS);
+  const family = resolvedById.settee7!.baseFamily!;
+  assert.deepEqual(family.grades.slice().sort(), SETTEE_LADDER, 'the ladder under test');
+  assert.equal(WHOLEPIECE_WALL.length, 17, 'every grade the model’s linked fabrics span');
+
+  const offer = offeredMaterials(WHOLEPIECE_WALL, [family]);
+  // The offer is the ladder ∩ the wall, and it is SMALLER than both: twelve
+  // tiles go (their grade isn't sold), and the ladder's own M has no linked
+  // fabric wearing it — exactly the live shape.
+  assert.equal(offer.length, 5);
+  assert.deepEqual(offer.map((m) => m.grade), ['C', 'D', 'L', 'S', 'V']);
+  assert.deepEqual(offer.map((m) => m.name), ['ARA', 'CLOUD', 'UNIFORM MELANGE/FR', 'ALCANTARA - A', 'DIVA']);
+
+  // THE INVARIANT, not the arithmetic: what the picker OFFERS is exactly what
+  // the price gate ACCEPTS. A normalization drift on either side (case,
+  // trimming, a different grade key) shows up here as a disagreement rather than
+  // as builds silently reading "sin precio" in production.
+  const r = resolvedById.settee7!;
+  for (const m of WHOLEPIECE_WALL) {
+    const placed: Placement = { uid: 'x', pieceId: 'settee7', material: { grade: m.grade, fabric: m.name, code: 'k' } };
+    assert.equal(offer.includes(m), !unresolvedWholePiece(r, placed),
+      `${m.name} (grade ${m.grade}): the picker and the price gate must agree`);
+  }
+
+  // "APPLY TO ALL" is the INTERSECTION of every target's ladder — a cloth that
+  // prices on four models and not the fifth would leave the fifth silently at
+  // its cheapest grade, the same lie spread thinner.
+  const narrow = familyFor('44440000', [
+    { reference: '44440000C', priceUsd: 500 },
+    { reference: '44440000S', priceUsd: 700 },
+  ])!;
+  assert.deepEqual(offeredMaterials(WHOLEPIECE_WALL, [family, narrow]).map((m) => m.grade), ['C', 'S']);
+
+  // NO-VANISH AT THE DOOR: a model with no ladder data filters NOTHING…
+  assert.equal(offeredMaterials(WHOLEPIECE_WALL, [null]).length, 17);
+  assert.equal(offeredMaterials(WHOLEPIECE_WALL, []).length, 17);
+  // …a lone ungraded SKU is not a ladder either (`graded` needs two)…
+  const solo = familyFor('99990000', [{ reference: '99990000A', name: 'Solo', priceUsd: 500 }])!;
+  assert.equal(solo.graded, false);
+  assert.equal(offeredMaterials(WHOLEPIECE_WALL, [solo]).length, 17);
+  // …and DISJOINT ladders, which "apply to all" can reach, ship the wall whole
+  // rather than an empty picker that answers no question at all.
+  const disjoint = familyFor('55550000', [
+    { reference: '55550000A', priceUsd: 100 },
+    { reference: '55550000B', priceUsd: 120 },
+  ])!;
+  assert.equal(offeredMaterials(WHOLEPIECE_WALL, [family, disjoint]).length, 17);
+  assert.deepEqual(offeredMaterials(null, [family]), []);
+});
+
+test('WHOLE PIECE: a stored off-ladder pick prices NOTHING — never the model’s cheapest grade', () => {
+  const resolvedById = resolveModels(WHOLEPIECE_MODELS, WHOLEPIECE_PRODUCTS);
+  const r = resolvedById.settee7!;
+  assert.equal(unresolvedWholePiece(r, WHOLEPIECE_PLACED), true);
+  assert.deepEqual(unresolvedPartRoles(r, WHOLEPIECE_PLACED), [], 'the PART axis is clean — this is the piece’s own cloth');
+
+  // THE TRAP, stated: the stamped price is a real, plausible, WRONG number.
+  assert.equal(r.unitPrice, 10895, 'the model’s cheapest grade, wearing Grade E’s name');
+  assert.equal(placementTotal(WHOLEPIECE_PLACED, resolvedById), null, 'so the piece has NO price, rather than that one');
+
+  const { lines, totalUsd } = placementBreakdown(WHOLEPIECE_PLACED, resolvedById);
+  assert.equal(lines.length, 1);
+  const base = lines[0];
+  assert.equal(base.role, 'base');
+  assert.equal(base.unresolved, true, 'flagged, so a View reads "sin precio"');
+  assert.equal(base.unitUsd, null);
+  assert.equal(base.totalUsd, null);
+  assert.equal(base.complete, undefined, 'and never "Elemento completo" — nothing costed it');
+  assert.equal(base.fabric, 'TONA · Écru', 'the customer’s own pick is still named');
+  assert.equal(base.defaultGrade, false, 'it IS a pick — it just has no price');
+  assert.equal(totalUsd, null);
+});
+
+test('WHOLE PIECE: an on-ladder grade prices exactly as before, and no pick at all is never gated', () => {
+  const resolvedById = resolveModels(WHOLEPIECE_MODELS, WHOLEPIECE_PRODUCTS);
+  // Grade D — on the ladder. 10,895 + 1×700 = 11,595, byte for byte what it was.
+  const ok: Placement = { ...WHOLEPIECE_PLACED, material: { grade: 'D', fabric: 'CLOUD', code: 'C1', unitPrice: 11595 } };
+  assert.equal(unresolvedWholePiece(resolvedById.settee7!, ok), false);
+  assert.equal(placementTotal(ok, resolvedById), 11595);
+  const okLines = placementBreakdown(ok, resolvedById).lines;
+  assert.equal(okLines[0].totalUsd, 11595);
+  assert.equal(okLines[0].unresolved, undefined);
+
+  // NO PICK AT ALL. The sticker price is the family's cheapest grade by
+  // documented convention; it resolves by construction and is not a lie about
+  // anything the visitor chose, so the gate never fires.
+  const bare: Placement = { uid: 'w2', pieceId: 'settee7' };
+  assert.equal(unresolvedWholePiece(resolvedById.settee7!, bare), false);
+  assert.equal(placementTotal(bare, resolvedById), 10895);
+
+  // A model with NO ladder is untouched too: nothing to be off.
+  const noFam = resolveModels([{ id: 'nf', productRoot: null }], WHOLEPIECE_PRODUCTS);
+  const wild: Placement = { uid: 'w3', pieceId: 'nf', material: { grade: 'Z', fabric: 'X', code: 'z', unitPrice: 999 } };
+  assert.equal(unresolvedWholePiece(noFam.nf!, wild), false);
+  assert.equal(placementTotal(wild, noFam), 999, 'prices exactly as today');
+});
+
 /* --------------------------- materialization zones --------------------------- */
 
 test('ottoman zones: bicolor re-grades the base SKU (dearest wins) and never bills a line', () => {
@@ -313,6 +552,20 @@ test('ottoman zones: bicolor re-grades the base SKU (dearest wins) and never bil
     partMaterials: { interior: { grade: 'A', fabric: 'Alc', code: 'A1' } },
   };
   assert.equal(placementTotal(baseC, resolvedById), 3460);
+
+  // NO-VANISH, the zone flavour: a zone bills no line, so an off-ladder zone
+  // pick can't drop one — it just gets IGNORED, leaving the piece at its
+  // cheaper grade. Same lie, quieter voice: the dearest-zone rule silently
+  // didn't run, and nobody said so.
+  const badZone: Placement = { ...mono, partMaterials: { interior: { grade: 'I', fabric: 'ARDA/FR', code: 'A9' } } };
+  assert.deepEqual(unresolvedPartRoles(r, badZone), ['interior']);
+  assert.equal(placementTotal(badZone, resolvedById), null, 'not 3145 — that is the base pretending to be the piece');
+  const badLines = placementBreakdown(badZone, resolvedById).lines;
+  const inner = badLines.find((l) => l.role === 'interior')!;
+  assert.equal(inner.unresolved, true);
+  assert.equal(inner.included, undefined, 'a zone the SKU can’t re-grade is not "incluido"');
+  assert.equal(inner.fabric, 'ARDA/FR', 'the pick still shows — it never leaves the sheet');
+  assert.equal(badLines.find((l) => l.role === 'exterior')!.included, true, 'the resolvable zone is untouched');
 });
 
 /* ------------------------------ the breakdown ------------------------------ */
@@ -341,7 +594,8 @@ test('placementBreakdown itemizes base + parts and always foots to placementTota
   assert.equal(lines.length, 3, 'base + cushion + bolster lines');
   const [base, cush, bols] = lines;
   assert.equal(base.role, 'base');
-  assert.equal(base.label, 'Base');
+  // «Cuerpo», not «Base»: presentation only — the role TOKEN is still `base`.
+  assert.equal(base.label, 'Cuerpo');
   assert.equal(base.fabric, 'Divina');
   assert.equal(base.totalUsd, 1000);
   assert.equal(cush.qty, 1, 'the bound SKU is the SET covering both cushions');

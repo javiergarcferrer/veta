@@ -90,3 +90,46 @@ test('formatMoney prints a currency and never a blank', () => {
   // An unknown currency code falls back instead of throwing.
   assert.match(formatMoney(10, 'XYZQ', 'es'), /10/);
 });
+
+// ── «SIN PRECIO»: dressed, and nothing can price it ─────────────────────────
+// A fabric is stored as a GRADE, and a grade only means something inside the
+// ladder that will bill it. A pick at a grade the model's own ladder never sold
+// used to fall back to its CHEAPEST grade — a confident number for a fabric
+// nobody chose. The gate lives in @veta/catalog (`unresolvedWholePiece`); this
+// pins what the DECK does with it.
+const offLadder = (uid: string, pieceId: string): PlacedPiece => ({
+  uid, pieceId, x: 0, y: 0, rot: 0,
+  // The Fireside's ladder sells A and C. X is the leather grade — real cloth,
+  // real pick, no price on that SKU.
+  material: { code: 'L0100', grade: 'X', fabric: 'Noir' },
+});
+
+test('a piece dressed in a grade its own ladder never sold reads «sin precio»', () => {
+  const estimate = resolveEstimate([offLadder('a', 'm-fireside')], catalog.modelById);
+  assert.equal(estimate.lines[0].total, null, 'never the cheapest grade wearing someone else\'s name');
+  assert.equal(estimate.lines[0].unresolved, true);
+  assert.equal(estimate.lines[0].pendingFabric, false, 'it is NOT «sin tela» — that counter names a fabric nobody chose');
+  assert.equal(estimate.unpriced, 1);
+});
+
+test('…and the BUILD then has no total at all, never a smaller one', () => {
+  const estimate = resolveEstimate(
+    [piece('a', 'm-fireside', 'B0021'), offLadder('b', 'm-fireside')],
+    catalog.modelById,
+  );
+  // Folding the unpriceable piece in as 0 would state 1000 — a real-looking
+  // figure that is simply short by whatever that piece is worth.
+  assert.equal(estimate.total, null);
+  assert.equal(estimate.unpriced, 1);
+  assert.equal(estimate.pending, 0);
+  // The lead still travels: nothing here blocks submission, and the payload
+  // asserts no price at all (the API re-derives the estimate from the build).
+  assert.equal(estimate.pieces, 2);
+});
+
+test('an on-ladder grade prices exactly as it always did', () => {
+  const before = resolveEstimate([piece('a', 'm-fireside', 'B0021')], catalog.modelById);
+  assert.equal(before.total, 1000);
+  assert.equal(before.unpriced, 0);
+  assert.equal(before.lines[0].unresolved, false);
+});

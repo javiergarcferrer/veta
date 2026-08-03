@@ -13,7 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { zipSync } from 'fflate';
-import { extractOfmlArchive, selectOfmlImages, averageRgb, parseOfmlMaterial } from '../src/index.ts';
+import { extractOfmlArchive, selectOfmlImages, averageRgb, parseOfmlMaterial, MAX_EDGE } from '../src/index.ts';
 import type { DecodedImage, ImageCodec } from '../src/index.ts';
 
 const SILVER_MAT = `type common
@@ -127,10 +127,21 @@ test('extractOfmlArchive: the newer full-PBR archive — named diffuse, real bum
   // periwinkle) and never from the preview render.
   assert.equal(out.rgb, '#91908f');
   assert.deepEqual(out.pbr, parseOfmlMaterial(SILVER_MAT));
-  assert.equal(marker(out.texture), 'webp:alcantara___b_silver_129.png:0.85:1024');
+  assert.equal(marker(out.texture), 'webp:alcantara___b_silver_129.png:0.85:2048');
   // A tangent-space normal survives lossy WebP well enough for cloth relief,
   // but it is stored at a higher quality than the albedo.
-  assert.equal(marker(out.normal), 'webp:alcantara___b_silver_129_map.png:0.9:1024');
+  assert.equal(marker(out.normal), 'webp:alcantara___b_silver_129_map.png:0.9:2048');
+});
+
+test('MAX_EDGE is 2048 — the per-thread detail the 1024 bake was discarding', () => {
+  // At close dolly range 1024px over a ~20 cm physical tile reads SOFT next to
+  // reference-grade configurators; the detail is in the pCon scan and the
+  // import was throwing it away. Pinned because it is the one number that
+  // decides how much of a scan survives, and it rides straight into every
+  // stored texture. NOT a migration: fabrics already imported keep their 1024
+  // bake until they are re-imported — this is only the ceiling asked of the
+  // codec, which is why an explicit `maxEdge` still overrides it.
+  assert.equal(MAX_EDGE, 2048);
 });
 
 test('extractOfmlArchive: the older Phong archive — a tiny diffuse still uploads, no normal', async () => {
@@ -142,7 +153,7 @@ test('extractOfmlArchive: the older Phong archive — a tiny diffuse still uploa
   const out = await extractOfmlArchive(zip, { codec });
   assert.equal(out.selection.diffuse, 'diffuse.jpg');
   assert.equal(out.rgb, '#c0c0c0');
-  assert.equal(marker(out.texture), 'webp:diffuse.jpg:0.85:1024');
+  assert.equal(marker(out.texture), 'webp:diffuse.jpg:0.85:2048');
   assert.equal(out.normal, null, 'the older format derives its relief downstream');
   assert.equal(out.pbr?.tileCm, 20);
 });

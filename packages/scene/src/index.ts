@@ -43,6 +43,33 @@ export {
 export type { ShadowMode, StageHandle, StageOptions } from './stage.ts';
 export { DEFAULT_STAGE_GROUND, setupStage } from './stage.ts';
 
+// ── The contact pool (the quality tier's grounding) ──────────────────────────
+export type { PoolPass, PoolProjection, PoolRect, PoolView } from './contactPool.ts';
+export {
+  POOL_PASSES,
+  POOL_PLATE_Y,
+  POOL_PX,
+  POOL_SPAN_FACTOR,
+  poolLuminance,
+  poolProject,
+  poolShade,
+  poolSpan,
+} from './contactPool.ts';
+
+// ── Picking + highlight scope (pure, over the hit list / the meshes) ─────────
+export type { PickCandidate, PickHit, PickIntersection } from './picking.ts';
+export {
+  RING_R_MOUSE,
+  RING_R_TOUCH,
+  RING_SPOKES,
+  preferPick,
+  resolvePickHit,
+  ringRadiusFor,
+  ringSamples,
+} from './picking.ts';
+export type { FocusScope, HighlightDecision, HighlightState, HoverPart, TaggedMesh } from './highlight.ts';
+export { DRESSABLE_ROLE, dressableExclusions, focusMeshes, resolveHighlightScope } from './highlight.ts';
+
 // ── GLB / AR export ──────────────────────────────────────────────────────────
 export type { ArGroup, ArGroupOptions, GlbExportDeps } from './glbExport.ts';
 export { CM_TO_M, buildArGroup, exportGlbBlob, loadFabricTextures } from './glbExport.ts';

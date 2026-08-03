@@ -8,7 +8,11 @@
  * else in this package.
  */
 import type { ThreeApi, ThreeObject } from './types.ts';
+import type { RenderParams } from './renderParams.ts';
 import { fabricAnisotropy } from './sceneBuilder.ts';
+import {
+  POOL_PASSES, POOL_PLATE_Y, POOL_PX, type PoolRect, poolProject, poolSpan,
+} from './contactPool.ts';
 
 /**
  * The stage's default ground — a warm paper. A public configurator overrides it
@@ -32,15 +36,36 @@ export interface StageOptions {
   ground?: number;
   /** The white-page rig for a piece rendered ALONE (thumbnails, a turntable). */
   presentation?: boolean;
+  /**
+   * THE QUALITY TIER — the product-photo grounding (see `contactPool.ts`): no
+   * shadow maps at all, an opaque contact-pool plate instead. A DEVICE decision
+   * the app owns (it is the one that knows the GPU it got), so it is an explicit
+   * option; `params.qualityTier` is the per-collection default underneath it.
+   *
+   * OFF is byte-for-byte the rig that shipped: the pool is never created, the
+   * casters and the shadow catcher are untouched, and `updatePool` is null so a
+   * caller can skip the feed entirely.
+   */
+  quality?: boolean;
+  /** Per-collection render data; only `qualityTier` is read here. */
+  params?: RenderParams | null;
 }
 
-/** What `setupStage` hands back — the rig's three levers. */
+/** What `setupStage` hands back — the rig's levers. */
 export interface StageHandle {
   dispose: () => void;
   /** Slide the whole rig to follow the layout. */
   retarget: (center: { x?: number; z?: number } | null | undefined, layoutRadius?: number) => void;
   /** Hand the shadow job between the raking key (3d) and the overhead (2d). */
   setShadow: (mode: ShadowMode) => void;
+  /**
+   * Feed the contact pool the CURRENT piece footprints (world cm). NULL outside
+   * the quality tier, so a baseline caller pays nothing and can skip the call.
+   *
+   * Call it on the same WORLD-DIRTY signal that invalidates the shadow map — the
+   * plate only redraws when something moved, never on a camera-only frame.
+   */
+  updatePool: ((rects: readonly PoolRect[] | null | undefined) => void) | null;
 }
 
 /**
@@ -67,9 +92,14 @@ export function setupStage(
   renderer: any,
   scene: any,
   radius: number,
-  { RoomEnvironment, grid = false, ground = DEFAULT_STAGE_GROUND, presentation = false }: StageOptions = {},
+  { RoomEnvironment, grid = false, ground = DEFAULT_STAGE_GROUND, presentation = false, quality, params }: StageOptions = {},
 ): StageHandle {
   scene.background = new THREE.Color(ground);
+  // Explicit option wins; the collection's own tier is the default under it.
+  // …and it only takes effect where the plate can actually be DRAWN: without a
+  // document there is no canvas, and turning the casters off without putting a
+  // pool under the piece would leave it floating on nothing.
+  const qualityTier = (quality ?? !!params?.qualityTier) && typeof document !== 'undefined';
 
   // Showroom floor grid — a quiet 50 cm dot lattice under the build (live stage
   // only; thumbnails stay clean). It turns the empty canvas from a bare void
@@ -169,6 +199,11 @@ export function setupStage(
   key.shadow.camera.updateProjectionMatrix();
   key.shadow.bias = -0.0004;
   key.shadow.radius = 3.5;     // a touch crisper → the channel/contact shadows read
+  // QUALITY TIER: the key LIGHTS but never CASTS — grounding moves to the contact
+  // pool below. Shadow maps fundamentally can't produce that pool for a piece
+  // sitting flush on the floor (occluder and receiver depths coincide at the
+  // contact, so the shadow term vanishes exactly where the pool has to be dark).
+  if (qualityTier) key.castShadow = false;
   scene.add(key);
   scene.add(key.target);       // in the graph so retarget can move the aim point
 
@@ -228,7 +263,87 @@ export function setupStage(
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = 0;
   floor.receiveShadow = true;
+  if (qualityTier) floor.visible = false;   // the pool IS the ground shadow here
   scene.add(floor);
+
+  // ── THE CONTACT POOL (quality tier) ────────────────────────────────────────
+  // An OPAQUE floor plate, not a transparent overlay: its canvas is the GROUND
+  // colour with the dark blobs drawn into it, so it renders in the plain opaque
+  // pass — writes depth, no blending, no sort order to get wrong (a transparent
+  // overlay variant shipped INVISIBLE on one GL stack upstream). It sits below
+  // the dot grid, whose translucent dots draw over it, and its edges dissolve
+  // into the background because both run the same colour pipeline: an sRGB
+  // texture through the renderer's tone mapping.
+  //
+  // A DataTexture fed from `getImageData`, NOT a CanvasTexture: the plate
+  // REDRAWS on world-dirty frames, and a canvas-source re-upload came back as
+  // GARBAGE on that same GL stack while the typed-array path is deterministic.
+  // (The grid's CanvasTexture is safe — it uploads once and never updates.)
+  // DataTexture rows are v=0-first (no flipY for typed arrays), which is the
+  // sign `poolProject` carries: world +z → canvas −y, and the yaw with it.
+  //
+  // What it draws is pure data — `contactPool.ts` owns the pass table, the span
+  // and the projection, so the falloff is pinned by a test with no GL and no DOM.
+  let pool: {
+    mesh: any;
+    tex: any;
+    place: (cx: number, cz: number, layoutRadius: number) => void;
+    update: (rects: readonly PoolRect[] | null | undefined) => void;
+  } | null = null;
+  if (qualityTier) {
+    const cv = document.createElement('canvas');
+    cv.width = POOL_PX; cv.height = POOL_PX;
+    const pctx = cv.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
+    const tex = new THREE.DataTexture(
+      new Uint8Array(POOL_PX * POOL_PX * 4), POOL_PX, POOL_PX, THREE.RGBAFormat, THREE.UnsignedByteType,
+    );
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex }));
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = POOL_PLATE_Y;
+    scene.add(mesh);
+    const groundStyle = `#${new THREE.Color(ground).getHexString()}`;
+    const view = { cx: 0, cz: 0, span: poolSpan(radius, radius), px: POOL_PX };
+    const place = (cx: number, cz: number, layoutRadius: number) => {
+      view.cx = cx; view.cz = cz;
+      view.span = poolSpan(radius, layoutRadius);   // layout + feather margin
+      mesh.position.set(cx, POOL_PLATE_Y, cz);
+      mesh.scale.set(view.span, view.span, 1);
+    };
+    place(0, 0, radius);
+    const update = (rects: readonly PoolRect[] | null | undefined) => {
+      if (!pctx) return;
+      pctx.save();
+      pctx.filter = 'none';
+      pctx.globalAlpha = 1;
+      pctx.fillStyle = groundStyle;
+      pctx.fillRect(0, 0, POOL_PX, POOL_PX);
+      pctx.restore();
+      for (const pass of POOL_PASSES) {
+        pctx.save();
+        pctx.filter = `blur(${pass.blur * POOL_PX}px)`;
+        pctx.globalAlpha = pass.alpha;
+        pctx.fillStyle = '#000';
+        for (const rect of rects || []) {
+          const p = poolProject(rect, view, pass.insetCm);
+          pctx.save();
+          pctx.translate(p.cx, p.cy);
+          pctx.rotate(p.rot);
+          pctx.beginPath();
+          pctx.roundRect(-p.w / 2, -p.h / 2, p.w, p.h, Math.min(12, p.w / 4));
+          pctx.fill();
+          pctx.restore();
+        }
+        pctx.restore();
+      }
+      tex.image.data.set(pctx.getImageData(0, 0, POOL_PX, POOL_PX).data);
+      tex.needsUpdate = true;
+    };
+    pool = { mesh, tex, place, update };
+  }
 
   const retarget: StageHandle['retarget'] = (center, layoutRadius = radius) => {
     const cx = Number(center?.x) || 0, cz = Number(center?.z) || 0;
@@ -252,6 +367,9 @@ export function setupStage(
     Object.assign(planKey.shadow.camera, { left: -dd, right: dd, top: dd, bottom: -dd, near: 1, far: LR * 6 });
     planKey.shadow.camera.updateProjectionMatrix();
     floor.position.set(cx, 0, cz);
+    // The pool plate rides the rig like the catcher does; the caller re-feeds
+    // footprints on its next world-dirty frame, sized to the new span.
+    pool?.place(cx, cz, LR);
     if (gridMesh) {
       // Slide the (finite) grid plane with the rig but keep the DOTS anchored to
       // the world by counter-shifting the texture phase — the lattice reads as
@@ -272,6 +390,9 @@ export function setupStage(
   // — so the caster changes with the view, and the catcher's strength with it.
   // Exactly one light casts at a time: two would print both shadows at once.
   const setShadow = (mode: ShadowMode) => {
+    // Quality tier: no shadow maps in EITHER view — the contact pool grounds
+    // both, so the casters stay off and every frame skips the shadow pass.
+    if (pool) return;
     const plan = mode === '2d';
     key.castShadow = !plan;
     planKey.castShadow = plan;
@@ -284,11 +405,16 @@ export function setupStage(
     if (typeof envScene.dispose === 'function') envScene.dispose();
     floor.geometry.dispose();
     floor.material.dispose();
+    if (pool) {
+      pool.mesh.geometry.dispose();
+      pool.mesh.material.dispose();
+      pool.tex.dispose();
+    }
     if (gridMesh) {
       gridMesh.geometry.dispose();
       gridMesh.material.map?.dispose();
       gridMesh.material.dispose();
     }
   };
-  return { dispose, retarget, setShadow };
+  return { dispose, retarget, setShadow, updatePool: pool ? pool.update : null };
 }

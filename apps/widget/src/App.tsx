@@ -36,7 +36,9 @@ import { resolveSceneView } from './vm/scene.ts';
 import { encodeCurrentBuild, pickBootBuild, readStoredBuild, restoreBuild, writeStoredBuild } from './vm/share.ts';
 import { buildLeadPayload, leadDedupeKey, type LeadForm as LeadFormValues } from './vm/lead.ts';
 import { availableExports, buildPlanDxf, exportFilename } from './vm/exports.ts';
-import { createMaterialSource } from './vm/materials.ts';
+import { createMaterialSource, pickLaddersFor } from './vm/materials.ts';
+import { resolvePartsPanel } from './vm/parts.ts';
+import { commitMaterialPick, emptyChrome, resolveEscape, type ChromeState } from './vm/chrome.ts';
 import { browserImageOps } from './lib/imageOps.ts';
 import { downloadFile, exportGlb, exportObj } from './lib/sceneExport.ts';
 
@@ -68,6 +70,10 @@ export default function App() {
   const [arOpen, setArOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  /** The PART the wall is dressing, or null for the piece as a whole. It is a
+   *  question that stays asked until something else answers it — a pick does
+   *  NOT (the panel is a rail, not a sheet: see `vm/chrome`). */
+  const [partRole, setPartRole] = useState<string | null>(null);
 
   const client = useMemo(
     () => createApiClient({
@@ -135,6 +141,23 @@ export default function App() {
   const sceneView = useMemo(() => resolveSceneView(state.placed, catalog.modelById), [state.placed, catalog]);
   const build = useMemo(() => encodeCurrentBuild(state.placed, state.room), [state.placed, state.room]);
   const materialSource = useMemo(() => createMaterialSource(catalog.colorByCode), [catalog]);
+  const selectedPiece = useMemo(
+    () => state.placed.find((p) => p.uid === state.selectedUid) ?? null,
+    [state.placed, state.selectedUid],
+  );
+  const selectedModel = selectedPiece ? catalog.modelById[selectedPiece.pieceId] ?? null : null;
+  const partsPanel = useMemo(
+    () => (selectedPiece ? resolvePartsPanel(selectedPiece, selectedModel, locale) : null),
+    [selectedPiece, selectedModel, locale],
+  );
+  // THE WALL IS THE TARGET'S OWN LADDER: only fabrics that really correspond to
+  // what the pick will land on. A tile the price gate would then refuse is a
+  // trap, and «aplicar a todas» takes the INTERSECTION of every placed piece's.
+  const pickLadders = useMemo(() => {
+    if (selectedPiece && partRole) return pickLaddersFor({ scope: 'part', model: selectedModel, role: partRole });
+    if (selectedPiece) return pickLaddersFor({ scope: 'piece', model: selectedModel });
+    return pickLaddersFor({ scope: 'all', models: state.placed.map((p) => catalog.modelById[p.pieceId]) });
+  }, [selectedPiece, selectedModel, partRole, state.placed, catalog]);
   const exportOptions = useMemo(
     () => ({ source: materialSource, imageOps: browserImageOps, renderParams: catalog.collection.renderParams }),
     [materialSource, catalog],
@@ -155,6 +178,35 @@ export default function App() {
   }, [bridge]);
 
   useEffect(() => { bridge.emit('ready', { locale, collection: catalog.collection.slug }); }, [bridge, locale, catalog.collection.slug]);
+
+  // A new selection is a NEW question: the part target was only ever a question
+  // about the piece that is now gone.
+  useEffect(() => { setPartRole(null); }, [state.selectedUid]);
+
+  // ── ONE EXIT PER ESCAPE, TOPMOST CHROME FIRST ─────────────────────────────
+  // The chrome state is DERIVED from what is really open (never a second copy
+  // of it), `resolveEscape` decides which single layer this press closes, and
+  // the result is applied back to the state that owns each layer.
+  const chrome: ChromeState = useMemo(() => ({
+    ...emptyChrome(),
+    overlay: arOpen ? 'ar' : null,
+    material: state.selectedUid && partRole
+      ? { kind: 'rail', target: { scope: 'part', uid: state.selectedUid, role: partRole } }
+      : null,
+    selectedUid: state.selectedUid,
+  }), [arOpen, partRole, state.selectedUid]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const { closed } = resolveEscape(chrome);
+      if (!closed) return;
+      if (closed === 'overlay') setArOpen(false);
+      else if (closed === 'material') setPartRole(null);
+      else if (closed === 'selection') dispatch({ type: 'select', uid: null });
+    };
+    globalThis.addEventListener?.('keydown', onKey);
+    return () => globalThis.removeEventListener?.('keydown', onKey);
+  }, [chrome, dispatch]);
 
   useEffect(() => {
     // The design changed: tell the host, and snapshot it on the device so a
@@ -343,11 +395,31 @@ export default function App() {
           families={catalog.families}
           locale={locale}
           targetUid={state.selectedUid}
-          activeCode={
-            String((state.placed.find((p) => p.uid === state.selectedUid)?.material as { code?: string } | null)?.code ?? '')
-          }
-          onPick={(uid, pick) => dispatch({ type: 'setMaterial', uid, material: pick as unknown as Record<string, unknown> })}
-          onClear={(uid) => dispatch({ type: 'setMaterial', uid, material: null })}
+          activeCode={String((
+            (partRole
+              ? (selectedPiece?.partMaterials as Record<string, { code?: string }> | null)?.[partRole]
+              : (selectedPiece?.material as { code?: string } | null)) ?? null
+          )?.code ?? '')}
+          ladders={pickLadders}
+          parts={partsPanel}
+          partRole={partRole}
+          onPickPart={setPartRole}
+          onClearPart={(role) => {
+            if (state.selectedUid) dispatch({ type: 'setPartMaterial', uid: state.selectedUid, role, material: null });
+          }}
+          onPick={(uid, pick) => {
+            const material = pick as unknown as Record<string, unknown>;
+            if (uid && partRole) dispatch({ type: 'setPartMaterial', uid, role: partRole, material });
+            else dispatch({ type: 'setMaterial', uid, material });
+            // The rail KEEPS its target (`commitMaterialPick`): dressing a
+            // cushion is not a request to stop looking at cushions.
+            const next = commitMaterialPick(chrome);
+            if (!next.material) setPartRole(null);
+          }}
+          onClear={(uid) => {
+            if (uid && partRole) dispatch({ type: 'setPartMaterial', uid, role: partRole, material: null });
+            else dispatch({ type: 'setMaterial', uid, material: null });
+          }}
         />
       </div>
 

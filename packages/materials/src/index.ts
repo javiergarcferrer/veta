@@ -40,6 +40,7 @@ export {
   PART_ROLES,
   MATERIALIZATION_ROLES,
   UNPRICED_ROLES,
+  BILLED_ROLES,
   PART_LABELS,
   DEFAULT_PART_ROLES,
   DEFAULT_ROLE_SET,
@@ -65,3 +66,6 @@ export {
   sanitizePartFinishes,
 } from './finishes.ts';
 export type { FinishOption, FinishSpec } from './finishes.ts';
+
+// ── Grouping — join/separate parts, the studio's one gesture ─────────────
+export { planPartJoin, planPartSplit } from './grouping.ts';

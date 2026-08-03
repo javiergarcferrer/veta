@@ -30,10 +30,12 @@
  * (the last one already shipped indexed, so welding buys it nothing and
  * quantization is its entire win).
  */
+import { splitSolids } from '@veta/geometry';
 import type {
   BufferGeometryLike,
   BufferGeometryUtilsLike,
   GltfExporterLike,
+  MaterialLike,
   MeshLike,
   Object3DLike,
   ThreeLike,
@@ -145,6 +147,10 @@ export interface BakedGeometry {
   fit: unknown | null;
   /** False when the source came back untouched — the stamp is all-or-nothing. */
   creased: boolean;
+  /** The geometry's connected masses, one primitive each — computed lazily and
+   *  cached HERE, per SOURCE geometry, so a buffer placed eight times is split
+   *  once (`splitGeometryBySolid`). `[geometry]` when it exports whole. */
+  pieces?: BufferGeometryLike[];
 }
 
 /**
@@ -179,6 +185,118 @@ export function bakeGeometry(
   return { geometry, fit, creased: true };
 }
 
+/**
+ * Above this many masses a mesh is CONFETTI (scan noise, exploded seams), and
+ * one primitive each would bloat the file and the draw calls for nothing. The
+ * mesh then exports whole, exactly as it did before the split existed. A real
+ * sofa lands well under it.
+ */
+export const MAX_SOLIDS_PER_MESH = 64;
+
+/**
+ * Freeze a node's part key by giving its material a NAME.
+ *
+ * This is the hazard the whole split had to clear. An unnamed material keys its
+ * part by NODE INDEX (`partKeyFor`), so emitting one node per mass renumbers
+ * every node after the first split — which would silently re-tag a cushion as a
+ * bolster across the whole catalogue. Naming the material after the node it came
+ * from freezes the key, so the split is ADDITIVE: what the dealer already tagged
+ * keeps its key and the new masses arrive as `key~2`, `key~3` (the `~n` space
+ * `partKeysFor` already uses).
+ *
+ * CLONED per node on purpose: two nodes sharing one unnamed material had two
+ * distinct keys (`#3`, `#5`), and naming the shared instance would collapse them
+ * into one part.
+ */
+export function pinnedMaterial(
+  material: MaterialLike | MaterialLike[],
+  nodeIndex: number,
+): MaterialLike | MaterialLike[] {
+  const first = Array.isArray(material) ? material[0] : material;
+  if (!first) return material;
+  if (first.name && String(first.name).trim()) return material;
+  const clone = Array.isArray(material) ? material.map((mm) => mm.clone()) : first.clone();
+  const target = Array.isArray(clone) ? clone[0] : clone;
+  if (target) target.name = `#${nodeIndex}`;
+  return clone;
+}
+
+/** A typed-array constructor, as read back off an attribute's own buffer. */
+type TypedArrayCtor = new (length: number) => { [i: number]: number; length: number };
+
+/**
+ * One geometry holding only `triangles`, with its own COMPACTED vertices.
+ *
+ * Compacting is the point: sharing the parent's attribute buffers would write
+ * the WHOLE vertex array into every primitive and multiply the file by the
+ * number of masses. Attribute types and the `normalized` flag are preserved, so
+ * a quantized geometry stays quantized.
+ */
+function subGeometry(
+  THREE: Pick<ThreeLike, 'BufferAttribute' | 'BufferGeometry'>,
+  geometry: BufferGeometryLike,
+  triangles: readonly number[],
+  indexAt: (i: number) => number,
+): BufferGeometryLike {
+  const remap = new Map<number, number>();
+  const order: number[] = [];
+  const index = new Uint32Array(triangles.length * 3);
+  let at = 0;
+  for (const t of triangles) {
+    for (let k = 0; k < 3; k += 1) {
+      const v = indexAt(t * 3 + k);
+      let n = remap.get(v);
+      if (n === undefined) { n = order.length; remap.set(v, n); order.push(v); }
+      index[at] = n; at += 1;
+    }
+  }
+  const out = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(geometry.attributes || {})) {
+    const size = attr.itemSize;
+    const Ctor = attr.array.constructor as unknown as TypedArrayCtor;
+    const arr = new Ctor(order.length * size);
+    for (let i = 0; i < order.length; i += 1) {
+      const src = order[i]! * size;
+      for (let c = 0; c < size; c += 1) arr[i * size + c] = attr.array[src + c] as number;
+    }
+    out.setAttribute(name, new THREE.BufferAttribute(arr as never, size, attr.normalized));
+  }
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  return out;
+}
+
+/**
+ * Split a baked geometry into its SOLID MASSES — the reason a tagger can offer a
+ * cushion instead of a scatter of shreds. Every consumer downstream (the tagger,
+ * the raycast, the selection outline) already works per MESH, so making one mesh
+ * BE one mass is the whole integration: nothing else changes.
+ *
+ * Runs AFTER crease/weld/quantize so all masses share the node's dequantization
+ * fit, and reads the quantized integer positions directly — `splitSolids` sizes
+ * its weld grid off the model's own bounding diagonal, so integers segment
+ * exactly like floats.
+ *
+ * Bails (exporting the mesh whole) on multi-material groups and morph targets,
+ * where a per-mass index would lose the material assignment or the morph.
+ */
+export function splitGeometryBySolid(
+  THREE: Pick<ThreeLike, 'BufferAttribute' | 'BufferGeometry'>,
+  geometry: BufferGeometryLike,
+): BufferGeometryLike[] {
+  const pos = geometry?.attributes?.position;
+  if (!pos?.array) return [geometry];
+  if ((geometry.groups?.length || 0) > 1) return [geometry];
+  if (Object.keys(geometry.morphAttributes || {}).length) return [geometry];
+  let solids;
+  try {
+    ({ solids } = splitSolids({ positions: pos.array, indices: geometry.index?.array || null }));
+  } catch { return [geometry]; }
+  if (solids.length < 2 || solids.length > MAX_SOLIDS_PER_MESH) return [geometry];
+  const index = geometry.index?.array || null;
+  const indexAt = index ? (i: number) => index[i] as number : (i: number) => i;
+  return solids.map((s) => subGeometry(THREE, geometry, s.triangles, indexAt));
+}
+
 export interface ExportPieceDeps {
   /** A GLTFExporter instance (code-split and constructed by the caller). */
   exporter: GltfExporterLike;
@@ -203,6 +321,14 @@ export interface ExportPieceDeps {
  * collection and no node names at all). Swap in a fresh material here and the
  * re-imported GLB is one anonymous blob: "detect parts" can no longer tell a
  * cushion from a bolster, and per-part fabric pricing dies with it.
+ *
+ * ONE MESH PER SOLID (v3). Each baked geometry is then split into its connected
+ * masses (`splitGeometryBySolid`), because every consumer downstream already
+ * works per MESH — so making one mesh BE one mass is what lets a tagger address
+ * a cushion instead of every shred that shares its fabric. The ONLY thing that
+ * makes that safe is `pinnedMaterial`: an UNNAMED material keys its part by node
+ * index, so the renumbering a split causes would re-tag the catalogue. Name
+ * first, split second; the order is the invariant.
  *
  * Reusing the source material is also what BAKES a bundled finish in: a binary
  * GLB embeds its images, so a material carrying a decoded map exports as a
@@ -229,18 +355,29 @@ export async function exportPieceGlb(
   // baked normals it never got would ship flat-shaded soup to every visitor,
   // with the loader's own creasing switched off — so the stamp is all-or-nothing.
   let creased = meshes.length > 0;
-  for (const m of meshes) {
+  meshes.forEach((m, nodeIndex) => {
     let entry = baked.get(m.geometry);
     if (!entry) { entry = bakeGeometry(THREE, utils, m.geometry, creaseAngle); baked.set(m.geometry, entry); }
     if (!entry.creased) creased = false;
-    const c = new THREE.Mesh(entry.geometry, m.material);
-    c.matrixAutoUpdate = false;
-    // The node carries the world transform it always did, now composed with the
-    // dequantization fit — the exporter writes the composed matrix verbatim.
-    c.matrix.copy(m.matrixWorld);
-    if (entry.fit) c.matrix.multiply(entry.fit as InstanceType<ThreeLike['Matrix4']>);
-    group.add(c);
-  }
+    // PIN THE PART KEY BEFORE SPLITTING. An unnamed material keys its part by
+    // NODE INDEX, and emitting one node per solid renumbers every node after the
+    // first split — which would silently re-tag a cushion as a bolster across
+    // the whole catalogue. Naming the material after the node it came from
+    // freezes the key, so the split is additive: what the dealer already tagged
+    // keeps its key and the new masses arrive as `key~2`, `key~3`.
+    const material = pinnedMaterial(m.material, nodeIndex);
+    if (!entry.pieces) entry.pieces = splitGeometryBySolid(THREE, entry.geometry);
+    for (const geometry of entry.pieces) {
+      const c = new THREE.Mesh(geometry, material);
+      c.matrixAutoUpdate = false;
+      // The node carries the world transform it always did, now composed with
+      // the dequantization fit — the exporter writes the composed matrix
+      // verbatim, and every mass of a node shares that one fit.
+      c.matrix.copy(m.matrixWorld);
+      if (entry.fit) c.matrix.multiply(entry.fit as InstanceType<ThreeLike['Matrix4']>);
+      group.add(c);
+    }
+  });
   const buffer = await exporter.parseAsync(group, { binary: true }) as ArrayBuffer;
   return creased ? stampMeshVersion(buffer, meshVersion) : buffer;
 }

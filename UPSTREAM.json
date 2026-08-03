@@ -1,0 +1,29 @@
+{
+  "repo": "javiergarcferrer/RosetSoft",
+  "baseline": "40ade6e7eddefedb3e11e89baf37d2e0da2a8852",
+  "baselineDate": "2026-08-03",
+  "watchedPaths": [
+    "src/lib/togo",
+    "src/components/togo",
+    "src/pages/embed",
+    "src/core/quote/views/configuratorView.js",
+    "src/lib/togoEmbed.js",
+    "src/lib/subtype.ts",
+    "src/lib/modules.ts",
+    "supabase/functions/togo-embed",
+    "supabase/functions/togo-quote-worker",
+    "tests"
+  ],
+  "pathOwners": {
+    "src/lib/togo/meshToPlan|sceneSplit|meshClean|planToDxf|planPreview": "@veta/geometry",
+    "src/lib/togo/meshParts|matz*|collectionFinishes": "@veta/materials",
+    "src/lib/togo/libraryPath|sceneImport-pipeline|solidSplit": "@veta/mesh-pipeline",
+    "src/lib/togo/room|quickStarts|buildShare": "@veta/layout",
+    "src/components/togo/togoSceneBuilder|togoModelLoader|togoGlbExport|TogoStage-engine": "@veta/scene",
+    "configuratorView pricing|dealer.ts pricing|quoteSeed.ts|subtype.ts": "@veta/catalog",
+    "src/pages/embed/TogoEmbed": "apps/widget",
+    "src/components/togo/ModelStudio|autoLink|bindingExamples": "apps/studio",
+    "src/lib/togo/i18n.js": "@veta/i18n"
+  },
+  "log": []
+}

@@ -26,6 +26,7 @@
  */
 
 import { persistResult, loadPersisted, prunePersistedOnce, clearPersisted } from './persistentResultCache.js';
+import { brandScopeKey } from './brandScope.js';
 
 /** LRU cap — one entry per distinct live query a session actually renders.
  *  Values hold references to result arrays; the cap bounds how many big
@@ -36,13 +37,20 @@ const MAX_ENTRIES = 80;
 const store = new Map<string, unknown>();
 
 /**
- * Cache key for one live-query call site: closure source + deps. Returns null
- * when the deps don't serialize (a function/circular dep) — the caller then
- * simply skips the cache, never throws.
+ * Cache key for one live-query call site: closure source + deps + THE ACTIVE
+ * BRAND. Returns null when the deps don't serialize (a function/circular dep) —
+ * the caller then simply skips the cache, never throws.
+ *
+ * The brand belongs in the key even though no call site passes it as a dep: the
+ * db layer applies the brand scope BELOW the query (brandScope.ts), so the same
+ * call site with the same deps returns a different result set per brand.
+ * Without it, switching brands would repaint the previous brand's rows from
+ * this cache (and from the device snapshot on the next launch) before the real
+ * fetch landed — the one thing an isolated environment must never do.
  */
 export function resultKey(fnSource: string, deps: readonly unknown[]): string | null {
   try {
-    return `${fnSource}␟${JSON.stringify(deps ?? [])}`;
+    return `${brandScopeKey()}␟${fnSource}␟${JSON.stringify(deps ?? [])}`;
   } catch {
     return null;
   }

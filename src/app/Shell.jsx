@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass } from 'lucide-react';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
@@ -15,17 +15,28 @@ import SignIn from './SignIn.jsx';
 // distributor inbox from dragging the model studio down with it.
 const lazyPage = (loader) => lazy(() => safeDynamicImport(loader));
 const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
+const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
 const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
 const TogoRequests = lazyPage(() => import('../pages/TogoRequests.jsx'));
 const DealerInbox = lazyPage(() => import('../pages/DealerInbox.jsx'));
+const Quotes = lazyPage(() => import('../pages/quoting/Quotes.jsx'));
+const QuoteDetail = lazyPage(() => import('../pages/quoting/QuoteDetail.jsx'));
+const RequestDetail = lazyPage(() => import('../pages/quoting/RequestDetail.jsx'));
+const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
 
 /**
- * The admin shell: four destinations and nothing else.
+ * The admin shell: five destinations and nothing else.
  *
  *   Modelos          — the 3D studio + model manager   (pages/admin/TogoCatalog)
  *   Distribuidores   — dealer records + install kits   (pages/admin/TogoDealers)
  *   Solicitudes      — leads out of the configurator   (pages/TogoRequests)
+ *   Marcas           — the brand microenvironments     (pages/admin/Brands)
  *   Configurador     — opens the PUBLIC widget         (/configurator)
+ *
+ * EVERYTHING BELOW THE BRAND SWITCHER IS ONE BRAND'S ENVIRONMENT. The switcher
+ * in the nav picks which manufacturer you are working in; the data layer filters
+ * every read and stamps every write to it (db/brandScope.ts), so the three
+ * destinations above need no brand plumbing of their own.
  *
  * Two surfaces skip authentication entirely, because they are the product's
  * public half: the clean `/configurator` URLs (mounted before this file ever
@@ -37,6 +48,8 @@ const NAV = [
   { to: '/modelos', label: 'Modelos', icon: Boxes },
   { to: '/distribuidores', label: 'Distribuidores', icon: Store },
   { to: '/solicitudes', label: 'Solicitudes', icon: Inbox },
+  { to: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
+  { to: '/marcas', label: 'Marcas', icon: Tags },
 ];
 
 function Loading({ label = 'Cargando…' }) {
@@ -76,6 +89,50 @@ function NavItem({ to, label, icon: Icon, onNavigate }) {
   );
 }
 
+/**
+ * WHICH MANUFACTURER YOU ARE WORKING IN.
+ *
+ * It sits directly under the wordmark because it governs everything below it:
+ * the models, the materials, the distribuidores and the solicitudes on every
+ * page are that brand's, and switching re-scopes the whole app (AppContext →
+ * db/brandScope). Real rows — the `brands` table, active brands first — never a
+ * hardcoded list.
+ *
+ * One brand reads as a LABEL, not a control: a picker with a single option is a
+ * question with one answer. No brands at all (a database the migration hasn't
+ * reached yet) renders nothing, and the app runs exactly as it did before.
+ */
+function BrandSwitcher() {
+  const { brands, brand, selectBrand } = useApp();
+  const options = (brands || []).filter((b) => b.active !== false || b.id === brand?.id);
+  if (!brand || !options.length) return null;
+  const dot = brand.branding?.primaryColor || null;
+  if (options.length === 1) {
+    return (
+      <div className="px-1 md:px-3 shrink-0 md:mb-3 flex items-center gap-2 text-[11px] text-ink-400 max-w-[10rem] md:max-w-none">
+        {dot && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} aria-hidden />}
+        <span className="truncate" title={brand.name}>{brand.name}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="px-1 md:px-3 shrink-0 md:mb-3">
+      <label className="sr-only" htmlFor="brand-switcher">Marca</label>
+      <select
+        id="brand-switcher"
+        value={brand.id}
+        onChange={(e) => selectBrand(e.target.value)}
+        className="w-full cursor-pointer max-w-[11rem] md:max-w-none rounded-lg border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-xs font-medium text-ink-100 hover:border-ink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+        title="Marca activa — sus modelos, materiales, distribuidores y solicitudes"
+      >
+        {options.map((b) => (
+          <option key={b.id} value={b.id}>{b.name}{b.active === false ? ' (inactiva)' : ''}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 /** Top/side navigation. Always-dark chrome (`.theme-chrome` re-pins the ink
  *  ramp to the light values locally), matching the app's own convention. */
 function Nav() {
@@ -83,7 +140,9 @@ function Nav() {
   const { currentProfile } = useApp();
   return (
     <nav className="theme-chrome bg-ink-900 text-ink-100 md:w-56 md:shrink-0 md:h-full md:flex md:flex-col px-3 py-3 md:py-5 gap-3 md:gap-1 flex items-center md:items-stretch overflow-x-auto md:overflow-x-visible pt-safe-area md:pl-safe-area">
-      <div className="font-wordmark text-lg tracking-[0.18em] px-1 md:px-3 md:mb-5 shrink-0">VETA</div>
+      <div className="font-wordmark text-lg tracking-[0.18em] px-1 md:px-3 md:mb-2 shrink-0">VETA</div>
+
+      <BrandSwitcher />
 
       {NAV.map((item) => <NavItem key={item.to} {...item} />)}
 
@@ -191,6 +250,10 @@ function AdminApp() {
             <Route path="modelos" element={<TogoCatalog />} />
             <Route path="distribuidores" element={<TogoDealers />} />
             <Route path="solicitudes" element={<TogoRequests />} />
+            <Route path="solicitudes/:id" element={<RequestDetail />} />
+            <Route path="cotizaciones" element={<Quotes />} />
+            <Route path="cotizaciones/:id" element={<QuoteDetail />} />
+            <Route path="marcas" element={<Brands />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -222,6 +285,11 @@ export default function Shell() {
           <Route
             path="/dealer/:token"
             element={<Suspense fallback={<Loading />}><DealerInbox /></Suspense>}
+          />
+          {/* The customer's own quote link — token-gated, no account. */}
+          <Route
+            path="/q/:token"
+            element={<Suspense fallback={<Loading />}><QuoteShare /></Suspense>}
           />
           <Route path="/*" element={<AuthedArea />} />
         </Routes>

@@ -7,9 +7,9 @@ import { uploadTogoMesh, removeTogoMesh } from '../../db/togoMeshUpload.js';
 import { loadMeshPlan } from '../../lib/togo/meshPlanCache.js';
 import {
   loadSceneFile, splitScene, exportPieceGlb, loadPiecesFromFiles,
-  libraryProposalFor, summarizeFolderProposals, ACCEPT_TEXTURES,
+  summarizeFolderProposals, ACCEPT_TEXTURES,
 } from '../../components/togo/sceneImport.js';
-import { LR_GROUPS } from '../../lib/togo/libraryPath.js';
+import { relPathOf } from '../../brands/index.js';
 import { groupFamilies } from '../../lib/catalog.js';
 import {
   resolveModelManager, resolveTogoModelCards, resolveTogoModels, togoPickerFamilies,
@@ -34,13 +34,13 @@ export const ACCEPT_3D = ACCEPT_3D_SET;
 // itself instead of offering a folder dialog that quietly can't pick folders.
 const CAN_PICK_FOLDER = supportsDirectoryPicker();
 
-// Ligne Roset's own top-level groups — the «Grupo» datalist in the review step.
-// VERBATIM from the Model, never re-cased here: `parseLibraryPath` hands back
-// these exact strings as its `group`, so a dealer picking from the list and the
-// detector reading the path must land on the same one, or the same grupo ends
-// up stored two ways. Offered, never enforced — the input stays free text,
-// because a library folder we haven't seen still has to be typeable.
-const GROUP_OPTIONS = LR_GROUPS;
+// The «Grupo» datalist in the review step comes from the ACTIVE BRAND's geometry
+// module (`modules.groups`) — VERBATIM, never re-cased here: the parser hands
+// back those exact strings as its `group`, so a dealer picking from the list and
+// the detector reading the path must land on the same one, or the same grupo
+// ends up stored two ways. Offered, never enforced — the input stays free text,
+// because a library folder we haven't seen still has to be typeable, and a brand
+// whose library has no top division simply offers none.
 
 /**
  * The "Modelos" section of the Togo workspace (TogoWorkspace) — the
@@ -79,7 +79,10 @@ const GROUP_OPTIONS = LR_GROUPS;
  * section with everything already bound never pays the multi-second catalog load.
  */
 export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }) {
-  const { isAdmin, profileId } = useApp();
+  // THE ACTIVE BRAND decides how a dropped library is read (its geometry
+  // module) — the reads below need no brand plumbing of their own, the data
+  // layer already scopes them (db/brandScope).
+  const { isAdmin, profileId, brand, brandModules } = useApp();
   const models = useLiveQuery(
     () => (profileId ? db.togoModels.where('profileId').equals(profileId).toArray() : Promise.resolve([])),
     [profileId], [],
@@ -177,6 +180,12 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
     }
   }, [models, profileId]);
 
+  // The example pieces are LIGNE ROSET's own Togo modules (assets/togo/seeds),
+  // so they are offered only inside a Ligne Roset environment. Seeding another
+  // manufacturer's empty catalog with someone else's sofa would be inventing
+  // data — an empty brand shows an empty brand.
+  const canSeed = brandModules.setId === 'ligne-roset';
+
   const [addOpen, setAddOpen] = useState(false);
 
   if (!isAdmin) {
@@ -192,6 +201,7 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
           is a single scroll/height budget for the whole dashboard and the table
           is literally where the rail used to be. */}
       <ModelStudio
+        modules={brandModules}
         cards={cards}
         navIds={navIds}
         models={models}
@@ -206,14 +216,14 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
         fidelityResolved={fidelityResolved}
         onNeedCatalog={requestCatalog}
         onAddModel={() => setAddOpen(true)}
-        onImportSeeds={importSeeds}
+        onImportSeeds={canSeed ? importSeeds : null}
         table={(
           <ModelManager
             models={models}
             selectedId={selectedId}
             onSelect={select}
             onAddModel={() => setAddOpen(true)}
-            onImportSeeds={importSeeds}
+            onImportSeeds={canSeed ? importSeeds : undefined}
             // The table's «Sugerir SKUs con Claude» narrows the catalog in the
             // browser exactly like the studio's own suggestion panel, so it
             // takes the SAME lazy read — never a second fetch of 27k rows.
@@ -233,6 +243,8 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onOpenRequest={() => setAddOpen(true)}
+        modules={brandModules}
+        brandName={brand?.name || null}
         families={families}
         collections={collections}
         onNeedCatalog={requestCatalog}
@@ -266,9 +278,27 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
  * writes.
  */
 function AddModelModal({
-  open, onClose, onOpenRequest, families, collections = [], onNeedCatalog, profileId,
-  nextSort, onCreated, droppedFile = null, onDroppedFileConsumed,
+  open, onClose, onOpenRequest, modules, brandName = null, families, collections = [],
+  onNeedCatalog, profileId, nextSort, onCreated, droppedFile = null, onDroppedFileConsumed,
 }) {
+  // ── THE BRAND'S GEOMETRY MODULE. Everything this flow knows about the shape
+  // of a 3D library comes from here: which extensions are models, and what a
+  // path says about a piece. Ligne Roset's module wraps the ARCHVIZ engine
+  // verbatim, so a dealer dropping that tree gets exactly what he always did;
+  // a brand on the generic module reads Collection/Model.glb instead.
+  const geometry = modules?.geometry || null;
+  const groupOptions = modules?.groups || [];
+  const isModel = useCallback(
+    (file) => (geometry ? geometry.accepts(file) : /\.(fbx|glb|gltf|obj|dae|3ds)$/i.test(String(file?.name || ''))),
+    [geometry],
+  );
+  const modelHint = geometry?.extensions?.join(', ') || '.fbx, .glb, .obj';
+  /** The taxonomy the brand's module reads out of one dropped path, against the
+   *  batch's own shape. ONE reader for both the single-file and the folder
+   *  flow, so two files from the same drop can never be filed differently. */
+  const readTaxonomy = useCallback((file, shape) => (
+    geometry ? geometry.parsePath(relPathOf(file), shape) : { group: null, category: null, collection: null, model: null, variant: null }
+  ), [geometry]);
   const [stage, setStage] = useState('idle');   // idle | parsing | single | review | importing | done
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);   // a warning the flow survives (a truncated folder read)
@@ -319,8 +349,8 @@ function AddModelModal({
     setError(null); setNotice(null); setResult(null); setPlan(null); setScene(null);
     setProgress({ done: 0, total: 0, current: '' });   // never show a previous batch's counter
     setMeshUrl((prev) => { if (prev) removeTogoMesh(prev); return null; });   // drop an orphan from a re-pick
-    if (!/\.(fbx|glb|gltf|obj|dae|3ds)$/i.test(file.name)) {
-      setError('Sube un modelo 3D o una escena (.fbx, .glb, .obj…).'); setStage('idle'); return;
+    if (!isModel(file)) {
+      setError(`Sube un modelo 3D o una escena (${modelHint}).`); setStage('idle'); return;
     }
     setStage('parsing');
     try {
@@ -357,13 +387,15 @@ function AddModelModal({
         // A laid-out scene → the batch review; each detected piece becomes a model.
         // Every piece points at the ONE file it came from (uploaded once at
         // import, shared as the source of all its pieces).
-        const lib = libraryProposalFor(file);
+        // One file IS its own batch, so its shape is read off itself.
+        const lib = readTaxonomy(file, geometry?.resolveShape([relPathOf(file)]));
         setScene({
           THREE,
           upAxis: split.upAxis,
           pieces: split.pieces.map((p) => ({
             ...p, include: true, upAxis: split.upAxis, sourceFile: file, sourceName: file.name,
             folderGroup: lib.group, folderCategory: lib.category, folderCollection: lib.collection,
+            variant: lib.variant || null,
             group: lib.group || '', category: lib.category || '', collection: lib.collection || '',
           })),
         });
@@ -374,7 +406,7 @@ function AddModelModal({
       setError(e?.message || 'No se pudo leer el archivo.');
       setStage('idle');
     }
-  }, [onNeedCatalog]);
+  }, [onNeedCatalog, isModel, modelHint, readTaxonomy, geometry]);
 
   // MANY files at once — the dealer's real workflow: LR ships DWGs, pCon
   // exports ONE FILE PER MODEL, and a collection lands as a folder of them.
@@ -404,16 +436,30 @@ function AddModelModal({
         return;
       }
       if (bad) setError(bad);   // the good ones still import; the bad ones are named
+      // ONE DROP, ONE SHAPE — measured over EVERY dropped path (the sidecar
+      // bitmaps included: a .jpg beside the models still hangs off the same
+      // tree and still says where its levels are), then every piece is filed
+      // against that one plan by the BRAND's module. This re-files what the
+      // loader proposed with its built-in reader; for Ligne Roset the two are
+      // the same engine and the answer is identical.
+      const shape = geometry?.resolveShape(Array.from(files).map(relPathOf));
       setScene({
         THREE: batch.THREE,
         upAxis: batch.pieces[0].upAxis || 'y',
         // The library proposals seed the row's EDITABLE fields and stay beside
         // them untouched, so the summary line keeps reporting what was detected
         // however much the dealer corrects.
-        pieces: batch.pieces.map((p) => ({
-          ...p, include: true,
-          group: p.folderGroup || '', category: p.folderCategory || '', collection: p.folderCollection || '',
-        })),
+        pieces: batch.pieces.map((p) => {
+          const lib = p.sourceFile
+            ? readTaxonomy(p.sourceFile, shape)
+            : { group: p.folderGroup, category: p.folderCategory, collection: p.folderCollection, variant: null };
+          return {
+            ...p, include: true,
+            folderGroup: lib.group, folderCategory: lib.category, folderCollection: lib.collection,
+            variant: lib.variant || null,
+            group: lib.group || '', category: lib.category || '', collection: lib.collection || '',
+          };
+        }),
       });
       setStage('review');
     } catch (e) {
@@ -421,24 +467,24 @@ function AddModelModal({
       setError(e?.message || 'No se pudo leer la carpeta.');
       setStage('idle');
     }
-  }, [onFile]);
+  }, [onFile, geometry, readTaxonomy]);
 
   const busyIntake = stage === 'parsing' || stage === 'importing';
   // The zone: files AND whole folder trees (LR ships its library as
   // <grupo>/<categoría>/…/<archivo>, so the drop already knows the taxonomy).
   const intake = useFileIntake({
-    accept: ACCEPT_3D,
+    accept: geometry?.accept || ACCEPT_3D,
     // SOME PRODUCTS BRING THEIR OWN MATERIALS: an LR product folder holds the
     // mesh AND the bitmaps its materials name (DCMAP1.JPG…). They come in with
     // the drop and get baked into the piece's GLB at conversion — filtered out
     // here, the walnut shelf imports as a grey shell. They are SIDECARS, never
     // content: a folder of pure bitmaps still rejects exactly as before.
-    sidecarAccept: ACCEPT_TEXTURES,
+    sidecarAccept: geometry?.sidecarAccept || ACCEPT_TEXTURES,
     multiple: true,
     directories: true,
     disabled: busyIntake,
     onFiles: onManyFiles,
-    onReject: () => setError('Sube un modelo 3D o una escena (.fbx, .glb, .obj…).'),
+    onReject: () => setError(`Sube un modelo 3D o una escena (${modelHint}).`),
     // The walk delivered a PREFIX of the tree. Not an error — what arrived is
     // importable — but the dealer has to know the rest never came, or a
     // half-read library reads as a complete one.
@@ -449,8 +495,8 @@ function AddModelModal({
   // carpeta» cannot be the same input. Only `intake` carries `rootProps` — two
   // zones off one surface would double-deliver every drop.
   const folderIntake = useFileIntake({
-    accept: ACCEPT_3D,
-    sidecarAccept: ACCEPT_TEXTURES,   // the product folder's own textures (see above)
+    accept: geometry?.accept || ACCEPT_3D,
+    sidecarAccept: geometry?.sidecarAccept || ACCEPT_TEXTURES,   // the product folder's own textures (see above)
     multiple: true,
     pickDirectories: true,
     disabled: busyIntake,
@@ -459,7 +505,7 @@ function AddModelModal({
     // that's pure textures/seed junk) read as the picker silently doing
     // nothing — the dealer would watch the OS dialog close and see no error,
     // no import, nothing to act on.
-    onReject: () => setError('Esa carpeta no contiene modelos 3D reconocibles (.fbx, .glb, .obj, .dae, .3ds).'),
+    onReject: () => setError(`Esa carpeta no contiene modelos 3D reconocibles (${modelHint}).`),
   });
 
   // A model dropped anywhere on the Togo workspace (any tab — the workspace-wide
@@ -607,13 +653,21 @@ function AddModelModal({
       <div className="space-y-4">
         {showDrop && (
           <>
+            {/* The copy is the MODULE's, not Ligne Roset's: what a library looks
+                like is exactly what differs between manufacturers, and telling
+                a brand on the generic module to export from pCon is how a
+                dealer concludes the app isn't for him. */}
             <p className="text-[11px] text-ink-500">
-              Arrastra el <b>modelo 3D (.fbx/.glb)</b> de una pieza, una <b>escena con varias piezas</b> exportada de pCon
-              (Archivo → Exportar → Geometría, dejando más de 20 cm de aire entre piezas) <b>o una carpeta completa</b> de la
-              biblioteca Ligne Roset. Se detecta solo: una pieza abre el editor, varias se importan de una vez, y de la
-              biblioteca se leen el <b>grupo</b>, la <b>categoría</b> y la <b>colección</b>. El plano 2D y la huella se
-              generan del propio modelo.
+              Arrastra el <b>modelo 3D</b> de una pieza, una <b>escena con varias piezas</b>, <b>o una carpeta completa</b>
+              {brandName ? <> de la biblioteca de <b>{brandName}</b></> : ' de la biblioteca'}. Se detecta solo: una pieza
+              abre el editor, varias se importan de una vez, y de la ruta se leen el <b>grupo</b>, la <b>categoría</b> y la{' '}
+              <b>colección</b>. El plano 2D y la huella se generan del propio modelo.
             </p>
+            {modules?.geometry && (
+              <p className="text-[11px] text-ink-400">
+                Módulo de importación: <b className="text-ink-600">{modules.geometry.label}</b> — {modules.geometry.summary}
+              </p>
+            )}
             <div
               {...intake.rootProps}
               onClick={intake.open}
@@ -626,7 +680,7 @@ function AddModelModal({
               ) : (
                 <>
                   <span className="block text-sm text-ink-500">
-                    Suelta archivos o una <b>carpeta completa</b> aquí
+                    Suelta archivos o una <b>carpeta completa</b> aquí ({modelHint})
                     <br />
                     <span className="text-[11px] text-ink-400">
                       Una pieza, varias o todo un árbol de carpetas — se detecta automáticamente.
@@ -783,6 +837,11 @@ function AddModelModal({
                   <div className="flex items-center gap-2.5">
                     <input type="checkbox" checked={p.include} onChange={(e) => setPiece(i, { include: e.target.checked })} className="shrink-0" />
                     <input className="input h-8 py-0 text-[13px] flex-1 min-w-0" value={p.name} onChange={(e) => setPiece(i, { name: e.target.value })} />
+                    {p.variant && (
+                      <span className="shrink-0 rounded-full bg-ink-100 px-1.5 py-px text-[10px] text-ink-500" title="Variante detectada en la ruta">
+                        {p.variant}
+                      </span>
+                    )}
                     {p.sourceName && <span className="hidden sm:block shrink-0 max-w-[10rem] truncate text-[10px] text-ink-400" title={p.sourceName}>{p.sourceName}</span>}
                     <span className="shrink-0 text-[11px] text-ink-500 tabular-nums">{p.widthCm}×{p.depthCm} cm</span>
                   </div>
@@ -824,7 +883,7 @@ function AddModelModal({
                 «Grupo» field. One list for the whole review — a datalist per row
                 would be N copies of the same options. */}
             <datalist id="togo-groups-scene">
-              {GROUP_OPTIONS.map((g) => <option key={g} value={g} />)}
+              {groupOptions.map((g) => <option key={g} value={g} />)}
             </datalist>
             <div className="flex flex-col sm:flex-row sm:items-end gap-3">
               <div className="flex-1">

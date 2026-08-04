@@ -124,3 +124,20 @@ export {
   dealerSlugify, dealerMoneyLabel, dealerLocaleLabel, dealerPricingLabel,
   DEALER_LOCALES, DEALER_PRICING_MODES, DEALER_LIST_TABS, DEALER_SORT_OPTIONS,
 } from './views/dealerWorkspace.js';
+// The QUOTING surface — a configurator lead becomes a document the manufacturer
+// sends. `resolveQuoteDoc` is the SHARED content tree for the internal quote
+// detail AND the customer's login-less `#/q/<token>` page (the same
+// one-projection-two-surfaces rule `resolveQuoteView` holds for the ERP quote),
+// so screen and paper cannot drift. Nothing here PRICES: a quote's money is
+// frozen server-side at creation (togo-embed/quotes.ts, migration
+// 20261130000000) and these VMs only format and label what is stored.
+export {
+  resolveQuoteDoc, resolveQuotesBoard, quoteStatusMeta, quoteDocCopy,
+  formatQuoteMoney, quoteShareUrl, QUOTE_BOARD_TABS, QUOTE_STATUSES,
+} from './views/quoteDoc.js';
+// Solicitudes: the triage board + one lead opened (priced by the server's shared
+// pricer — the same numbers the widget and the dealer inbox show).
+export {
+  resolveRequestsBoard, resolveRequestDetail, requestStatusMeta, placedFromItems,
+  REQUEST_BOARD_TABS,
+} from './views/requestDetail.js';

@@ -4,6 +4,10 @@ import { isSharedCatalogImage, imageBytesUrl, DOWNLOAD_IMG_WIDTH } from '../lib/
 import { parseSearchQuery, rankCatalogMatches } from '../lib/productSearch.js';
 import { snake, toRow, fromRow, fromRows, isAtField, type Row } from './rowMapping.js';
 import { cacheKey, getCached, setCached, purgeTable, purgeAll } from './queryCache.js';
+import {
+  tableScopeFor, brandStampFor, catalogBrandScope, getBrandScope, type TableScope,
+} from './brandScope.js';
+import type { Brand } from './brands.js';
 import type {
   Profile,
   Settings,
@@ -122,6 +126,7 @@ interface TableDef {
  */
 const TABLES = {
   profiles:      { db: 'profiles',      pk: 'id' },
+  brands:        { db: 'brands',        pk: 'id' },
   settings:      { db: 'settings',      pk: 'profileId' },
   images:        { db: 'images',        pk: 'id' },
   customers:     { db: 'customers',     pk: 'id' },
@@ -214,6 +219,7 @@ export type TableName = keyof typeof TABLES;
  */
 export interface TableRowMap {
   profiles: Profile;
+  brands: Brand;
   settings: Settings;
   images: ImageRecord;
   customers: Customer;
@@ -398,10 +404,32 @@ export class Query<T> implements PromiseLike<T[]> {
   private _limit: number | null = null;
   private _ttl: number | undefined = undefined;
   private _columns: string[] | null = null;
+  private scoped = false;
 
   constructor(table: TableDef, jsName: TableName) {
     this.t = table;
     this.jsName = jsName;
+  }
+
+  /**
+   * Fold the ACTIVE BRAND into this query — the structural half of the brand
+   * microenvironment (see `brandScope.ts`). It runs once per query, BEFORE the
+   * cache key is built, so a cached read can never be served across a brand
+   * switch, and it never overrides a caller who already filtered the scope field
+   * itself (the brand admin reads other brands' rows on purpose).
+   *
+   * Returns false when the active brand owns nothing in this table, and the
+   * terminal answers empty without a round-trip.
+   */
+  private applyBrandScope(): boolean {
+    if (this.scoped) return true;
+    this.scoped = true;
+    const scope: TableScope = tableScopeFor(this.jsName);
+    if (!scope) return true;
+    if (scope.kind === 'empty') return false;
+    if (this.filters.some((f) => f.field === scope.field)) return true;
+    this.filters.push({ field: scope.field, value: scope.value });
+    return true;
   }
 
   where(field: (keyof T & string) | string): this {
@@ -541,6 +569,9 @@ export class Query<T> implements PromiseLike<T[]> {
     if (this.pending != null) {
       throw new Error(`Incomplete query: .where('${this.pending}') has no matching .equals()`);
     }
+    // The active brand's environment. Applied before the cache key below, so a
+    // brand switch can never be served another brand's cached rows.
+    if (!this.applyBrandScope()) return [];
     // Read cache: only when a TTL was requested via .cached(). The key covers
     // every input to the raw fetch (filters incl. anyOf sets, orderBy, reverse,
     // limit) — but NOT the JS predicate/sortField, which post-process the same
@@ -641,6 +672,7 @@ export class Query<T> implements PromiseLike<T[]> {
     return rows[0] || null;
   }
   async count(): Promise<number> {
+    if (!this.applyBrandScope()) return 0;
     // Fast path: no JS predicate → let Postgres count with a head request
     // (no rows shipped). This is exact regardless of the 1000-row API cap.
     if (!this.predicate) {
@@ -740,7 +772,11 @@ export class Table<T> {
     if (pkVal == null || pkVal === '') {
       throw new Error(`put(${this.t.db}): missing primary key '${this.t.pk}'`);
     }
-    const row = toRow(record as unknown as Row);
+    // Stamp the ACTIVE BRAND on a row that doesn't name one: a model imported
+    // while brand B is open belongs to brand B, whatever the caller remembered
+    // to pass. A row that already carries a brand is left alone.
+    const stamp = brandStampFor(this.jsName, record as unknown as Record<string, unknown>);
+    const row = toRow({ ...(record as unknown as Row), ...(stamp || {}) });
     const { error } = await supabase
       .from(this.t.db).upsert(row, { onConflict: snake(this.t.pk) });
     if (error) throw error;
@@ -772,7 +808,11 @@ export class Table<T> {
     if (!Number.isInteger(retries) || retries < 0) {
       throw new Error(`bulkPut: retries must be a non-negative integer (got ${retries})`);
     }
-    const rows = records.map((r) => toRow(r as unknown as Row));
+    // Same brand stamp as put(), per row (see brandScope.ts).
+    const rows = records.map((r) => {
+      const stamp = brandStampFor(this.jsName, r as unknown as Record<string, unknown>);
+      return toRow({ ...(r as unknown as Row), ...(stamp || {}) });
+    });
     if (!rows.length) return 0;
     const conflictKey = snake(this.t.pk);
     let done = 0;
@@ -858,6 +898,25 @@ export const db: Db = Object.fromEntries(
   (Object.keys(TABLES) as TableName[]).map((k) => [k, new Table(k)]),
 ) as Db;
 
+/**
+ * The catalog brand a product helper must read under.
+ *
+ * `products` is partitioned by its own `brand` column (it always was), so the
+ * active brand environment reaches these RPC/raw helpers here rather than
+ * through the Query scope. An explicit `brand` argument always wins — the LSG
+ * catalog book and any deliberate cross-brand read still work.
+ *
+ * `blocked` means: a brand IS open and it has no catalog of its own, so the
+ * honest answer is nothing. Falling through unfiltered would show the dealer
+ * another manufacturer's SKUs and prices.
+ */
+function catalogScope(brand?: string): { brand?: string; blocked: boolean } {
+  if (brand) return { brand, blocked: false };
+  const scoped = catalogBrandScope();
+  if (scoped) return { brand: scoped, blocked: false };
+  return { brand: undefined, blocked: !!getBrandScope() };
+}
+
 /** Max query tokens sent to retrieval — mirrors search_catalog_models' six
  *  unrolled slots, so a long paste can neither explode the filter nor silently
  *  lose its tail to a slot that does not exist. */
@@ -900,10 +959,13 @@ export async function searchCatalogModels(
 ): Promise<Product[]> {
   const { phrase, tokens } = parseSearchQuery(term);
   if (!phrase) return [];
+  // The open brand's catalog (see catalogScope) — an explicit `brand` wins.
+  const scope = catalogScope(brand);
+  if (scope.blocked) return [];
 
   const { data, error } = await supabase.rpc('search_catalog_models', {
     p_profile_id: profileId,
-    p_brand: brand ?? null,
+    p_brand: scope.brand ?? null,
     p_tokens: tokens.slice(0, SEARCH_MAX_TOKENS),
     p_phrase: phrase,
     p_limit: 2000,
@@ -914,7 +976,7 @@ export async function searchCatalogModels(
   // it just ranks a smaller candidate set until the migration lands.
   if (error) {
     console.warn('[catalog] search_catalog_models unavailable, falling back:', error.message);
-    return searchProducts(profileId, term, 1000, brand);
+    return searchProducts(profileId, term, 1000, scope.brand);
   }
 
   type IndexRow = {
@@ -964,7 +1026,7 @@ export async function searchCatalogModels(
   for (let i = 0; i < roots.length; i += CHUNK) {
     const slice = roots.slice(i, i + CHUNK);
     let q = supabase.from('products').select('*').eq('profile_id', profileId).in('search_root', slice);
-    if (brand) q = q.eq('brand', brand);
+    if (scope.brand) q = q.eq('brand', scope.brand);
     const { data: rows, error: rowsError } = await q.order('reference');
     if (rowsError) throw rowsError;
     pages.push((rows as unknown[]) || []);
@@ -995,8 +1057,10 @@ export async function searchCatalogModels(
  * them all). Same contract on catalogCategories / productsByCategory.
  */
 export async function searchProducts(profileId: string, term: string, limit = 400, brand?: string): Promise<Product[]> {
+  const scope = catalogScope(brand);
+  if (scope.blocked) return [];
   let q = supabase.from('products').select('*').eq('profile_id', profileId);
-  if (brand) q = q.eq('brand', brand);
+  if (scope.brand) q = q.eq('brand', scope.brand);
   const needle = term.trim();
   if (needle) {
     // PostgREST or() is a comma-separated list and ilike treats % as the
@@ -1047,11 +1111,13 @@ export interface CatalogCategory {
  * team-read RLS so the page degrades gracefully instead of breaking.
  */
 export async function catalogCategories(profileId: string, brand?: string): Promise<CatalogCategory[]> {
+  const scope = catalogScope(brand);
+  if (scope.blocked) return [];
   // p_brand is passed only when filtering, so the call still matches the old
   // single-arg function signature on a DB the brand migration hasn't reached.
   const { data, error } = await supabase.rpc(
     'catalog_categories',
-    brand ? { p_profile_id: profileId, p_brand: brand } : { p_profile_id: profileId },
+    scope.brand ? { p_profile_id: profileId, p_brand: scope.brand } : { p_profile_id: profileId },
   );
   if (!error && Array.isArray(data)) {
     return (data as Array<{ category?: string | null; sku_count?: number | string }>).map((r) => ({
@@ -1060,7 +1126,7 @@ export async function catalogCategories(profileId: string, brand?: string): Prom
     }));
   }
   if (error) console.warn('[catalog] catalog_categories RPC unavailable, falling back:', error.message);
-  return catalogCategoriesFallback(profileId, brand);
+  return catalogCategoriesFallback(profileId, scope.brand);
 }
 
 async function catalogCategoriesFallback(profileId: string, brand?: string): Promise<CatalogCategory[]> {
@@ -1093,11 +1159,13 @@ async function catalogCategoriesFallback(profileId: string, brand?: string): Pro
  * null/blank bucket. The caller groups these into models via `groupFamilies`.
  */
 export async function productsByCategory(profileId: string, category: string, brand?: string): Promise<Product[]> {
+  const scope = catalogScope(brand);
+  if (scope.blocked) return [];
   const PAGE = 1000;
   let out: unknown[] = [];
   for (let from = 0; ; from += PAGE) {
     let q = supabase.from('products').select('*').eq('profile_id', profileId);
-    if (brand) q = q.eq('brand', brand);
+    if (scope.brand) q = q.eq('brand', scope.brand);
     q = category ? q.eq('category', category) : q.or('category.is.null,category.eq.');
     const { data, error } = await q.order('name').order('id').range(from, from + PAGE - 1);
     if (error) throw error;

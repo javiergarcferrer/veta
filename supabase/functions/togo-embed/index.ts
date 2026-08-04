@@ -60,6 +60,18 @@ import {
 } from './dealer.ts';
 import { isMissingColumn, leadDedupeDecision, leadDedupeKey } from './leadDedupe.ts';
 import {
+  freezeQuoteLines,
+  freezeQuoteTotals,
+  isQuoteStatus,
+  mintShareToken,
+  publicQuoteBundle,
+  quoteDetailShape,
+  quoteListShape,
+  statusStampColumn,
+  withInternalRequestFields,
+  type QuoteBrand,
+} from './quotes.ts';
+import {
   cacheHeadersFor,
   catalogModelShape,
   etagMatches,
@@ -621,29 +633,39 @@ async function captureLead(
   return { ok: true };
 }
 
-// The dealer's private, token-gated lead inbox: its OWN togo_requests (newest
-// first, capped), shaped public-safe + PRICED, plus the geometry/plan-symbol the
-// client draws each item from. `dealer` is already token-resolved by the caller.
+// THE ONE PLACE A STORED LEAD IS PRICED — the token-gated dealer inbox
+// (loadInbox, below), the manufacturer's own request detail and the freeze that
+// turns a request into a quote (loadRequestDetail / createQuoteFromRequest) all
+// come through here, so those three surfaces cannot state three different
+// numbers for the same build. The pricing itself is dealer.ts's
+// (buildPriceIndex + priceInboxItems); this function only feeds it the right
+// rows: the models the leads reference (active OR since-deactivated), the SKUs
+// under their roots, the settings margin, and the dealer whose price factor
+// applies.
 //
 // DELIBERATELY UNSCOPED by `collections`: the scope decides what a dealer is
 // OFFERED, never what it already captured. A lead taken while the dealer carried
 // Prado must keep reading (and pricing, and drawing) after Prado is dropped from
 // its scope — no-vanish, the same rule that keeps a since-DEACTIVATED model in
 // this read.
-// Payload: { dealer, requests, models, modelNames } where
-//   • requests[].items[].priceUsd — per-item retail × the dealer's price factor
-//     (markup × FX; pricing_mode does NOT gate the inbox — the dealer always
-//     sees prices), and requests[].totalUsd sums them.
-//   • models — { [id]: { name, widthCm, depthCm, svg } } for exactly the models
-//     the returned leads reference (active OR since-deactivated), so the plan
-//     draws even after a model is switched off; falls back gracefully (missing
-//     model ⇒ absent from the map, item priced null).
+//
+// Returns { requests, models, modelNames } where
+//   • requests — the public-safe shape, INDEX-ALIGNED with the `requestRows`
+//     passed in (a caller that may see more than the dealer's inbox does zips
+//     the two, rather than this widening for everyone).
+//     requests[].items[].priceUsd is per-item retail × the dealer's price factor
+//     (markup × FX; pricing_mode does NOT gate this — a dealer always sees its
+//     own prices), and requests[].totalUsd sums them.
+//   • models — { [id]: { name, widthCm, depthCm, svg, … } } for exactly the
+//     models those leads reference, so the plan draws even after a model is
+//     switched off (missing model ⇒ absent from the map, item priced null).
 //   • modelNames — every model id→name, KEPT verbatim for back-compat.
-async function loadInbox(admin: Admin, dealer: Row): Promise<Row> {
-  const [reqRes, modelRows, settingsRes] = await Promise.all([
-    admin.from('togo_requests').select('*')
-      .eq('profile_id', TEAM_PROFILE_ID).eq('dealer_id', String(dealer.id))
-      .order('created_at', { ascending: false }).limit(200),
+async function priceRequestRows(
+  admin: Admin,
+  requestRows: Row[],
+  dealer: Row | null,
+): Promise<{ requests: Row[]; models: Record<string, unknown>; modelNames: Record<string, string> }> {
+  const [modelRows, settingsRes] = await Promise.all([
     // PAGED like loadContext's: read unfiltered (a lead may reference a
     // since-deactivated model), so a model past the cap would drop out of
     // `modelNames` AND out of the price index — the lead would draw blank and
@@ -655,7 +677,6 @@ async function loadInbox(admin: Admin, dealer: Row): Promise<Row> {
     ),
     admin.from('settings').select('default_margin_pct').eq('profile_id', TEAM_PROFILE_ID).maybeSingle(),
   ]);
-  const requestRows = (reqRes.data || []) as Row[];
   // Same read-time injection as loadContext: the inbox's 3D snapshot renders
   // the lead from `models[id].parts`, so a merely-MARKED estructura group must
   // carry its colección's palette here too (updated_at rides the select — the
@@ -724,7 +745,17 @@ async function loadInbox(admin: Admin, dealer: Row): Promise<Row> {
     return { ...shaped, items, totalUsd };
   });
 
-  return { dealer: dealerPublicShape(dealer), requests, models, modelNames };
+  return { requests, models, modelNames };
+}
+
+/** The dealer's own inbox payload: its leads (newest first, capped), priced
+ *  through the shared pricer above, plus its public identity. */
+async function loadInbox(admin: Admin, dealer: Row): Promise<Row> {
+  const { data } = await admin.from('togo_requests').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('dealer_id', String(dealer.id))
+    .order('created_at', { ascending: false }).limit(200);
+  const priced = await priceRequestRows(admin, (data || []) as Row[], dealer);
+  return { dealer: dealerPublicShape(dealer), ...priced };
 }
 
 // An inbox action: the dealer marking one of ITS OWN leads pending/contacted.
@@ -753,6 +784,376 @@ async function inboxSetStatus(admin: Admin, dealer: Row, body: Row): Promise<Row
   return { ok: true };
 }
 
+/* ============================== THE QUOTING SURFACE ==============================
+ *
+ * A configurator lead becomes a DOCUMENT here. Four kinds of caller, three of
+ * them the manufacturer's own signed-in app and one of them the customer:
+ *
+ *   POST { quoteOp:'requestDetail', id }  the lead, priced (the detail screen)
+ *   POST { quoteOp:'create', requestId }  FREEZE it into a veta_quotes row
+ *   POST { quoteOp:'list' }               the quote list
+ *   POST { quoteOp:'get', id }            one quote, whole
+ *   POST { quoteOp:'setStatus', id, status }
+ *   POST { quoteOp:'share', id, enabled } mint / revoke the customer link
+ *   GET  ?quote=<share token>             the LOGGED-OUT customer page
+ *
+ * WHY THESE LIVE IN THIS FUNCTION and not a sibling: the prices come from
+ * dealer.ts (buildPriceIndex / priceInboxItems), and Edge Functions never import
+ * across folders — a sibling would have to copy the pricer, which is precisely
+ * the divergence this codebase keeps paying for elsewhere. One pricer, one
+ * function, three surfaces.
+ *
+ * AUTHORIZATION, both halves:
+ *   • the app ops verify the CALLER'S OWN JWT here (verify_jwt is off at the
+ *     gateway so the public widget can reach the catalog without one), then
+ *     require an ACTIVE profile row — the same self-verification lr-catalog and
+ *     bpd-rate do.
+ *   • the customer page is gated by the share TOKEN alone — 32 hex chars of
+ *     CSPRNG, unique-indexed, revocable via `share_enabled`, and it returns ONLY
+ *     the whitelisted `publicQuoteBundle` for THAT ONE quote. No listing, no
+ *     enumeration (the id and number are never accepted as a key), and the
+ *     token is never echoed back into the payload.
+ */
+
+/** Resolve a dealer by id (a stored lead's routing), whatever its active flag —
+ *  a document already made under a dealer keeps naming it. */
+async function dealerById(admin: Admin, id: string): Promise<Row | null> {
+  const s = String(id || '').trim();
+  if (!s) return null;
+  const { data } = await admin.from('dealers').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', s).maybeSingle();
+  return (data as Row) || null;
+}
+
+/** The public URL of a stored image (the images BUCKET is public-read; the
+ *  metadata row is what maps an id to its path). Null for anything missing, so a
+ *  quote without a composition render simply shows its plan instead. */
+async function publicImageUrl(admin: Admin, imageId: unknown): Promise<string | null> {
+  const id = str(imageId, 120).trim();
+  const base = Deno.env.get('SUPABASE_URL');
+  if (!id || !base) return null;
+  const { data } = await admin.from('images').select('storage_path').eq('id', id).maybeSingle();
+  const path = (data as Row | null)?.storage_path;
+  return path ? `${base}/storage/v1/object/public/images/${String(path)}` : null;
+}
+
+/** The identity a quote is presented under: the routing dealer's, or — for the
+ *  manufacturer's own embed — the store identity in `settings`. */
+async function brandFor(admin: Admin, dealer: Row | null): Promise<QuoteBrand> {
+  if (dealer) {
+    return {
+      name: str(dealer.name, 120),
+      logoUrl: dealer.logo_url ? str(dealer.logo_url, 500) : null,
+      locale: str(dealer.locale, 8) || 'es',
+      currency: str(dealer.currency, 8) || 'USD',
+    };
+  }
+  const { data } = await admin.from('settings').select('company_name, logo_image_id')
+    .eq('profile_id', TEAM_PROFILE_ID).maybeSingle();
+  const settings = (data as Row) || {};
+  return {
+    name: str(settings.company_name, 120) || 'Togo',
+    logoUrl: await publicImageUrl(admin, settings.logo_image_id),
+    locale: 'es',
+    currency: 'USD',
+  };
+}
+
+const fail = (message: string, status: number) =>
+  Promise.reject(Object.assign(new Error(message), { status }));
+
+/** ONE lead, priced, for the manufacturer's request detail screen: the same
+ *  numbers its dealer's inbox and the visitor's widget saw (priceRequestRows),
+ *  plus the internal-only fields and the quote it already became, if any. */
+async function loadRequestDetail(admin: Admin, id: string): Promise<Row> {
+  const { data } = await admin.from('togo_requests').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).maybeSingle();
+  const row = (data as Row) || null;
+  if (!row) return fail('request not found', 404);
+  const dealer = row.dealer_id ? await dealerById(admin, String(row.dealer_id)) : null;
+  const { requests, models } = await priceRequestRows(admin, [row], dealer);
+  let quote: Row | null = null;
+  if (row.quote_id) {
+    const { data: q } = await admin.from('veta_quotes').select('*')
+      .eq('profile_id', TEAM_PROFILE_ID).eq('id', String(row.quote_id)).maybeSingle();
+    if (q) quote = quoteListShape(q as Row) as unknown as Row;
+  }
+  return {
+    // The composition render rides as a URL, not an id: every surface that
+    // draws it (this screen, the quote, the customer's page) then resolves it
+    // the same way, and the logged-out one needs no table access to do it.
+    request: {
+      ...withInternalRequestFields(requests[0] as Row, row),
+      snapshotUrl: await publicImageUrl(admin, row.snapshot_image_id),
+    },
+    models,
+    dealer: dealer ? { id: String(dealer.id), ...dealerPublicShape(dealer) } : null,
+    currency: dealer ? (str(dealer.currency, 8) || 'USD') : 'USD',
+    quote,
+  };
+}
+
+/** The stored quote as every screen reads it: the frozen document plus the URL
+ *  of the composition render it was built from (resolved here so no surface —
+ *  least of all the logged-out one — needs table access to draw the picture). */
+async function quoteWithSnapshot(admin: Admin, row: Row) {
+  return { ...quoteDetailShape(row), snapshotUrl: await publicImageUrl(admin, row.snapshot_image_id) };
+}
+
+/** The lead's LIVE quote, if it has one — the idempotency key of the freeze.
+ *  A declined quote is not live: it is how a lead is deliberately re-quoted. */
+async function liveQuoteFor(admin: Admin, requestId: string): Promise<Row | null> {
+  const { data } = await admin.from('veta_quotes').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('request_id', requestId)
+    .neq('status', 'declined').order('number', { ascending: false }).limit(1);
+  const rows = (data || []) as Row[];
+  return rows.length ? rows[0] : null;
+}
+
+/**
+ * THE FREEZE — a lead becomes a document.
+ *
+ * Prices are resolved ONCE, here, through the shared pricer, and written into
+ * the row. Nothing re-prices a quote afterwards: there is no op for it, and the
+ * database refuses the update (migration 20261130000000). A price list edited
+ * tomorrow cannot restate what the customer was sent today.
+ *
+ * IDEMPOTENT, and race-proof: a lead that already carries a LIVE quote returns
+ * THAT quote instead of minting a second number and a second customer link for
+ * one build. The check is a read, so the unique index
+ * `veta_quotes_request_live_idx` is what makes it hold under two simultaneous
+ * taps — the loser's insert fails 23505, re-reads, and hands back the winner.
+ *
+ * A DECLINED quote is not live, and that is the only way back: marking one
+ * rechazada lets the lead be quoted afresh at today's prices, as a NEW document
+ * with a new number. Nothing ever edits the old one.
+ *
+ * REFUSED when nothing prices. A build whose every piece is off its fabric
+ * ladder has no total to state — the widget already shows «sin precio» there —
+ * and a document whose total is blank is not a quote, it is a mistake with a
+ * number on it. Partially-priced builds ARE allowed through: those lines keep
+ * their place, flagged, exactly as they read everywhere else (no-vanish).
+ */
+async function createQuoteFromRequest(admin: Admin, requestId: string): Promise<Row> {
+  const id = str(requestId, 80).trim();
+  const { data } = await admin.from('togo_requests').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', id).maybeSingle();
+  const row = (data as Row) || null;
+  if (!row) return fail('request not found', 404);
+
+  // Asked of the QUOTES table, not of the lead's stamp: the stamp is written
+  // after the insert, so a racing second call would still read it empty.
+  const live = await liveQuoteFor(admin, id);
+  if (live) return { quote: await quoteWithSnapshot(admin, live), reused: true };
+
+  const dealer = row.dealer_id ? await dealerById(admin, String(row.dealer_id)) : null;
+  const { requests, models } = await priceRequestRows(admin, [row], dealer);
+  const priced = requests[0] as Row;
+  const lines = freezeQuoteLines(priced.items as unknown[], models as Row);
+  if (!lines.length) return fail('la solicitud no tiene piezas que cotizar', 400);
+  const currency = dealer ? (str(dealer.currency, 8) || 'USD') : 'USD';
+  const totals = freezeQuoteTotals(lines, priced.totalUsd as number | null, currency);
+  if (totals.total == null) {
+    return fail('ninguna pieza de esta solicitud tiene precio — revisa las telas elegidas', 409);
+  }
+  const brand = await brandFor(admin, dealer);
+  const contact = (priced.contact || {}) as Row;
+
+  // The document number: max + 1, retried on the unique index. Same shape as the
+  // app's assignSequenceNumber — two people quoting at the same second collide
+  // on the index, not on the number.
+  const nowISO = new Date().toISOString();
+  let inserted: Row | null = null;
+  let lastError: { code?: string; message?: string } | null = null;
+  for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+    const { data: top } = await admin.from('veta_quotes').select('number')
+      .eq('profile_id', TEAM_PROFILE_ID).order('number', { ascending: false }).limit(1);
+    const highest = Array.isArray(top) && top.length ? num((top[0] as Row).number) : 1000;
+    const { data: created, error } = await admin.from('veta_quotes').insert({
+      id: newId(),
+      profile_id: TEAM_PROFILE_ID,
+      number: highest + 1,
+      request_id: id,
+      dealer_id: dealer ? String(dealer.id) : null,
+      brand_name: brand.name,
+      status: 'draft',
+      currency,
+      customer: { name: str(contact.name, 120), phone: str(contact.phone, 40), email: str(contact.email, 160) },
+      note: row.note == null ? null : str(row.note, 1000),
+      lines,
+      totals,
+      snapshot_image_id: row.snapshot_image_id == null ? null : String(row.snapshot_image_id),
+      // The link exists from minute one — the manufacturer copies it when ready,
+      // and revoking it (share_enabled) never loses the URL.
+      share_token: mintShareToken(),
+      share_enabled: true,
+      created_at: nowISO,
+      updated_at: nowISO,
+    }).select('*').maybeSingle();
+    if (created) { inserted = created as Row; break; }
+    lastError = (error as { code?: string; message?: string }) || null;
+    if (lastError?.code !== '23505') break;
+    // A unique violation is one of two things: the number was taken (retry with
+    // the next one) or ANOTHER caller just quoted this very lead — in which case
+    // its document is the answer, not a second one.
+    const won = await liveQuoteFor(admin, id);
+    if (won) return { quote: await quoteWithSnapshot(admin, won), reused: true };
+  }
+  if (!inserted) throw new Error(lastError?.message || 'no se pudo crear la cotización');
+
+  // The lead is now a document — stamped so it leaves the triage list and so
+  // the detail screen can point at what it became.
+  await admin.from('togo_requests')
+    .update({ status: 'converted', quote_id: String(inserted.id), updated_at: nowISO })
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', id);
+
+  return { quote: await quoteWithSnapshot(admin, inserted) };
+}
+
+/** The manufacturer's quote list (newest first, capped) — list shapes only. */
+async function listQuotes(admin: Admin): Promise<Row> {
+  const { data, error } = await admin.from('veta_quotes').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID)
+    .order('created_at', { ascending: false }).limit(500);
+  if (error) throw error;
+  return { quotes: ((data || []) as Row[]).map(quoteListShape) };
+}
+
+/** One quote, whole, for the manufacturer's detail screen (+ the geometry its
+ *  plan drawing needs — catalogue shapes, never money). */
+async function loadQuote(admin: Admin, id: string): Promise<Row> {
+  const { data } = await admin.from('veta_quotes').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).maybeSingle();
+  const row = (data as Row) || null;
+  if (!row) return fail('quote not found', 404);
+  return { quote: await quoteWithSnapshot(admin, row), models: await planModelsFor(admin, row) };
+}
+
+/** The plan geometry for the models a frozen quote's lines reference. Bounded by
+ *  the lines themselves (a lead is capped at MAX_ITEMS placements). */
+async function planModelsFor(admin: Admin, quote: Row): Promise<Record<string, unknown>> {
+  const lines = Array.isArray(quote.lines) ? (quote.lines as Row[]) : [];
+  const ids = [...new Set(lines.map((l) => str(l.modelId, 80)).filter(Boolean))].slice(0, MAX_ITEMS);
+  if (!ids.length) return {};
+  const { data } = await admin.from('togo_models')
+    .select('id, name, collection, width_cm, depth_cm, svg, parts, mount, mount_height_cm, mesh_url, mesh_scale, mesh_up_axis, mesh_rotate_y')
+    .eq('profile_id', TEAM_PROFILE_ID).in('id', ids);
+  const out: Record<string, unknown> = {};
+  for (const m of ((data || []) as Row[])) out[String(m.id)] = inboxModelShape(m);
+  return out;
+}
+
+/** Advance a quote's state (draft → sent → accepted/declined, and back). The
+ *  money is untouched by construction: only the status and its stamp are
+ *  written, and the freeze trigger would reject anything else. */
+async function setQuoteStatus(admin: Admin, id: string, status: string): Promise<Row> {
+  if (!isQuoteStatus(status)) return fail('invalid status', 400);
+  const patch: Row = { status, updated_at: new Date().toISOString() };
+  const stamp = statusStampColumn(status);
+  // The stamp records WHEN it first reached that state; re-marking it later
+  // doesn't move the date (a quote sent on Monday was sent on Monday).
+  if (stamp) patch[stamp] = new Date().toISOString();
+  const { data, error } = await admin.from('veta_quotes').update(patch)
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).select('*').maybeSingle();
+  // Reviving a DECLINED quote whose lead has since been quoted again collides on
+  // veta_quotes_request_live_idx. That is the rule working — one live quote per
+  // lead — it just has to reach the dealer as a sentence, not a constraint name.
+  if ((error as { code?: string } | null)?.code === '23505') {
+    return fail('esa solicitud ya tiene una cotización activa: no se puede reactivar la rechazada', 409);
+  }
+  if (error) throw error;
+  if (!data) return fail('quote not found', 404);
+  return { quote: await quoteWithSnapshot(admin, data as Row) };
+}
+
+/** Open or revoke the customer link. Revoking keeps the token, so re-enabling
+ *  restores the SAME URL rather than invalidating what was already sent. */
+async function setQuoteShare(admin: Admin, id: string, enabled: boolean): Promise<Row> {
+  const { data: current } = await admin.from('veta_quotes').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).maybeSingle();
+  if (!current) return fail('quote not found', 404);
+  const patch: Row = { share_enabled: enabled, updated_at: new Date().toISOString() };
+  if (enabled && !(current as Row).share_token) patch.share_token = mintShareToken();
+  const { data, error } = await admin.from('veta_quotes').update(patch)
+    .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).select('*').maybeSingle();
+  if (error) throw error;
+  return { quote: await quoteWithSnapshot(admin, data as Row) };
+}
+
+/**
+ * THE CUSTOMER'S PAGE — login-less, token-gated, read-only.
+ *
+ * The token is the only key and it selects exactly one row; a revoked link
+ * (`share_enabled` false) reads as a 404 like an unknown one, so the difference
+ * between "revoked" and "never existed" leaks nothing. What comes back is
+ * `publicQuoteBundle`'s whitelist — the frozen document and the brand it was
+ * quoted under, with no ids, no contact details and no token in it.
+ */
+async function loadPublicQuote(admin: Admin, token: string): Promise<Row> {
+  const t = str(token, 80).trim();
+  if (!t) return fail('quote not found', 404);
+  const { data } = await admin.from('veta_quotes').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('share_token', t).maybeSingle();
+  const row = (data as Row) || null;
+  if (!row || row.share_enabled === false) return fail('quote not found', 404);
+
+  const dealer = row.dealer_id ? await dealerById(admin, String(row.dealer_id)) : null;
+  const [brand, models, snapshotUrl] = await Promise.all([
+    brandFor(admin, dealer),
+    planModelsFor(admin, row),
+    publicImageUrl(admin, row.snapshot_image_id),
+  ]);
+
+  // The open receipt: how many times the customer looked, and when they first
+  // did. Best-effort — a counter must never be why a customer can't read their
+  // quote. (It rides the mutable half of the freeze; see the migration.)
+  try {
+    await admin.from('veta_quotes').update({
+      view_count: num(row.view_count) + 1,
+      first_viewed_at: row.first_viewed_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('profile_id', TEAM_PROFILE_ID).eq('id', String(row.id));
+  } catch (e) { console.error('[togo-embed] view stamp failed:', (e as Error).message); }
+
+  return publicQuoteBundle(row, { brand, models, snapshotUrl });
+}
+
+/**
+ * The caller's OWN JWT, verified here (the gateway's check is off for the public
+ * widget) and backed by an ACTIVE profile row: a valid token whose account was
+ * deleted or deactivated must not still be able to price leads or mint customer
+ * links. Returns null for anything short of that — the caller answers 401.
+ */
+async function teamUserId(admin: Admin, req: Request): Promise<string | null> {
+  const authHeader = req.headers.get('Authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  const caller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await caller.auth.getUser();
+  if (error || !data?.user) return null;
+  const { data: profile } = await admin.from('profiles').select('active')
+    .eq('id', data.user.id).maybeSingle();
+  if (!profile || (profile as Row).active === false) return null;
+  return data.user.id;
+}
+
+/** Dispatch one authenticated quote op. The caller has already been verified. */
+async function runQuoteOp(admin: Admin, body: Row): Promise<Row> {
+  const op = str(body.quoteOp, 40);
+  if (op === 'requestDetail') return loadRequestDetail(admin, str(body.id, 80));
+  if (op === 'create') return createQuoteFromRequest(admin, str(body.requestId, 80));
+  if (op === 'list') return listQuotes(admin);
+  if (op === 'get') return loadQuote(admin, str(body.id, 80));
+  if (op === 'setStatus') return setQuoteStatus(admin, str(body.id, 80), str(body.status, 20));
+  if (op === 'share') return setQuoteShare(admin, str(body.id, 80), body.enabled !== false);
+  return fail('unknown operation', 400);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
 
@@ -775,6 +1176,11 @@ Deno.serve(async (req: Request) => {
         // shared cache under a URL somebody else can replay.
         return json(await loadInbox(admin, dealer), 200, cacheHeadersFor('inbox'));
       }
+      // The customer's own quote page (#/q/<token>) — login-less, gated by the
+      // share token alone, `no-store` like the inbox: a shared cache holding one
+      // customer's document under a replayable URL is a disclosure bug.
+      const shareToken = url.searchParams.get('quote');
+      if (shareToken) return json(await loadPublicQuote(admin, shareToken));
       // Plan outlines on demand — what the catalog stopped carrying.
       const svgIds = url.searchParams.get('svg');
       if (svgIds != null) {
@@ -791,6 +1197,12 @@ Deno.serve(async (req: Request) => {
     }
     if (req.method === 'POST') {
       const body = (await req.json().catch(() => ({}))) as Row;
+      // The manufacturer's own quoting surface — its JWT, verified here.
+      if (body.quoteOp) {
+        const userId = await teamUserId(admin, req);
+        if (!userId) return json({ error: 'sesión no válida' }, 401);
+        return json(await runQuoteOp(admin, body));
+      }
       // Inbox action (mark a lead pending/contacted) — token-gated, not a lead.
       if (body.inbox) {
         const dealer = await dealerByToken(admin, str(body.inbox, 200));

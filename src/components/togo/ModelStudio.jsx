@@ -407,6 +407,12 @@ export default function ModelStudio({
   cards = [], navIds = null, models = [], collections = [], families = [], products = null,
   fabricLinks = [], profileId, onNeedCatalog, onAddModel, onImportSeeds,
   table = null, selectedId = null, onSelect, fidelityRow = null, fidelityResolved = null,
+  // The ACTIVE BRAND's import module set (src/brands/modules), resolved by the
+  // page. Only the geometry adapter reaches this file: it decides which files
+  // «Reemplazar 3D» accepts, because what counts as a model is a property of
+  // the manufacturer's library, not of the studio. Null = the default set, so
+  // an unbranded mount behaves exactly as before.
+  modules = null,
 }) {
   const hostRef = useRef(null);
   // The selected group's gold silhouette — the SAME outline cue the public
@@ -1607,11 +1613,18 @@ export default function ModelStudio({
     } catch (e) { setMeshOpErr(e?.message || 'No se pudo subir el modelo 3D.'); }
     finally { setMeshBusy(false); }
   };
+  // What THIS BRAND calls a 3D model. The list also writes the error message,
+  // so a dealer on a module set that doesn't read .3ds is never told to try one.
+  const meshExtensions = modules?.geometry?.extensions || null;
   const meshIntake = useFileIntake({
-    accept: ACCEPT_3D,
+    accept: modules?.geometry?.accept || ACCEPT_3D,
     disabled: meshBusy || !card,
     onFiles: ([f]) => replaceMesh(f),
-    onReject: () => setMeshOpErr('Sube un modelo 3D (.fbx, .glb, .obj…).'),
+    onReject: () => setMeshOpErr(
+      meshExtensions?.length
+        ? `Sube un modelo 3D (${meshExtensions.join(', ')}).`
+        : 'Sube un modelo 3D (.fbx, .glb, .obj…).',
+    ),
   });
 
   const removeMesh = async () => {
@@ -1987,13 +2000,22 @@ export default function ModelStudio({
                 </div>
               </div>
             )}
+            {/* An EMPTY BRAND says so honestly. The example pieces are Ligne
+                Roset's own Togo modules, so they are offered only where the
+                page hands the callback over (its own brand) — seeding another
+                manufacturer's catalog with someone else's sofa is inventing
+                data, not helping. */}
             {!hasModels && (
               <div className="absolute inset-0 grid place-items-center p-6">
                 <EmptyState
                   icon={Sofa}
-                  title="Aún no hay modelos Togo"
-                  description="Sube el modelo 3D (.fbx) de cada pieza, o importa las piezas de ejemplo para empezar."
-                  action={<button type="button" onClick={onImportSeeds} className="btn-primary text-sm"><Sparkles size={15} /> Importar piezas de ejemplo</button>}
+                  title="Aún no hay modelos"
+                  description={onImportSeeds
+                    ? 'Sube el modelo 3D de cada pieza, o importa las piezas de ejemplo para empezar.'
+                    : 'Suelta aquí la biblioteca 3D de esta marca para empezar.'}
+                  action={onImportSeeds
+                    ? <button type="button" onClick={onImportSeeds} className="btn-primary text-sm"><Sparkles size={15} /> Importar piezas de ejemplo</button>
+                    : (onAddModel ? <button type="button" onClick={onAddModel} className="btn-primary text-sm"><Plus size={15} /> Agregar modelo</button> : null)}
                 />
               </div>
             )}

@@ -1,12 +1,49 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { db, ensureDefaultProfile, getSettings, updateSettings, invalidate } from '../db/database.js';
+import { setBrandScope } from '../db/brandScope.js';
 import { supabase } from '../db/supabaseClient.js';
 import { shouldPullSessionRate } from '../lib/exchangeRate.js';
 import { EXCHANGE_RATE_PULL_ENABLED } from '../lib/constants.js';
 import { quotesToAutoArchive } from '../lib/quoteStages.js';
+import { moduleSetFor } from '../brands/index.js';
+import useLocalPref from '../components/primitives/useLocalPref.js';
 import { useAuth } from './AuthContext.jsx';
 
 const Ctx = createContext(null);
+
+/** Where the device remembers which brand environment you were working in. */
+const BRAND_PREF_KEY = 'veta.brand.v1';
+
+/**
+ * Read every brand, by name — the order the switcher offers them in.
+ * Best-effort BY DESIGN: on a
+ * database the brands migration hasn't reached yet the table simply isn't there,
+ * and the honest answer is "no brands" — which leaves the scope unset and every
+ * query behaving exactly as it did before brands existed, rather than taking the
+ * whole app down over a deploy-window ordering.
+ */
+async function loadBrands() {
+  try {
+    return await db.brands.orderBy('name').toArray();
+  } catch (e) {
+    console.warn('[brands] not available yet:', e?.message || e);
+    return null;
+  }
+}
+
+/**
+ * WHICH BRAND IS OPEN. The remembered one when it still exists and is active,
+ * otherwise the first active brand, otherwise the first brand at all (an
+ * all-inactive install must still be reachable — that is where you go to
+ * re-activate one). null when there are no brands: an unscoped app.
+ */
+export function pickActiveBrand(brands, preferredId) {
+  const list = brands || [];
+  if (!list.length) return null;
+  const preferred = list.find((b) => b.id === preferredId);
+  if (preferred && preferred.active !== false) return preferred;
+  return list.find((b) => b.active !== false) || list[0];
+}
 
 /**
  * Auto-archive COLD quotes — sent to a client and untouched since, for
@@ -64,10 +101,32 @@ export function AppProvider({ children }) {
   const [viewAsRole, setViewAsRoleState] = useState(null);
   const [ready, setReady] = useState(false);
 
+  // ── THE BRAND MICROENVIRONMENT ────────────────────────────────────────────
+  // Every manufacturer is an isolated environment (models, materials, telas,
+  // distribuidores, solicitudes) with its own IMPORT MODULES. The choice is
+  // device-local (which brand you were last working in is a preference, not
+  // company data) and is installed into the DATA LAYER — `setBrandScope` — so
+  // every read is filtered and every write stamped one level below the call
+  // sites. See db/brandScope.ts for why it lives there and not in each page.
+  const [brands, setBrands] = useState([]);
+  const [brandsAvailable, setBrandsAvailable] = useState(false);
+  const [brandId, setBrandIdPref] = useLocalPref(BRAND_PREF_KEY, null);
+
   const refreshProfiles = useCallback(async () => {
     const list = await db.profiles.toArray();
     setProfiles(list);
     return list;
+  }, []);
+
+  /** Re-read the brand list. Called at boot and by the Marcas admin after every
+   *  write, so the selector and the scope follow a rename/deactivation
+   *  immediately. Deliberately NOT a live query: the scope has to be installed
+   *  before the pages that depend on it render. */
+  const refreshBrands = useCallback(async () => {
+    const list = await loadBrands();
+    setBrands(list || []);
+    setBrandsAvailable(!!list);
+    return list || [];
   }, []);
 
   const refreshSettings = useCallback(async (pid) => {
@@ -137,6 +196,12 @@ export function AppProvider({ children }) {
         const me = user?.id ? list.find((p) => p.id === user.id) : null;
         if (!cancelled) setCurrentProfile(me || null);
 
+        // The brand environments, BEFORE the app is declared ready: the scope
+        // is installed during this provider's render (below), so the first
+        // query any page fires is already filtered to the open brand.
+        await refreshBrands();
+        if (cancelled) return;
+
         setReady(true);
       } catch (e) {
         console.error('AppContext init failed:', e);
@@ -144,7 +209,39 @@ export function AppProvider({ children }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [refreshProfiles, user?.id]);
+  }, [refreshProfiles, refreshBrands, user?.id]);
+
+  // ── The open brand, and the data-layer scope that follows it ──────────────
+  const brand = useMemo(() => pickActiveBrand(brands, brandId), [brands, brandId]);
+  const brandModules = useMemo(() => moduleSetFor(brand), [brand]);
+
+  // Installed DURING RENDER, not in an effect: the scope is external store
+  // state that every child's very first query reads, and an effect would run
+  // after those children had already fetched — one paint of the previous
+  // brand's rows on every switch. It is idempotent (setBrandScope answers
+  // false when nothing changed), so a double-invoked render costs nothing.
+  const scopeChanged = useRef(false);
+  if (setBrandScope(brand ? { brandId: brand.id, catalogBrand: brand.settings?.catalogBrand || brand.slug || null } : null)) {
+    scopeChanged.current = true;
+  }
+  // The refetch belongs AFTER the commit — invalidate() notifies every live
+  // query, and doing that mid-render would set state in other components while
+  // this one is still rendering. It fires on EVERY change including the first
+  // install: the boot case costs one duplicate read of two small tables, while
+  // the case it covers — the very first brand being created in a session that
+  // has already read unscoped rows — would otherwise leave those rows on
+  // screen until the next mutation.
+  useEffect(() => {
+    if (!scopeChanged.current) return;
+    scopeChanged.current = false;
+    invalidate();
+  });
+
+  /** Switch environment. The preference is device-local; the scope + refetch
+   *  ride the render above, so every open page repaints on the new brand. */
+  const selectBrand = useCallback((id) => {
+    setBrandIdPref(id || null);
+  }, [setBrandIdPref]);
 
   // Realtime: subscribe to public.profiles so changes made in another
   // session land here without a manual refresh. Admin A deleting user
@@ -242,6 +339,18 @@ export function AppProvider({ children }) {
     profileId,
     profiles,
     settings,
+    // ── Brand microenvironment ──────────────────────────────────────────────
+    /** Every brand row (empty on a database the migration hasn't reached). */
+    brands,
+    /** False = no `brands` table yet; the app runs unscoped, exactly as before. */
+    brandsAvailable,
+    /** The OPEN brand's row, or null when there are none. */
+    brand,
+    brandId: brand?.id || null,
+    /** Its resolved import-module set — geometry / materials / catalog. */
+    brandModules,
+    selectBrand,
+    refreshBrands,
     // The role-overridden projection — what the app gates its UI off.
     currentProfile: effectiveProfile,
     // The untouched signed-in profile, for anything that needs the real

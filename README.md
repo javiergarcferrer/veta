@@ -1,15 +1,19 @@
-# VETA
+# veta — retired
 
-Multi-brand 3D product configurator platform: engine packages, authoring
-studio, embeddable widget SDK, and a tenant-aware API — for furniture first,
-and material-driven products (flooring, stone, finishes) after that.
+This repo held a from-scratch rewrite of the Alcover configurator. It was a
+mistake: the real configurator already exists in the RosetSoft app, refined
+over months, and it is the one that ships to dealers. A second implementation
+could only ever be a worse copy of it, and was.
 
-- `docs/platform-action-plan.md` — the phased build plan (vision → work packages).
-- `CONTRACTS.md` — inter-package export contracts and layering rules.
-- `packages/` — pure engines (geometry, mesh-pipeline, materials, layout, scene).
-- `apps/` — api, studio, widget, admin, render (arrive in later phases).
+**The configurator lives in RosetSoft** (`src/pages/embed/TogoEmbed.jsx`),
+served per dealer from the Distribuidores workspace:
 
-Workspace: pnpm + TypeScript. `pnpm run check` = typecheck + tests + build.
-Packages are consumed as TS source inside the workspace; apps bundle them.
-The three.js namespace is dependency-injected into engine code (never a static
-value import in `packages/*/src`) so engines stay code-split and testable.
+    https://<app-origin>/configurator?dealer=<slug>
+
+Multi-dealer support lives there too — `public.dealers` (catalog scope,
+currency + FX, markup, pricing mode, lead inbox), the `togo-embed` edge
+function, and the Distribuidores back-office.
+
+The only thing from this repo still in use is the additive `veta` schema in
+the Supabase project (`infra/supabase/shared/`), kept because it is deployed;
+it is not required by anything in RosetSoft.

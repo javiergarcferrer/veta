@@ -39,6 +39,10 @@ export interface ParseParamsOptions {
   navigator?: readonly string[] | null;
   /** Where the API lives when the embed did not say (build-time default). */
   defaultApiBase?: string;
+  /** Build-time tenant defaults (a dedicated deployment bakes its own key and
+   *  opening collection so the BARE url works); the URL always wins. */
+  defaultKey?: string;
+  defaultCollection?: string;
 }
 
 const clean = (v: string | null | undefined): string => String(v ?? '').trim();
@@ -81,8 +85,8 @@ export function parseWidgetParams(url: string, opts: ParseParamsOptions = {}): W
   const build = clean(q.get(P.build));
   return {
     apiBase: clean(q.get(P.apiBase)) || clean(opts.defaultApiBase) || '',
-    publishableKey: clean(q.get(P.key)),
-    collection: clean(q.get(P.collection)),
+    publishableKey: clean(q.get(P.key)) || clean(opts.defaultKey) || '',
+    collection: clean(q.get(P.collection)) || clean(opts.defaultCollection) || '',
     dealer: clean(q.get(P.dealer)),
     locale: resolveLocale({ queryLang: q.get(P.locale), navigator: opts.navigator ?? null }),
     build,

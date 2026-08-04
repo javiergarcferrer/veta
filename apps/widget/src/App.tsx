@@ -59,6 +59,8 @@ export default function App() {
     () => parseWidgetParams(globalThis.location?.href ?? '', {
       navigator: globalThis.navigator?.languages ?? null,
       defaultApiBase: import.meta.env?.VITE_API_BASE ?? '',
+      defaultKey: import.meta.env?.VITE_DEFAULT_PK ?? '',
+      defaultCollection: import.meta.env?.VITE_DEFAULT_COLLECTION ?? '',
     }),
     [],
   );

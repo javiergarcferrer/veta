@@ -101,6 +101,17 @@ export function catalogModelShape(m: Row, ctx: CatalogShapeContext) {
     mesh: m.mesh_url
       ? { url: String(m.mesh_url), scale: Number(m.mesh_scale) || null, upAxis: (m.mesh_up_axis as string) || 'y', rotateY: Number(m.mesh_rotate_y) || 0 }
       : null,
+    // THE BAKED PICTURE, and the store key it was baked under. With them the
+    // widget's piece list is plain <img>s and the three bundle + this piece's
+    // mesh are never fetched to draw a tile nobody has selected yet; the client
+    // re-derives that key from the very fields above and only trusts the image
+    // when the two agree, so a piece edited since the bake renders live instead
+    // of showing an old photo. Shipped raw — the freshness rule has ONE home,
+    // client-side (`bakedThumbUrl`), rather than a second copy over here.
+    thumbUrl: m.thumb_url ? String(m.thumb_url) : null,
+    thumbStamp: m.thumb_stamp ? String(m.thumb_stamp) : null,
+    heroThumbUrl: m.hero_thumb_url ? String(m.hero_thumb_url) : null,
+    heroThumbStamp: m.hero_thumb_stamp ? String(m.hero_thumb_stamp) : null,
   };
 }
 

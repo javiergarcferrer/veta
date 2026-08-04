@@ -323,6 +323,13 @@ async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Ro
     rates,
     models: dealerModels,
     materials: offeredMaterials,
+    // The dealer's chosen COVER per collection — `{ collection: {modelId, code} }`.
+    // Shipped raw and validated client-side against these very models/materials
+    // (`resolveCollectionMenu`), so a pin left pointing at a deactivated piece
+    // degrades to the derived cover instead of putting something unbuildable on
+    // the index. Same reasoning as the baked thumbnails' stamp: the rule has ONE
+    // home, and it is the side that can see what is actually renderable.
+    heroes: (settings.togo_heroes as Record<string, unknown> | null) || null,
     // Same reasoning as the storefront: loading the pixel is what writes `_fbp`,
     // and a pixel id is not a credential. Without it every Lead this
     // configurator reports goes out matched on IP alone.

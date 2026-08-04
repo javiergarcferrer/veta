@@ -83,6 +83,7 @@ export {
   resolveTogoDxf, placementsFromPlaced, placementsFromComponents, lineHasTogoPlan,
   resolveTogoScene, scenePlacementsFromPlaced, scenePlacementsFromComponents,
   resolveLaunchHero, LAUNCH_HERO_FABRIC, resolveCollectionMenu,
+  heroFabricOptions, planHeroPin,
   partFamiliesFrom, partPricesFor, placementTotalUsd, placementBreakdown, resolveCompleteSku,
   PX_PER_CM, SNAP_GRID_CM, EDGE_SNAP_CM, RELEASE_DOCK_CM, PLAN_MARGIN_CM,
 } from './views/configuratorView.js';

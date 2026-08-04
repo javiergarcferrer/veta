@@ -70,20 +70,26 @@ import EmptyState from '../EmptyState.jsx';
 import ModelFidelityPanel, { meshVersionFor } from './ModelFidelityPanel.jsx';
 import ModelBrowser from '../quote-builder/ModelBrowser.jsx';
 import useFileIntake from '../primitives/useFileIntake.js';
-import { db } from '../../db/database.js';
+import { db, updateSettings } from '../../db/database.js';
 import { uploadTogoMesh, removeTogoMesh } from '../../db/togoMeshUpload.js';
+import { uploadTogoThumb, removeTogoThumb } from '../../db/togoThumbUpload.js';
 import { safeDynamicImport } from '../../lib/dynamicImport.js';
+import { swatchTileUrl } from '../../lib/swatchImage.js';
+import { useApp } from '../../context/AppContext.jsx';
 import { prefersReducedMotion } from '../../lib/motion.js';
 import { togoEmbedSnippet, togoShareUrl } from '../../lib/togoEmbed.js';
 import { loadMeshPlan } from '../../lib/togo/meshPlanCache.js';
 import { autoUnitScale } from '../../lib/togo/togoModel.js';
 import { fetchModelFabrics, saveCollectionFabrics, clearCollectionFabrics } from '../../lib/lrModelFabrics.js';
 import { proposeCollectionBindings } from '../../lib/togo/autoLink.js';
+import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
+import { canonicalCollection } from '../../lib/togo/collections.js';
 import { buildSuggestQuery, suggestSkuMatch, SUGGEST_LIMIT } from '../../lib/togo/suggestSku.js';
-import { indexCandidates, resolveModelMatches } from '../../core/quote/index.js';
+import { indexCandidates, resolveModelMatches, heroFabricOptions, planHeroPin, resolveCollectionMenu } from '../../core/quote/index.js';
 import { probeMeshBinding } from './bindingProbe.js';
 import { loadSceneFile, splitScene, exportPieceGlb, optimizeGlbUrl, isOptimizableMeshUrl } from './sceneImport.js';
 import { loadTogoModels, ALCOVER_MESH_V } from './togoModelLoader.js';
+import { renderTogoThumb, togoThumbStoreKey, bakedThumbUrl, TILE_THUMB } from './togoThumbnails.js';
 import { setupTogoStage, disposeGroup, maskToOutline } from './togoSceneBuilder.js';
 import {
   PART_ROLES, MATERIALIZATION_ROLES, BILLED_ROLES, COUNT_MAX, partKeysFor, classifyPartGroups,
@@ -98,6 +104,149 @@ import {
 // Exported so the page (and through it TogoWorkspace's workspace-wide drop
 // target) accepts the same set the studio's own "Reemplazar 3D" does.
 export const ACCEPT_3D = '.fbx,.glb,.gltf,.obj,.dae,.3ds';
+
+/**
+ * PORTADA — which piece, in which cloth, stands for a colección on the
+ * configurator's first screen.
+ *
+ * Both were derived and stay derivable: the piece by a name ranking, the cloth
+ * by a hash over the renderable palette (`resolveCollectionMenu`). Good
+ * defaults — and a shop window shouldn't be stuck with defaults, because the
+ * dealer is the one who knows which piece sells a colección and in which
+ * colour. So each half pins INDEPENDENTLY and «Automática» hands it back; there
+ * is no third state to explain.
+ *
+ * The cloth list is `heroFabricOptions` — the exact palette the index picks
+ * from — so this can only ever offer a bolt the cover will actually render in,
+ * and the chips are the Ligne Roset swatch photos (the same route the
+ * configurator's own picker paints). «Al azar» is a real dice roll: it is a
+ * human action that gets PERSISTED, unlike the automatic pick, which must stay
+ * deterministic so the render cache can hit.
+ */
+function CoverPicker({ collection, modelId, modelName, pieces, materials, heroes, onSave }) {
+  const [open, setOpen] = useState(false);
+  const pin = (heroes && collection && heroes[collection]) || null;
+  const isCover = !!pin?.modelId && pin.modelId === modelId;
+  const options = useMemo(() => heroFabricOptions(materials), [materials]);
+  const cloth = pin?.code ? options.find((o) => o.code === pin.code) || null : null;
+  // The piece currently carrying the cover, when it is not this one — named, so
+  // «Usar esta pieza» says what it replaces instead of silently taking over.
+  const heldBy = pin?.modelId && !isCover
+    ? (pieces || []).find((p) => p.id === pin.modelId)?.name || null
+    : null;
+  if (!collection) return null;
+  return (
+    <section className="border-b border-ink-200 px-3 py-2.5">
+      <div className="flex items-baseline gap-1.5">
+        <span className="label mb-0">Portada · {collection}</span>
+        {(pin?.modelId || pin?.code) && (
+          <span className="ml-auto rounded-full bg-brand-50 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-brand-700">
+            elegida
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-[10px] leading-snug text-ink-400">
+        La pieza y la tela con que esta colección se presenta en el configurador.
+      </p>
+
+      <button
+        type="button"
+        onClick={() => onSave(collection, { modelId: isCover ? null : modelId })}
+        className={`mt-2 w-full rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
+          isCover
+            ? 'border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100'
+            : 'border-ink-200 text-ink-700 hover:bg-ink-50'
+        }`}
+      >
+        {isCover ? '✓ Esta pieza es la portada — quitar' : 'Usar esta pieza como portada'}
+      </button>
+      {heldBy && (
+        <p className="mt-1 text-[10px] leading-snug text-ink-400">Ahora la lleva «{heldBy}».</p>
+      )}
+
+      <div className="mt-2 flex items-center gap-1.5">
+        <span className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-ink-200 bg-ink-50">
+          {cloth && <img src={swatchTileUrl(cloth, 28)} alt="" className="h-full w-full object-cover" />}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[11px] text-ink-700">
+          {cloth ? `${cloth.materialName} · ${cloth.colorName}` : 'Tela automática'}
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="shrink-0 rounded-md border border-ink-200 px-1.5 py-1 text-[10px] text-ink-600 hover:bg-ink-50"
+        >
+          {open ? 'Cerrar' : 'Cambiar'}
+        </button>
+        <button
+          type="button"
+          title="Una tela al azar del catálogo"
+          disabled={!options.length}
+          onClick={() => onSave(collection, { code: options[Math.floor(Math.random() * options.length)]?.code || null })}
+          className="shrink-0 rounded-md border border-ink-200 px-1.5 py-1 text-[10px] text-ink-600 hover:bg-ink-50 disabled:opacity-40"
+        >
+          Al azar
+        </button>
+      </div>
+      {open && (
+        <div className="mt-1.5">
+          <div className="grid max-h-40 grid-cols-6 gap-1 overflow-y-auto overscroll-contain scroll-thin pr-0.5">
+            {options.map((o) => (
+              <button
+                key={o.code}
+                type="button"
+                title={`${o.materialName} · ${o.colorName}`}
+                onClick={() => { onSave(collection, { code: o.code }); setOpen(false); }}
+                className={`aspect-square overflow-hidden rounded border transition ${
+                  o.code === pin?.code ? 'border-brand-400 ring-2 ring-brand-400' : 'border-ink-200 hover:border-brand-300'
+                }`}
+              >
+                <img src={swatchTileUrl(o, 40)} alt="" loading="lazy" className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+          {pin?.code && (
+            <button
+              type="button"
+              onClick={() => { onSave(collection, { code: null }); setOpen(false); }}
+              className="mt-1 text-[10px] text-ink-500 underline underline-offset-2 hover:text-ink-700"
+            >
+              Volver a la tela automática
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** A `togo_models` row as the CONFIGURATOR sees it — the shape the renderer and
+ *  the store key both read, so a picture baked here is stamped exactly as the
+ *  widget will re-derive it from the public payload. Baked fields are
+ *  deliberately absent: this shape is what we are baking FROM. */
+function thumbModelOf(row) {
+  return {
+    id: row.id,
+    name: row.name || '',
+    collection: row.collection || 'Togo',
+    widthCm: row.widthCm,
+    depthCm: row.depthCm,
+    mesh: row.meshUrl
+      ? { url: row.meshUrl, scale: row.meshScale ?? null, upAxis: row.meshUpAxis || 'y', rotateY: row.meshRotateY || 0 }
+      : null,
+  };
+}
+
+/** The row as the widget sees it, WITH what has already been baked for it — the
+ *  shape `bakedThumbUrl` asks "is this picture still this piece?" of. Added back
+ *  here rather than in `thumbModelOf`, which is the shape we bake FROM. */
+function bakedStateOf(row) {
+  return {
+    ...thumbModelOf(row),
+    thumbUrl: row.thumbUrl, thumbStamp: row.thumbStamp,
+    heroThumbUrl: row.heroThumbUrl, heroThumbStamp: row.heroThumbStamp,
+  };
+}
 
 /**
  * The BILLED part slots. `parts.roots`/`parts.counts` are ROLE-keyed (that is
@@ -404,7 +553,7 @@ export function ProductBindModal({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ModelStudio({
-  cards = [], navIds = null, models = [], collections = [], families = [], products = null,
+  cards = [], navIds = null, models = [], collections = [], materials = [], families = [], products = null,
   fabricLinks = [], profileId, onNeedCatalog, onAddModel, onImportSeeds,
   table = null, selectedId = null, onSelect, fidelityRow = null, fidelityResolved = null,
   // The ACTIVE BRAND's import module set (src/brands/modules), resolved by the
@@ -414,6 +563,14 @@ export default function ModelStudio({
   // an unbranded mount behaves exactly as before.
   modules = null,
 }) {
+  // The dealer's chosen covers, on the team settings row (see CoverPicker).
+  // `planHeroPin` owns the merge so "pinned nothing" can't be encoded two ways.
+  const { settings } = useApp();
+  const heroes = settings?.togoHeroes || null;
+  const saveHero = useCallback(
+    (collection, patch) => updateSettings(profileId, { togoHeroes: planHeroPin(heroes, collection, patch) }),
+    [profileId, heroes],
+  );
   const hostRef = useRef(null);
   // The selected group's gold silhouette — the SAME outline cue the public
   // configurator strokes around a selected piece (TogoStage), written
@@ -1744,6 +1901,131 @@ export default function ModelStudio({
     }
   }, [models]);
 
+  // ── «Miniaturas» — the catalogue-wide THUMBNAIL BAKE.
+  //
+  // The configurator's piece list is a wall of three.js renders of the real
+  // meshes. To draw pieces NOBODY HAS SELECTED YET, a first-time visitor pulls
+  // the three bundle, then each piece's GLB, parses it, draws it and encodes a
+  // PNG — all before placing anything. Every device pays it once and the first
+  // visit is the one that decides whether the widget feels instant.
+  //
+  // So it is rendered HERE, once, by the same engine the widget would have used,
+  // and stored as a plain public image (`thumb_url`). The widget then paints its
+  // catalogue from <img> and only touches a mesh when a piece is actually
+  // placed. Same picture either way — this only moves who pays for it.
+  //
+  // Idempotent by the row's own content stamp: `bakedThumbUrl` returns null for
+  // a row that has none or whose picture no longer matches it, so a run
+  // interrupted halfway resumes, and a re-run with nothing stale does nothing.
+  // EVERY piece gets the bare CREAM BODY, and the handful that are COVERS get a
+  // second, dressed picture. That split mirrors the widget exactly: a
+  // collection's own page is what a visitor builds from, so its tiles stay
+  // neutral (you are reading shapes there, not colours), while the index tile —
+  // the shop window — wears real cloth.
+  //
+  // The cover and its cloth are derived HERE with the very functions the widget
+  // runs (`resolveCollectionMenu` honouring the dealer's pins,
+  // `buildFabricByCode` for the appearance), because what we bake has to be what
+  // it will ask for: a descriptor that differs by one field stamps differently,
+  // and then the cover photo reads as stale and the index renders it anyway.
+  const covers = useMemo(() => {
+    const fabricByCode = buildFabricByCode(materials);
+    const map = new Map();   // collection → { heroId, code, fab }
+    for (const e of resolveCollectionMenu(models, materials, heroes)) {
+      if (e.hero?.id && e.fabric?.code) {
+        map.set(e.collection, { heroId: e.hero.id, code: e.fabric.code, fab: fabricByCode[e.fabric.code] || null });
+      }
+    }
+    return map;
+  }, [models, materials, heroes]);
+
+  /** What this row still owes: `[{ slot, opts }]`, empty when its pictures are
+   *  current. ACTIVE rows only — an inactive model is not in the public palette,
+   *  so baking it spends a render on something nobody will be shown. */
+  const bakePlan = useCallback((row) => {
+    if (!row?.id || row.active === false) return [];
+    const state = bakedStateOf(row);
+    const out = [];
+    if (!bakedThumbUrl(state, TILE_THUMB)) out.push({ slot: 'thumb', opts: TILE_THUMB });
+    // The dressed slot is the COVER's alone. A piece that stops being the cover
+    // keeps its old dressed file, harmlessly: nothing ever asks for it again,
+    // and if it becomes a cover later the stamp decides whether it still fits.
+    const cover = covers.get(canonicalCollection(row.collection));
+    if (cover && cover.heroId === row.id) {
+      const dressed = { ...TILE_THUMB, code: cover.code, fab: cover.fab };
+      if (!bakedThumbUrl(state, dressed)) out.push({ slot: 'hero', opts: dressed });
+    }
+    return out;
+  }, [covers]);
+
+  const bakeRunning = useRef(false);
+  const [thumbBake, setThumbBake] = useState(null);
+  const bakeThumbs = useCallback(async () => {
+    if (bakeRunning.current) return;
+    // UNITS, not rows: a piece can owe one picture or both (its cloth changed
+    // but its mesh didn't), and counting rows would report a run that is half
+    // the work it looks like.
+    const units = [];
+    for (const row of (models || [])) for (const u of bakePlan(row)) units.push({ row, ...u });
+    if (!units.length) return;
+    bakeRunning.current = true;
+    const state = { running: true, done: 0, total: units.length, current: units[0]?.row?.name || '', baked: 0, failed: [] };
+    const publish = () => setThumbBake({ ...state, failed: [...state.failed] });
+    publish();
+    let next = 0;
+    const worker = async () => {
+      for (;;) {
+        const unit = units[next++];
+        if (!unit) return;
+        const { row, slot, opts } = unit;
+        state.current = row.name || '';
+        publish();
+        try {
+          // The model as the CONFIGURATOR sees it, carrying no baked fields —
+          // so the stamp matches the one the widget will rebuild from the
+          // payload, and the renderer can never hand back the very picture we
+          // are here to replace.
+          const shape = thumbModelOf(row);
+          const stamp = togoThumbStoreKey(shape, opts);
+          const url = await renderTogoThumb(shape, opts);
+          if (!url) throw new Error('sin render');
+          // The engine hands back a URL (blob: or data:) and keeps the bytes to
+          // itself; reading them back locally is cheaper than teaching it a
+          // second output mode for one caller.
+          const blob = await (await fetch(url)).blob();
+          const prev = slot === 'hero' ? row.heroThumbUrl : row.thumbUrl;
+          const nextUrl = await uploadTogoThumb(`${row.id}-${slot}`, stamp, blob);
+          await db.togoModels.update(row.id, slot === 'hero'
+            ? { heroThumbUrl: nextUrl, heroThumbStamp: stamp, updatedAt: Date.now() }
+            : { thumbUrl: nextUrl, thumbStamp: stamp, updatedAt: Date.now() });
+          state.baked++;
+          // Named per (model, slot, stamp), so no two rows and no two slots can
+          // share one file — the superseded object is this one's alone to drop.
+          if (prev && prev !== nextUrl) removeTogoThumb(prev);
+        } catch (e) {
+          console.error('[togo] thumbnail bake failed', row.name, slot, e);
+          const label = row.name || row.id;
+          if (!state.failed.includes(label)) state.failed.push(label);
+        }
+        state.done++;
+        publish();
+      }
+    };
+    try {
+      // Two lanes: the renders themselves are serialized by the engine's own
+      // queue (one offscreen GPU context), so lanes only overlap the parts that
+      // wait on the network — the mesh download of one piece against the upload
+      // of the last. More would just queue deeper for nothing.
+      const lanes = Math.min(2, units.length);
+      await Promise.all(Array.from({ length: lanes }, worker));
+    } finally {
+      state.running = false;
+      state.current = '';
+      publish();
+      bakeRunning.current = false;
+    }
+  }, [models, bakePlan]);
+
   const deleteModel = () => {
     if (!card) return;
     if (!window.confirm(`¿Eliminar el modelo "${card.name}"? Desaparecerá del configurador público.`)) return;
@@ -1770,6 +2052,15 @@ export default function ModelStudio({
   // They are MAINTENANCE, not decisions: nobody should have to know that a 3D
   // file predates the current pipeline, or that a model was never tagged. So
   // they run themselves, once per session, and only when there is work.
+  // How many pictures the catalogue currently owes — the SAME predicate the run
+  // filters on, so the automatic pass can never be triggered by work that isn't
+  // there. It recomputes off `models`, so editing a piece (which restamps it)
+  // puts it straight back into this count.
+  const bakeableCount = useMemo(
+    () => (models || []).reduce((n, m) => n + bakePlan(m).length, 0),
+    [models, bakePlan],
+  );
+
   const autoOptimized = useRef(false);
   useEffect(() => {
     if (autoOptimized.current || !optimizableCount) return;
@@ -1782,6 +2073,40 @@ export default function ModelStudio({
     const handle = idle ? idle(start, { timeout: 5000 }) : window.setTimeout(start, 1200);
     return () => (idle ? window.cancelIdleCallback(handle) : window.clearTimeout(handle));
   }, [optimizableCount, optimizeMeshes]);
+
+  // ── THE MECHANISM THAT KEEPS THE CATALOGUE'S PICTURES CURRENT.
+  //
+  // Not a one-shot: this effect is armed by `bakeableCount`, which is derived
+  // from `models` through the same stamp the widget checks. So the loop closes
+  // by itself — rename a piece, re-dimension it, replace its mesh, and the row
+  // stops matching its own picture, reappears in the count, and is re-baked in
+  // the idle after the write lands. Nothing to remember, no button to press,
+  // and the public never shows a stale photo in the meantime: it falls back to
+  // rendering that piece live until the new file exists.
+  //
+  // WAITS FOR THE RE-EXPORT. «Optimizar mallas» swaps `mesh_url`, which is part
+  // of the stamp — baking first would render every optimized piece twice, and
+  // the second render is the only one that would survive.
+  // One attempt per (model, exact picture) per session. A model that CANNOT
+  // render — a corrupt mesh — would otherwise sit in the count forever and
+  // re-arm this effect on every publish of the pass's own progress. Keyed on
+  // the store key rather than the id, so the give-up is scoped to the version
+  // that failed: edit the piece and it earns a fresh attempt, which is what
+  // keeps this a self-healing loop instead of a one-way blocklist.
+  const bakeTried = useRef(new Set());
+  const bakeKeyOf = (m) => `${m.id}:${bakePlan(m).map((u) => togoThumbStoreKey(thumbModelOf(m), u.opts)).join('|')}`;
+  useEffect(() => {
+    if (!bakeableCount || meshOpt?.running || optimizableCount || thumbBake?.running) return;
+    const pending = (models || []).filter((m) => bakePlan(m).length && !bakeTried.current.has(bakeKeyOf(m)));
+    if (!pending.length) return;
+    const idle = window.requestIdleCallback;
+    const start = () => {
+      for (const m of pending) bakeTried.current.add(bakeKeyOf(m));
+      bakeThumbs();
+    };
+    const handle = idle ? idle(start, { timeout: 5000 }) : window.setTimeout(start, 1200);
+    return () => (idle ? window.cancelIdleCallback(handle) : window.clearTimeout(handle));
+  }, [bakeableCount, optimizableCount, meshOpt?.running, thumbBake?.running, models, bakePlan, bakeThumbs]);
 
   // Tagging WAITS for the re-export: a pre-split mesh is one node per material,
   // so detecting against it would key the parts off the old grouping — and those
@@ -1958,6 +2283,28 @@ export default function ModelStudio({
               )}
             </div>
           )}
+          {/* The thumbnail bake's own line — same idiom, its own row: they are
+              different work (one rewrites the 3D files, the other photographs
+              them) and they can run in the same session. */}
+          {thumbBake && (
+            <div role="status" className="shrink-0 space-y-1 border-b border-ink-200 bg-surface px-3 py-1.5 text-[10px] leading-tight text-ink-400">
+              {thumbBake.running ? (
+                <>
+                  <p className="tabular-nums">Fotografiando {Math.min(thumbBake.done + 1, thumbBake.total)}/{thumbBake.total}{thumbBake.current ? ` · ${thumbBake.current}` : ''}</p>
+                  <div className="h-1 overflow-hidden rounded-full bg-ink-100">
+                    <div className="h-full bg-brand-500 transition-all" style={{ width: `${(thumbBake.done / Math.max(1, thumbBake.total)) * 100}%` }} />
+                  </div>
+                </>
+              ) : (
+                <p className="tabular-nums">
+                  {thumbBake.baked} miniatura{thumbBake.baked === 1 ? '' : 's'} lista{thumbBake.baked === 1 ? '' : 's'} — el configurador ya no arma el 3D para enseñar el catálogo
+                </p>
+              )}
+              {thumbBake.failed.length > 0 && (
+                <p className="text-red-400">Sin miniatura: {thumbBake.failed.join(', ')}.</p>
+              )}
+            </div>
+          )}
           {(detectErr || meshOpErr) && (
             <div role="alert" className="flex items-start gap-1.5 border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-[10px] text-red-400">
               <AlertCircle size={11} className="mt-0.5 shrink-0" /> {detectErr || meshOpErr}
@@ -2073,6 +2420,22 @@ export default function ModelStudio({
               building={status === 'loading'}
               meshV={meshV}
             />
+            {/* PORTADA — which piece, in which cloth, stands for this colección
+                on the configurator's first screen. Here because the piece IS
+                the selection: "esta pieza es la portada" is one click on the
+                model you are already looking at, instead of a separate screen
+                that would ask you to find it again. */}
+            {card && (
+              <CoverPicker
+                collection={card.collection}
+                modelId={card.id}
+                modelName={card.name}
+                pieces={models}
+                materials={materials}
+                heroes={heroes}
+                onSave={saveHero}
+              />
+            )}
             {!card ? null : group ? (
               <PartInspector
                 key={group.key}

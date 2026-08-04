@@ -115,6 +115,13 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
     [profileId, needCatalog], null,
   );
   const families = useMemo(() => togoPickerFamilies(products), [products]);
+  // The bolts a COVER can be dressed in — the same `materials` the public
+  // configurator loads, so the picker in the inspector can only offer cloth the
+  // index will actually be able to render. Small table, read once.
+  const materials = useLiveQuery(
+    () => (profileId ? db.materials.where('profileId').equals(profileId).cached(300_000).toArray() : Promise.resolve([])),
+    [profileId], [],
+  );
   const cards = useMemo(() => resolveTogoModelCards(models, families), [models, families]);
   // Distinct collections in first-appearance order (cards are pre-sorted by
   // sortOrder), for the "Colección" datalists.
@@ -206,6 +213,7 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
         navIds={navIds}
         models={models}
         collections={collections}
+        materials={materials}
         families={families}
         products={products}
         fabricLinks={fabricLinks}

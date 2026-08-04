@@ -8,6 +8,7 @@ import { composeSubtype, composeFabricLabel } from '../../lib/subtype.js';
 import { downloadText } from '../../lib/csv.js';
 import { safeDynamicImport } from '../../lib/dynamicImport.js';
 import { prefersReducedMotion } from '../../lib/motion.js';
+import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
 import { buildTogoGroup, disposeGroup, STANDARD_TOGO_FINISH } from '../../components/togo/togoSceneBuilder.js';
 import { loadTogoModels } from '../../components/togo/togoModelLoader.js';
 import { isConfiguratorPathname, fetchTogoCatalogCached, fetchTogoPlanSvgs, submitTogoRequest, togoEmbedModalUrl, togoHandoffUrl, reportTogoView } from '../../lib/togoEmbed.js';
@@ -15,7 +16,7 @@ import { encodeBuild, decodeBuild, decodeRoomFromBuild } from '../../lib/togo/bu
 import { makeRectRoom, roomSize, roomCenter, roomFit, clampRoomDim } from '../../lib/togo/room.js';
 import { t, resolveTogoLocale, piecesLabel } from '../../lib/togo/i18n.js';
 import { useMeshPlans } from '../../components/togo/useMeshPlans.js';
-import { useTogoThumbnails, useTogoFabricThumbs, renderTogoThumb, renderTogoSceneThumb, snapshotFieldFor, TILE_THUMB, ROW_THUMB } from '../../components/togo/togoThumbnails.js';
+import { useTogoThumbnails, useTogoFabricThumbs, renderTogoThumb, renderTogoSceneThumb, snapshotFieldFor, bakedThumbUrl, TILE_THUMB, ROW_THUMB } from '../../components/togo/togoThumbnails.js';
 import { prewarmTogoEngine } from '../../components/togo/togoModelLoader.js';
 import {
   resolveConfigurator, resolvePlacement, snapPlacement, footprintOf, PX_PER_CM,
@@ -619,46 +620,10 @@ export default function TogoEmbed() {
   // linked SIBLING's texture marked `tint: true` — the 3D re-tints that weave
   // to the colour's own tone (makeTintedWeave) instead of rendering it flat.
   // Codes without an entry keep today's fallback.
-  const fabricByCode = useMemo(() => {
-    const map = {};
-    // The .mat PBR port that rides with a texture: pCon's diffuse multiplier,
-    // Phong→GGX roughness, specular intensity, physical tile size (cm).
-    const pbrOf = (c) => ({
-      dif: c?.dif || null,
-      rough: Number.isFinite(Number(c?.rough)) ? Number(c.rough) : null,
-      spec: Number.isFinite(Number(c?.spec)) ? Number(c.spec) : null,
-      tileCm: Number(c?.tileCm) > 0 ? Number(c.tileCm) : null,
-      tileCmY: Number(c?.tileCmY) > 0 ? Number(c.tileCmY) : null,
-    });
-    for (const m of materials) {
-      const sib = (m.colors || []).find((c) => c?.textureUrl) || null;
-      for (const c of (m.colors || [])) {
-        if (!c?.code) continue;
-        // normalUrl = the pCon `bumps` map (real weave relief) when imported.
-        if (c.textureUrl) map[c.code] = { textureUrl: c.textureUrl, normalUrl: c.normalUrl || null, rgb: c.rgb || null, pbr: pbrOf(c) };
-        // Family fallback: the sibling's WEAVE re-tinted to this colour — the
-        // cloth PHYSICS (roughness/specular/tile size) are the family's too
-        // (own .mat values win where present), but never the sibling's
-        // diffuse multiplier: the tint bake already carries this colour's
-        // own tone.
-        else if (sib) {
-          const own = pbrOf(c), fam = pbrOf(sib);
-          map[c.code] = {
-            textureUrl: sib.textureUrl, rgb: c.rgb || null, tint: true,
-            pbr: {
-              dif: null,
-              rough: own.rough ?? fam.rough,
-              spec: own.spec ?? fam.spec,
-              tileCm: own.tileCm ?? fam.tileCm,
-              tileCmY: own.tileCmY ?? fam.tileCmY,
-            },
-          };
-        }
-        else if (c.rgb) map[c.code] = { textureUrl: null, rgb: c.rgb };
-      }
-    }
-    return map;
-  }, [materials]);
+  // ONE builder, shared with the studio's bake pass (lib/togo/fabricIndex): the
+  // descriptor is part of a dressed render's store key, so a second copy here
+  // would drift and every baked photo would silently read as stale.
+  const fabricByCode = useMemo(() => buildFabricByCode(materials), [materials]);
 
   // The modular collections on offer, in palette order (first appearance wins) —
   // Togo, Prado, … . Legacy pieces with no collection read as 'Togo'. This is a
@@ -694,7 +659,21 @@ export default function TogoEmbed() {
   );
   // Step one's content: one entry per collection, each with the hero piece that
   // stands for it (see resolveCollectionMenu).
-  const collectionMenu = useMemo(() => resolveCollectionMenu(models, materials), [models, materials]);
+  // `data.heroes` is the dealer's own pick of cover piece + cloth per collection
+  // (settings.togo_heroes). The VM validates each half against these very models
+  // and materials, so a stale pin degrades to the derived cover.
+  const collectionMenu = useMemo(
+    () => resolveCollectionMenu(models, materials, data?.heroes || null),
+    [models, materials, data?.heroes],
+  );
+  // THE PIECE GRID STAYS IN THE CREAM BODY, deliberately (owner, 2026-08): the
+  // collection's own page is what you BUILD from, and there you are reading
+  // SHAPES — which arm, which corner, which depth. Dressing every tile in the
+  // collection's cloth made the page prettier and the pieces harder to tell
+  // apart, which is the wrong trade on the one screen whose whole job is
+  // telling them apart. The COVER on the index is dressed (it is a shop
+  // window); everything behind it is the neutral body.
+
   // Each collection's hero rendered in ITS OWN cloth (the VM picks one per
   // collection — see resolveCollectionMenu). Rendered through the SAME studio rig
   // and cache as every other thumbnail, keyed per collection, so the index costs
@@ -3009,13 +2988,20 @@ function CollectionMenu({ entries = [], renderThumbById = {}, fabricThumbs = {},
  */
 function useLazyThumb(model, opts = null) {
   const ref = useRef(null);
-  const [url, setUrl] = useState(null);
+  // A BAKED picture needs no observer and no engine: the back-office already
+  // rendered this exact tile (piece, frame and cloth all pinned by the stamp),
+  // so the cell paints on the first render from a plain URL. Only what is NOT
+  // baked — a piece dressed in the cloth a customer just picked — goes through
+  // the lazy render below.
+  const baked = bakedThumbUrl(model, { ...TILE_THUMB, ...(opts || {}) });
+  const [url, setUrl] = useState(baked);
   const id = model?.id;
   const code = opts?.code || '';
   // The appearance descriptor is an object rebuilt each render; key on the CODE.
   const optsRef = useRef(opts);
   optsRef.current = opts;
   useEffect(() => {
+    if (baked) { setUrl(baked); return undefined; }
     const el = ref.current;
     if (!el || !id) return undefined;
     let alive = true;
@@ -3038,7 +3024,7 @@ function useLazyThumb(model, opts = null) {
     io.observe(el);
     return () => { alive = false; io.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, code, model?.widthCm, model?.depthCm, model?.mesh?.url]);
+  }, [id, code, model?.widthCm, model?.depthCm, model?.mesh?.url, baked]);
   return [ref, url];
 }
 
@@ -3060,6 +3046,7 @@ function PieceCard({ model: m, index = null, renderThumbById = {}, onAdd, onHove
   // Renders itself when it comes into range. `renderThumbById` still wins when it
   // already holds this piece (it is filled for whatever is on the plan), so a
   // piece already in the build shows instantly instead of waiting on an observer.
+  // Always the CREAM BODY — see the note where the collection page is built.
   const [thumbRef, lazyUrl] = useLazyThumb(m);
   const price = m.priceUsd != null ? fmt?.(m.priceUsd, { from: true })?.replace(/\.\d\d$/, '') : null;
   const dims = m.widthCm > 0 && m.depthCm > 0 ? `${Math.round(m.widthCm)} × ${Math.round(m.depthCm)} cm` : null;
@@ -4290,6 +4277,7 @@ function CanvasArea({
         <EmptyPlanStart
           models={models} renderThumbById={renderThumbById} onAddPiece={onAddPiece}
           collections={collections} collectionMenu={collectionMenu} collectionThumbs={collectionThumbs} activeCollection={activeCollection} onCollection={onCollection}
+         
           locale={locale} fmt={fmt} pricesHidden={pricesHidden} fromMode={fromMode}
         />
       )}

@@ -376,6 +376,13 @@ export interface Settings {
    *  web request is quoted AND sent by togo-quote-worker end-to-end; off,
    *  each becomes a send_togo_quote proposal awaiting one-tap approval. */
   togoAutoQuote?: boolean;
+  /** PORTADAS — the dealer's chosen cover per configurator collection,
+   *  `{ [collection]: { modelId?, code? } }` (written by the Modelos screen's
+   *  CoverPicker, planned by `planHeroPin`). Either half may be absent and
+   *  keeps deriving; every pin is re-validated against the live public catalogue
+   *  in `resolveCollectionMenu`, so a deactivated piece or a discontinued cloth
+   *  falls back instead of breaking the index. */
+  togoHeroes?: Record<string, { modelId?: string; code?: string }> | null;
   /** The cobranza agent kill switch (ships OFF): on, agent-collections watches
    *  CxC daily and files warm per-client cobranza messages as
    *  send_client_message proposals for one-tap approval — it never sends. */
@@ -2964,6 +2971,18 @@ export interface TogoModel {
    *  (rowMapping converts `*At` ↔ timestamptz). Separate from `updatedAt`,
    *  which any edit to the row touches. */
   ingestedAt?: number | null;
+  /** The BAKED catalogue thumbnail (public Storage URL) and the STORE KEY it was
+   *  baked under (`togoThumbStoreKey` — content + frame + cloth). With them the
+   *  configurator's piece list is plain <img>s; without them, or with a stamp
+   *  that no longer matches the row, it renders each tile from the mesh as it
+   *  always did. Written by the studio's automatic bake pass, never by hand. */
+  thumbUrl?: string | null;
+  thumbStamp?: string | null;
+  /** Same pair for this piece's DRESSED render, when it is its collection's
+   *  cover: the one fabricked image worth baking, since the collection index is
+   *  the configurator's first screen. */
+  heroThumbUrl?: string | null;
+  heroThumbStamp?: string | null;
   active?: boolean;
   createdAt?: number;
   updatedAt?: number;

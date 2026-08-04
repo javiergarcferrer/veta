@@ -206,37 +206,84 @@ function fingerprint(text) {
 }
 
 /**
- * The store key for one rendered thumbnail — pure, and the thing that decides
- * whether a visitor sees today's piece or last month's.
+ * THE PICTURE'S FINGERPRINT — the row's render-relevant content, and the thing
+ * that decides whether anyone sees today's piece or last month's.
  *
- * There is no `updatedAt` on a payload model to key on, so the STAMP is the
- * row's own render-relevant content: the mesh (url + the scale/axis/rotation
- * applied to it), the footprint the piece is fitted to, the name the procedural
- * form is inferred from, the collection, and — when the render is fabricked —
- * the appearance descriptor's cloth. `mesh.url` alone would not do it: a mesh is
- * only ever REPLACED, never edited in place (`uploadTogoMesh` mints a fresh
- * `crypto.randomUUID()` path with `upsert: false`, so a re-upload always changes
- * the URL) — but a piece can also be re-dimensioned, renamed or moved to another
- * collection with the same mesh, and each of those changes the picture.
+ * There is no `updatedAt` on a payload model to lean on, so this IS the stamp:
+ * the mesh (url + the scale/axis/rotation applied to it), the footprint the
+ * piece is fitted to, the name the procedural form is inferred from, and the
+ * collection. `mesh.url` alone would not do it — a mesh is only ever REPLACED,
+ * never edited in place (`uploadTogoMesh` mints a fresh `crypto.randomUUID()`
+ * path with `upsert: false`, so a re-upload always changes the URL) — but a
+ * piece can also be re-dimensioned, renamed or moved to another collection on
+ * the same mesh, and each of those changes the picture.
  *
- * The render FRAME and the fabric code are in the key as themselves: two frames
- * of the same piece are two different images, not a hit and a wrong size.
+ * READS EITHER SHAPE, and normalizes: the back-office bakes from a `togo_models`
+ * ROW (`meshUrl`, `meshScale`, …) and the widget checks the baked stamp against
+ * the PAYLOAD model (`mesh: {url, scale, …}`, collection defaulted to 'Togo').
+ * Those are the same piece, so they must fingerprint identically — otherwise
+ * every baked thumbnail reads as stale and the widget quietly renders the whole
+ * catalogue anyway, which is the exact cost the bake exists to remove.
+ */
+export function togoThumbStamp(model) {
+  if (!model) return '';
+  const mesh = model.mesh || null;
+  // JSON, not a joined string: it delimits the fields unambiguously, so a URL
+  // that happens to contain the separator can't make two different pieces
+  // fingerprint the same.
+  return fingerprint(JSON.stringify([
+    (mesh?.url ?? model.meshUrl) || '',
+    Number(mesh?.scale ?? model.meshScale) || null,
+    (mesh?.upAxis ?? model.meshUpAxis) || 'y',
+    Number(mesh?.rotateY ?? model.meshRotateY) || 0,
+    Number(model.widthCm) || null,
+    Number(model.depthCm) || null,
+    model.name || model.label || '',
+    model.collection || 'Togo',
+  ]));
+}
+
+/**
+ * The BAKED image to use for this exact render, or null to render it here.
+ *
+ * THE STAMP IS THE STORE KEY. A row carries a picture and the key it was baked
+ * under, and the key already encodes everything that makes two renders two
+ * different images: the piece's content, the FRAME and the CLOTH. So the check
+ * is one string comparison, and it can only ever hand back an image of THIS
+ * piece, at THIS size, in THIS fabric.
+ *
+ * That is what keeps the catalogue self-healing. A model that has been
+ * re-dimensioned, renamed, re-meshed or re-dressed since the bake no longer
+ * matches its own stamp: this returns null, the widget renders it live (slower,
+ * correct) and the studio's next pass re-bakes it. A slow tile is survivable;
+ * the wrong piece in a Ligne Roset catalogue is not.
+ *
+ * TWO SLOTS, same rule. `thumb*` is the bare-body catalogue tile every piece
+ * gets; `heroThumb*` is the one DRESSED render a collection's cover needs (the
+ * fabricked path is per piece × cloth and can never be baked wholesale, but the
+ * covers are a handful of images and they are the first screen anyone sees).
+ */
+export function bakedThumbUrl(model, opts = null) {
+  const key = togoThumbStoreKey(model, opts || {});
+  if (!key) return null;
+  if (model.thumbUrl && model.thumbStamp === key) return String(model.thumbUrl);
+  if (model.heroThumbUrl && model.heroThumbStamp === key) return String(model.heroThumbUrl);
+  return null;
+}
+
+/**
+ * The store key for one rendered thumbnail — pure, and what the per-device
+ * Cache Storage entry is named.
+ *
+ * The picture's fingerprint (above) plus the two things that make one piece two
+ * different images: the render FRAME (two frames are not a hit at the wrong
+ * size) and the CLOTH it is dressed in, when the render is fabricked.
  */
 export function togoThumbStoreKey(model, { code = '', fab = null, width, height } = {}) {
   if (!model?.id) return null;
   const w = frameDim(width, THUMB_W), h = frameDim(height, THUMB_H);
-  // JSON, not a joined string: it delimits the fields unambiguously, so a URL
-  // that happens to contain the separator can't make two different pieces
-  // fingerprint the same.
   const stamp = fingerprint(JSON.stringify([
-    model.mesh?.url || '',
-    model.mesh?.scale ?? null,
-    model.mesh?.upAxis || '',
-    model.mesh?.rotateY ?? null,
-    model.widthCm ?? null,
-    model.depthCm ?? null,
-    model.name || model.label || '',
-    model.collection || '',
+    togoThumbStamp(model),
     fab ? [fab.textureUrl || '', fab.normalUrl || '', fab.rgb || null, !!fab.tint] : null,
   ]));
   // A same-origin path: Cache Storage keys on a Request, so it must be a real
@@ -431,6 +478,17 @@ const inflight = new Map();               // session cache key → Promise<url|n
 
 async function resolveTogoThumb(model, opts) {
   if (!model?.id) return null;
+  // THE BAKED PICTURE SHORT-CIRCUITS EVERYTHING. An image the back-office
+  // already rendered is a plain public URL: no three bundle, no mesh download,
+  // no GPU pass, no PNG encode, and nothing to cache here (the browser caches it
+  // like any other image). This is the one choke point every surface reaches a
+  // thumbnail through, so the picker, the drawer, the collection index and the
+  // studio all get it from this single check — and anything NOT baked (a piece
+  // in the cloth a customer just picked) falls straight through to the renderer
+  // exactly as before. By then they have chosen a piece, which is precisely when
+  // loading its mesh is worth it.
+  const baked = bakedThumbUrl(model, opts);
+  if (baked) return baked;
   const memKey = thumbCacheKey(model, opts);
   const cached = lruGet(cache, memKey);
   if (cached !== undefined) return cached;
@@ -592,10 +650,14 @@ export function useTogoThumbnails(models, frame = null) {
     (async () => {
       for (const m of (models || [])) {
         if (!alive) return;
-        const url = await renderTogoThumb(m, { ...(frame || {}) });
+        const opts = { ...(frame || {}) };
+        const url = await renderTogoThumb(m, opts);
         if (!alive) return;
         if (url) setThumbs((prev) => (prev[m.id] === url ? prev : { ...prev, [m.id]: url }));
-        await breathe();
+        // The yield is there to keep a RENDER from monopolising the frame. A
+        // baked picture didn't render anything, so pausing after it just paints
+        // the list one model per frame for no reason.
+        if (!bakedThumbUrl(m, opts)) await breathe();
       }
     })();
     return () => { alive = false; };

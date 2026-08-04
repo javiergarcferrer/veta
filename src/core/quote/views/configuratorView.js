@@ -1367,7 +1367,33 @@ function heroPalette(materials) {
   ].filter((tier) => tier.length);
 }
 
-export function resolveCollectionMenu(models, materials) {
+/**
+ * The dealer's own choice of cover for a collection, when there is one:
+ * `heroes` is `{ [collection]: { modelId, code } }` (settings.togo_heroes,
+ * written by the Modelos screen).
+ *
+ * VALIDATED, NEVER TRUSTED. Both halves are checked against the SAME public
+ * catalogue the visitor is about to browse, and each falls back on its own: a
+ * pinned piece that has been deactivated or moved to another collection loses
+ * to the ranking, a pinned cloth that left the price list loses to the palette,
+ * and a stale pick can therefore never put a piece on the index that nobody can
+ * then build — the rule the automatic version already had.
+ */
+function pinnedHero(heroes, collection, pieces, palette) {
+  const pin = heroes && typeof heroes === 'object' ? heroes[collection] : null;
+  if (!pin) return { hero: null, fabric: null };
+  const hero = pin.modelId ? pieces.find((p) => p?.id === pin.modelId) || null : null;
+  const code = pin.code ? String(pin.code) : '';
+  // The palette is every colour that can actually be upholstered, so a code it
+  // doesn't carry is one that cannot be rendered — that's the honest test, and
+  // it hands back the same entry shape the automatic pick produces.
+  const fabric = code
+    ? palette.flat().find((c) => c.code === code) || null
+    : null;
+  return { hero, fabric };
+}
+
+export function resolveCollectionMenu(models, materials, heroes = null) {
   const byName = new Map();
   for (const m of (models || [])) {
     if (!m) continue;
@@ -1382,14 +1408,21 @@ export function resolveCollectionMenu(models, materials) {
   // attempt at this) prevents nothing, because two different hashes can still
   // land on the same slot once you add their differing indices.
   const claimed = new Set();
-  return [...byName.entries()].map(([collection, pieces]) => {
+  const entries = [...byName.entries()];
+  // The DEALER'S picks are resolved and claimed FIRST, before anything is
+  // auto-assigned. Walking in list order instead would let an automatic
+  // collection claim the very bolt a later, pinned one was told to wear — and
+  // the pin would then either lose its colour or duplicate someone else's.
+  const pinned = entries.map(([collection, pieces]) => pinnedHero(heroes, collection, pieces, palette));
+  for (const p of pinned) if (p.fabric) claimed.add(p.fabric.code);
+  return entries.map(([collection, pieces], i) => {
     // The same ranking the launch card's hero uses — a collection's headline
     // piece is the same notion as the catalogue's, one level down.
-    const hero = pieces
+    const hero = pinned[i].hero || pieces
       .slice()
       .sort((a, b) => (heroRank(a) - heroRank(b)) || ((Number(b.widthCm) || 0) - (Number(a.widthCm) || 0)))[0];
     const priced = pieces.map((p) => Number(p.priceUsd)).filter((n) => Number.isFinite(n) && n > 0);
-    let fabric = null;
+    let fabric = pinned[i].fabric;
     const h = heroFnv(collection);
     for (const tier of palette) {
       const start = h % tier.length;
@@ -1413,8 +1446,45 @@ export function resolveCollectionMenu(models, materials) {
       // The cloth this collection's hero is rendered in (null ⇒ the default
       // body, which is what a catalogue with no renderable colour gets).
       fabric,
+      // Whether the dealer chose this cover or the catalogue did — the Modelos
+      // screen reads it to show which collections are pinned, and it costs the
+      // widget nothing.
+      pinned: !!(pinned[i].hero || pinned[i].fabric),
     };
   });
+}
+
+/** Every colour the collection index can dress a cover in, flat and in
+ *  desirability order — the exact set `resolveCollectionMenu` picks from, so the
+ *  back-office picker can only ever offer cloth that will actually render.
+ *  Entries are `{ code, colorName, materialName, textured, sat, legible }`. */
+export function heroFabricOptions(materials) {
+  return heroPalette(materials).flat();
+}
+
+/**
+ * The next `settings.togo_heroes` after the dealer pins (or unpins) part of a
+ * collection's cover. Pure: the caller persists whatever comes back.
+ *
+ * `patch` sets one or both halves — `{ modelId }`, `{ code }`, or both — and
+ * `null` on a field CLEARS it back to derived. A collection left with nothing
+ * pinned drops out of the map entirely rather than sitting there as an empty
+ * object: "no entry" and "an entry that pins nothing" would be two encodings of
+ * one state, and the next reader would have to know they mean the same thing.
+ */
+export function planHeroPin(heroes, collection, patch = {}) {
+  const name = canonicalCollection(collection);
+  if (!name) return heroes || null;
+  const next = { ...(heroes && typeof heroes === 'object' ? heroes : null) };
+  const cur = next[name] && typeof next[name] === 'object' ? next[name] : {};
+  const entry = {};
+  const modelId = 'modelId' in patch ? patch.modelId : cur.modelId;
+  const code = 'code' in patch ? patch.code : cur.code;
+  if (modelId) entry.modelId = String(modelId);
+  if (code) entry.code = String(code);
+  if (Object.keys(entry).length) next[name] = entry;
+  else delete next[name];
+  return Object.keys(next).length ? next : null;
 }
 
 /**

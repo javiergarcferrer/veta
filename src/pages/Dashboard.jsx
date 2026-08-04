@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import BrandLogo from '../components/BrandLogo.jsx';
 import { Link } from 'react-router-dom';
 import {
   Boxes, Store, Inbox, FileText, Palette, Tags, Layers, ShieldCheck, Sparkles,
@@ -642,6 +643,8 @@ function MaterialsPanel({ materials }) {
 /* ---------------------------- entorno de la marca ------------------------- */
 
 function EnvironmentPanel({ environment: env, catalog }) {
+  // The card that describes the brand shows the brand.
+  const mark = env.hasBrand ? <BrandLogo brand={{ name: env.name, branding: env.branding }} size={22} /> : null;
   if (!env.hasBrand) {
     return (
       <PanelCard icon={Tags} title="El entorno de la marca" to={SECTION_PATH.marcas} actionLabel="Ir a Marcas">
@@ -657,6 +660,7 @@ function EnvironmentPanel({ environment: env, catalog }) {
 
   return (
     <PanelCard
+      mark={mark}
       icon={Layers}
       title="El entorno de la marca"
       subtitle={`Módulos de importación: ${env.setLabel}`}

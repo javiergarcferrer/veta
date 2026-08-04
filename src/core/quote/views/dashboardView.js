@@ -611,6 +611,12 @@ function resolveEnvironment({ brand, brandModules }) {
     hasBrand: !!brand,
     name: brand?.name || brand?.slug || '',
     slug: brand?.slug || '',
+    /** The brand's own mark and accent — the View renders them, never guesses
+     *  them from the slug: a brand without a logo is not a broken brand. */
+    branding: {
+      logoUrl: brand?.branding?.logoUrl || null,
+      primaryColor: brand?.branding?.primaryColor || null,
+    },
     active: brand ? brand.active !== false : false,
     locale: brand?.locale || 'es',
     currency: String(brand?.currency || 'USD').toUpperCase(),

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import BrandLogo from '../../components/BrandLogo.jsx';
 import {
   Tags, Plus, Check, Shield, Loader2, AlertTriangle, Boxes, Palette, FileText,
   Power, Trash2, UploadCloud,
@@ -55,11 +56,7 @@ const BRAND_COLUMNS = [
     tdClass: 'font-medium text-ink-900',
     cell: ({ r }) => (
       <span className="inline-flex items-center gap-2 min-w-0">
-        <span
-          className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-inset ring-black/10"
-          style={{ background: r.primaryColor || 'rgb(var(--ink-200))' }}
-          aria-hidden
-        />
+        <BrandLogo brand={{ name: r.name, branding: { logoUrl: r.logoUrl, primaryColor: r.primaryColor } }} size={16} />
         <span className="truncate">{r.name}</span>
       </span>
     ),

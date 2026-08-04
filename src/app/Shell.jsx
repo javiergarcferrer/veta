@@ -14,6 +14,8 @@ import SignIn from './SignIn.jsx';
 // module"; the helper retries and recovers. It also keeps the public
 // distributor inbox from dragging the model studio down with it.
 const lazyPage = (loader) => lazy(() => safeDynamicImport(loader));
+import BrandLogo from '../components/BrandLogo.jsx';
+
 const Dashboard = lazyPage(() => import('../pages/Dashboard.jsx'));
 const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
 const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
@@ -113,14 +115,15 @@ function BrandSwitcher() {
   const dot = brand.branding?.primaryColor || null;
   if (options.length === 1) {
     return (
-      <div className="px-1 md:px-3 shrink-0 md:mb-3 flex items-center gap-2 text-[11px] text-ink-400 max-w-[10rem] md:max-w-none">
-        {dot && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} aria-hidden />}
-        <span className="truncate" title={brand.name}>{brand.name}</span>
+      <div className="px-1 md:px-3 shrink-0 md:mb-3 flex items-center gap-2 max-w-[10rem] md:max-w-none">
+        <BrandLogo brand={brand} size={18} tone="chrome" />
+        <span className="sr-only">{brand.name}</span>
       </div>
     );
   }
   return (
-    <div className="px-1 md:px-3 shrink-0 md:mb-3">
+    <div className="px-1 md:px-3 shrink-0 md:mb-3 flex items-center gap-2 md:block">
+      <BrandLogo brand={brand} size={18} tone="chrome" className="md:mb-2" />
       <label className="sr-only" htmlFor="brand-switcher">Marca</label>
       <select
         id="brand-switcher"

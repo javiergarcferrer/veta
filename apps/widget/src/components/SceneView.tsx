@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { buildSceneGroup, disposeGroup, fabricAnisotropy, setupStage } from '@veta/scene';
+import { buildSceneGroup, disposeGroup, fabricAnisotropy, loadModels, setupStage, type LoadedModel } from '@veta/scene';
 import { t, type Locale } from '@veta/i18n';
 import type { SceneView as SceneViewModel } from '../vm/scene.ts';
 import { sceneFabricCodes } from '../vm/scene.ts';
@@ -34,6 +34,9 @@ export interface SceneViewProps {
 export default function SceneView({ view, source, imageOps, renderParams, locale, swatchUrlFor }: SceneViewProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // Parsed meshes survive rebuilds AND remounts: a fabric change or a
+  // plan⇄view flip must never re-download a sofa.
+  const modelCacheRef = useRef<Map<string, LoadedModel>>(new Map());
 
   // One effect owns the whole renderer lifetime. `alive` guards every await:
   // a visitor who switches back to the plan mid-load must not get a canvas
@@ -73,13 +76,51 @@ export default function SceneView({ view, source, imageOps, renderParams, locale
         let group: any = null;
         const rebuild = async () => {
           maps?.dispose();
-          maps = await loadFabricMaps(sceneFabricCodes(view), { THREE, source, imageOps, swatchUrlFor });
+          // REAL meshes load alongside the fabrics: pieces carry meshUrl /
+          // meshParams off the catalog, the shared cache means a fabric change
+          // never re-downloads a sofa, and a mesh that fails to load falls to
+          // the collection's fallback policy inside the builder — never a
+          // blank scene.
+          const [nextMaps, modelFor] = await Promise.all([
+            loadFabricMaps(sceneFabricCodes(view), { THREE, source, imageOps, swatchUrlFor }),
+            loadModels(
+              { pieces: view.pieces as never },
+              {
+                THREE: THREE as never,
+                descFor: (p: any) => (p?.meshUrl ? {
+                  url: p.meshUrl as string,
+                  scale: Number(p.meshParams?.scale) || undefined,
+                  upAxis: p.meshParams?.upAxis,
+                  rotateY: Number(p.meshParams?.rotateY) || undefined,
+                } : null),
+                loaderFor: async (ext: string) => {
+                  if (ext === 'glb' || ext === 'gltf') {
+                    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+                    return new GLTFLoader();
+                  }
+                  if (ext === 'fbx') {
+                    const { FBXLoader } = await import('three/examples/jsm/loaders/FBXLoader.js');
+                    return new FBXLoader();
+                  }
+                  if (ext === 'obj') {
+                    const { OBJLoader } = await import('three/examples/jsm/loaders/OBJLoader.js');
+                    return new OBJLoader();
+                  }
+                  return null;
+                },
+                toCreasedNormals: (await import('three/examples/jsm/utils/BufferGeometryUtils.js')).toCreasedNormals,
+              } as never,
+              modelCacheRef.current,
+            ).then((r) => r.modelFor).catch(() => (() => null)),
+          ]);
+          maps = nextMaps;
           if (!alive) { maps.dispose(); return; }
           if (group) disposeGroup(group);
           group = buildSceneGroup(THREE, { pieces: view.pieces as never }, {
             RoundedBoxGeometry,
             params: (renderParams ?? null) as never,
             anisotropy,
+            modelFor: modelFor as never,
             colorFor: (code: string) => maps?.colors.get(code) ?? null,
             textureFor: (code: string) => maps?.textures.get(code) ?? null,
             normalFor: (code: string) => maps?.normals.get(code) ?? null,

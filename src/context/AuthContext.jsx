@@ -1,0 +1,298 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+import { supabase, SUPABASE_URL } from '../db/supabaseClient.js';
+import { clearResults } from '../db/resultCache.js';
+import { userMessageFor } from '../lib/errorMessages.js';
+
+const Ctx = createContext(null);
+
+// The google-api login flow bounces back to the app with either a one-time
+// magic-link token (?gl_login=…) to trade for a session, or an error
+// (?gl_error=…). The param may ride the query string OR the hash query
+// (depending on the redirect target), so look in both.
+function readGoogleLoginParams() {
+  if (typeof window === 'undefined') return {};
+  const out = {};
+  const grab = (qs) => {
+    const p = new URLSearchParams(qs);
+    if (p.get('gl_login')) out.token = p.get('gl_login');
+    if (p.get('gl_error')) out.error = p.get('gl_error');
+  };
+  grab(window.location.search);
+  const hash = window.location.hash || '';
+  const qi = hash.indexOf('?');
+  if (qi >= 0) grab(hash.slice(qi + 1));
+  return out;
+}
+function cleanGoogleLoginUrl() {
+  if (typeof window === 'undefined') return;
+  const base = window.location.href.split('#')[0].split('?')[0];
+  window.history.replaceState(null, '', `${base}#/`);
+}
+
+// Recovery-mode durability. recoveryMode gates the SetPassword screen for a
+// forgotten-password reset, but an existing user already carries a
+// passwordSetAt stamp — so unlike the invite flow it can't fall back to a
+// DB-durable signal. We persist a tab-scoped flag so a reload mid-flow (before
+// the new password is saved) keeps the user on SetPassword instead of dropping
+// them into the app on a temporary recovery session with the password still
+// unchanged. sessionStorage (not localStorage) so it dies with the tab.
+const RECOVERY_FLAG = 'rs.recovery';
+function persistRecovery(on) {
+  try {
+    if (on) sessionStorage.setItem(RECOVERY_FLAG, '1');
+    else sessionStorage.removeItem(RECOVERY_FLAG);
+  } catch { /* private mode / storage disabled */ }
+}
+function readRecoveryFlag() {
+  if (typeof window === 'undefined') return false;
+  // Authoritative on the landing load: an IMPLICIT-flow recovery link carries
+  // `type=recovery` in the URL fragment, read synchronously before the SDK
+  // cleans it. (Under PKCE the link arrives as `?code=` with no `type=recovery`;
+  // the PASSWORD_RECOVERY auth event is the fallback that flags it there.)
+  if ((window.location.hash || '').includes('type=recovery')) {
+    persistRecovery(true);
+    return true;
+  }
+  try { return sessionStorage.getItem(RECOVERY_FLAG) === '1'; } catch { return false; }
+}
+// An expired / already-used magic-link, invite, or recovery link comes back
+// with an error in the URL fragment (implicit flow) instead of a session —
+// e.g. `#error=access_denied&error_code=otp_expired&error_description=…`. We
+// translate it to one actionable Spanish line so the user isn't dumped on
+// /login with no explanation. Read once at mount, before the router rewrites
+// the hash to `#/login`.
+function readRecoveryError() {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash || '';
+  const body = hash.startsWith('#') ? hash.slice(1) : hash;
+  let params;
+  try { params = new URLSearchParams(body); } catch { return null; }
+  const code = params.get('error_code') || params.get('error');
+  if (!code) return null;
+  const detail = `${code} ${params.get('error_description') || ''}`;
+  if (/expired|invalid|otp|access_denied/i.test(detail)) {
+    return 'El enlace expiró o ya se usó. Solicita uno nuevo para restablecer tu contraseña.';
+  }
+  return 'No se pudo validar el enlace. Solicita uno nuevo.';
+}
+
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null);
+  const [ready, setReady] = useState(false);
+  const initialGoogle = readGoogleLoginParams();
+  const [googleLoginError, setGoogleLoginError] = useState(
+    !initialGoogle.token && initialGoogle.error ? initialGoogle.error : null,
+  );
+  // Password-recovery flow. When a user clicks the "restablecer contraseña"
+  // link from their email, Supabase (detectSessionInUrl) parses the recovery
+  // token out of the URL fragment on load, establishes a session, and fires a
+  // PASSWORD_RECOVERY auth event. We flag that so the Gate routes them to
+  // SetPassword — regardless of whether they already carry a passwordSetAt
+  // stamp (an existing user resetting a forgotten password does). The flag is
+  // seeded from the URL fragment AND a tab-scoped sessionStorage mirror
+  // (readRecoveryFlag) so it survives a reload mid-flow. recoveryError carries
+  // an expired/invalid-link message for the Login screen.
+  const [recoveryMode, setRecoveryMode] = useState(readRecoveryFlag);
+  const [recoveryError, setRecoveryError] = useState(readRecoveryError);
+
+  useEffect(() => {
+    let active = true;
+    // Stale-token escape hatch. On a normal cold boot, supabase.getSession()
+    // returns near-instantly out of localStorage; if it hasn't returned in
+    // ~12 s the stored token is probably from a different Supabase project
+    // and the SDK is stuck on a request that never resolves. We drop the
+    // tokens and proceed so the user lands on /login instead of staring at
+    // a spinner.
+    //
+    // BUT — when supabase is mid-way through processing an auth callback
+    // (invite / magic-link / recovery), init makes a network call to
+    // validate the token. On a cold deploy or slow connection that can take
+    // several seconds. If we'd hit the timeout we'd silently drop a
+    // session that's about to land — exactly the symptom that broke the
+    // invite flow for Teresa. So when we detect callback parameters in
+    // the URL we extend the budget and skip the localStorage wipe.
+    const google = readGoogleLoginParams();
+    const inAuthCallback = typeof window !== 'undefined' &&
+      (window.location.hash.includes('access_token=') ||
+       window.location.hash.includes('error=') ||
+       window.location.search.includes('code=') ||
+       !!google.token);
+    const fallbackMs = inAuthCallback ? 20000 : 3000;
+    const fallback = setTimeout(() => {
+      if (!active) return;
+      if (!inAuthCallback) {
+        try { localStorage && Object.keys(localStorage)
+          .filter((k) => k.startsWith('sb-'))
+          .forEach((k) => localStorage.removeItem(k)); } catch {}
+      }
+      setSession(null);
+      setReady(true);
+    }, fallbackMs);
+    (async () => {
+      try {
+        // "Sign in with Google" came back with a one-time token → trade it for
+        // a real session. onAuthStateChange below then sets the session.
+        if (google.token) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: google.token, type: 'magiclink' });
+          if (!active) return;
+          if (error) {
+            console.warn('[auth] google verifyOtp error', error);
+            setGoogleLoginError(userMessageFor(error));
+          }
+          cleanGoogleLoginUrl();
+          clearTimeout(fallback);
+          // Reflect whatever session verifyOtp established (if any).
+          const { data } = await supabase.auth.getSession();
+          if (!active) return;
+          setSession(data.session || null);
+          setReady(true);
+          return;
+        }
+        const { data, error } = await supabase.auth.getSession();
+        if (!active) return;
+        clearTimeout(fallback);
+        if (error) console.warn('[auth] getSession error', error);
+        setSession(data.session || null);
+        setReady(true);
+      } catch (err) {
+        if (!active) return;
+        clearTimeout(fallback);
+        console.warn('[auth] getSession threw', err);
+        setSession(null);
+        setReady(true);
+      }
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      // A recovery link lands here as PASSWORD_RECOVERY — flag it (and persist
+      // the tab-scoped mirror so a reload keeps it) so the Gate shows
+      // SetPassword and the user picks a new password before anything else
+      // renders.
+      if (event === 'PASSWORD_RECOVERY') { persistRecovery(true); setRecoveryMode(true); }
+      setSession(s || null);
+    });
+    return () => {
+      active = false;
+      clearTimeout(fallback);
+      sub?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  // If the login flow returned only an error (no token) — a failed Google
+  // round-trip or an expired invite/recovery link — strip it from the URL once
+  // so a refresh doesn't re-show it. The message is already captured in state
+  // (googleLoginError / recoveryError) for display. A VALID recovery carries a
+  // token and no error, so readRecoveryError is null and we don't clean it out
+  // from under Supabase's token parser.
+  useEffect(() => {
+    const g = readGoogleLoginParams();
+    if ((!g.token && g.error) || readRecoveryError()) cleanGoogleLoginUrl();
+  }, []);
+
+  async function signIn(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  }
+
+  /** Kick off "Sign in with Google" — full-page redirect to the consent flow. */
+  function signInWithGoogle() {
+    setGoogleLoginError(null);
+    const returnTo = `${window.location.origin}${window.location.pathname}`;
+    const url = `${SUPABASE_URL}/functions/v1/google-api?login=start&returnTo=${encodeURIComponent(returnTo)}`;
+    window.location.assign(url);
+  }
+
+  async function signUp(email, password) {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Kick off the "forgot password" flow: Supabase emails a recovery link to
+   * `email`. Clicking it returns to the app with a recovery session (see
+   * recoveryMode above), and the Gate routes to SetPassword. redirectTo mirrors
+   * the Google/invite flows — the app's own origin, already in Supabase's
+   * allowed redirect list (the invite magic-link uses the same origin in prod),
+   * so the flow needs no dashboard change to ship.
+   */
+  async function resetPassword(email) {
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  }
+
+  // Wipe every sb-* auth token from localStorage — the same nuclear key
+  // sweep forceReset() uses. Shared by signOut()'s fallback path.
+  function wipeAuthTokens() {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('sb-'))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  }
+
+  async function signOut() {
+    // Signing out must also drop the on-device data snapshots (the SWR result
+    // cache persists business data in IndexedDB so app launches paint
+    // instantly) — a logged-out device keeps no inbox/quotes copies.
+    clearResults();
+    persistRecovery(false);
+    setRecoveryMode(false);
+    // supabase.auth.signOut() can hang (a dead network, an unreachable
+    // project) or reject (already-expired session). Either way the user
+    // expects to be logged out, so race it against a short timeout and, on
+    // a hang or error, fall back to wiping the stored tokens locally
+    // (mirrors forceReset) and clearing the in-memory session so the app
+    // routes to /login instead of stranding them signed-in.
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('signOut timed out')), 4000)),
+      ]);
+    } catch (e) {
+      console.warn('[auth] signOut failed/hung — wiping local tokens', e);
+      wipeAuthTokens();
+      setSession(null);
+    }
+  }
+
+  /**
+   * Nuclear escape hatch when boot is stuck. Clears every sb-* localStorage
+   * key (auth tokens) and hard-reloads. Used by the Loading screen when the
+   * 3s session-fetch timeout has fired and the user is still staring at a
+   * spinner — typically because the stored token is from a different Supabase
+   * project (we switched env vars) and getSession is sitting on a network
+   * request that never completes.
+   */
+  function forceReset() {
+    wipeAuthTokens();
+    window.location.reload();
+  }
+
+  const value = {
+    ready,
+    session,
+    user: session?.user || null,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    googleLoginError,
+    clearGoogleLoginError: () => setGoogleLoginError(null),
+    resetPassword,
+    recoveryMode,
+    clearRecoveryMode: () => { persistRecovery(false); setRecoveryMode(false); },
+    recoveryError,
+    clearRecoveryError: () => setRecoveryError(null),
+    signOut,
+    forceReset,
+  };
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(Ctx);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+}

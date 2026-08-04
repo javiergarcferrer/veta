@@ -1,0 +1,342 @@
+# Supabase project config. Used by the GitHub integration's auto-deploy
+# pipeline on push to `main`: it applies each function's `verify_jwt` setting
+# AND deploys every Edge Function declared here. A function only auto-deploys
+# if it has a `[functions.<name>]` block below.
+#
+# Per-function `verify_jwt` toggles whether Supabase's gateway checks
+# the request's JWT *before* the function code runs. We set it to
+# false for `invite-user` because the function does its OWN JWT
+# verification + admin-role check internally (see
+# functions/invite-user/index.ts) — leaving the gateway-level check
+# enabled would (1) be redundant for our auth needs and (2) break the
+# browser's CORS preflight, since browsers don't send the
+# Authorization header on the OPTIONS request the gateway would
+# require it on. That second part is what produces the cryptic
+# "Load failed" error the admin sees when trying to invite a user
+# from /admin/users: the OPTIONS hits the gateway, gets a 401, CORS
+# preflight fails, and the actual POST never even goes out.
+#
+# Functions not listed here keep Supabase's default (verify_jwt =
+# true). Add a new `[functions.<name>]` block when you need to opt
+# out per-function.
+
+[functions.invite-user]
+verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = false
+
+# bpd-rate verifies the caller's JWT itself (so the CORS preflight, which
+# carries no Authorization header, isn't rejected by the gateway).
+[functions.bpd-rate]
+verify_jwt = false
+
+# swatch-proxy re-serves a public Ligne Roset swatch image with CORS headers
+# so the browser-side PDF generator can embed it. It's a public, read-only
+# image proxy locked to the LR swatch CDN — no auth needed, and the gateway
+# must NOT require a JWT, or the PDF's plain image fetch (which carries no
+# Authorization header) would be rejected before the function runs.
+[functions.swatch-proxy]
+verify_jwt = false
+
+# quote-share backs the public, interactive client quote link. It's used
+# logged-out, so the gateway must not require a JWT; the function itself gates
+# on the secret share token and runs with the service role.
+[functions.quote-share]
+verify_jwt = false
+
+# contract-share backs the public, signable contract link (#/contrato/<token>).
+# Public (logged-out) like quote-share: gates on the secret token, runs with the
+# service role, archives the signature + signed PDF.
+[functions.contract-share]
+verify_jwt = false
+
+# account-share backs the public estado-de-cuenta link (#/cuenta/<token>).
+# Public (logged-out) like quote-share: gates on the secret token, runs with the
+# service role, returns only that customer's whitelisted statement.
+[functions.account-share]
+verify_jwt = false
+
+# hl-track verifies the caller's JWT itself (same reason as bpd-rate) and
+# proxies Hapag-Lloyd's Track & Trace API, keeping HL_CLIENT_ID/SECRET
+# server-side.
+[functions.hl-track]
+verify_jwt = false
+
+# lr-catalog reads a public Ligne Roset product page + its catalog AJAX
+# endpoints and returns the offered fabrics/colors as JSON for the Materials
+# importer + the quote builder's per-model fabric lookup. Read-only and locked
+# to ligne-roset.com (no SSRF). It verifies the caller's JWT ITSELF
+# (auth.getUser on the Authorization header) so anonymous internet traffic can't
+# drive the expensive { all:true } sitemap sweep. Gateway check off (verify_jwt
+# = false) for the same reason as bpd-rate: the browser's CORS preflight carries
+# no Authorization header, so a gateway check would reject it before the
+# function runs.
+[functions.lr-catalog]
+verify_jwt = false
+
+# rnc-lookup resolves a taxpayer's fiscal name from their RNC/cédula against the
+# public DGII-mirror registry (rnc.megaplus.com.do) so the app can auto-fill
+# suppliers/customers for clean 606/607 reporting. Read-only, locked to that one
+# endpoint + a sanitized numeric input (no SSRF). It verifies the caller's JWT
+# ITSELF (auth.getUser on the Authorization header) so anonymous internet
+# traffic can't drive the registry; verify_jwt stays false so the browser's CORS
+# preflight (no Authorization header) isn't rejected — same as bpd-rate.
+[functions.rnc-lookup]
+verify_jwt = false
+
+# togo-embed backs the public, no-login Togo configurator widget (embedded in the
+# dealer's website via an iframe). Used logged-out, so the gateway must not require
+# a JWT; it runs with the service role and exposes only public-safe data (retail
+# prices, margin baked) on GET, and writes a DRAFT quote (a lead) on POST.
+[functions.togo-embed]
+verify_jwt = false
+
+# store backs the public, no-login storefront ("Tienda"). Used logged-out, so
+# the gateway must not require a JWT; it runs with the service role and returns
+# only public-safe catalog data (product names, photos, retail prices) for the
+# house-account quotes the dealer designates in Settings. Margin is baked into
+# the prices; no cost/margin leaves the server.
+[functions.store]
+verify_jwt = false
+
+# store-lead captures a public storefront enquiry as a CRM customer (lead) +
+# a timeline activity, deduped by phone. Logged-out shoppers → verify_jwt=false.
+[functions.store-lead]
+verify_jwt = false
+
+# ecf-send signs an e-CF and transmits it to the DGII (dgii-ecf). It reads the
+# team's .p12 from the write-only ecf_credentials table via the service role.
+# It verifies the caller ITSELF (auth.getUser on the Authorization header —
+# rejecting the anon key, which a gateway verify_jwt=true would happily pass,
+# since the anon key is a valid JWT). Gateway check off for the same reason as
+# invite-user: the browser's CORS preflight carries no Authorization header.
+[functions.ecf-send]
+verify_jwt = false
+
+# shopify-sync mirrors in-stock inventory into the Shopify catalog. Called by a
+# signed-in team member (after a liquidation lands stock, a sale empties it, or a
+# manual "Sincronizar"). It verifies the caller ITSELF (auth.getUser on the
+# Authorization header — rejecting the anon key, which a gateway verify_jwt=true
+# would happily pass, since the anon key is a valid JWT). Gateway check off for
+# the same reason as invite-user: the browser's CORS preflight carries no
+# Authorization header. It reads the Admin token from the write-only
+# shopify_config table via the service role; the token never reaches the browser.
+[functions.shopify-sync]
+verify_jwt = false
+
+# wa-send sends outbound WhatsApp (Cloud API) for the quote editor, Settings
+# connection test and CRM inbox. It verifies the caller ITSELF (auth.getUser on
+# the Authorization header — rejecting the anon key, which a gateway
+# verify_jwt=true would happily pass, since the anon key is a valid JWT).
+# Gateway check off for the same reason as invite-user: the browser's CORS
+# preflight carries no Authorization header. It reads the Meta access token
+# from the write-only whatsapp_config table via the service role; the token
+# never reaches the browser.
+[functions.wa-send]
+verify_jwt = false
+
+# wa-webhook is called by META, not the browser — Meta sends no Supabase JWT,
+# so the gateway must not require one. POST payloads are authenticated by the
+# X-Hub-Signature-256 HMAC (App Secret from the write-only whatsapp_config);
+# the GET registration handshake matches settings.whatsapp_verify_token.
+[functions.wa-webhook]
+verify_jwt = false
+
+# claude-chat is the JARVIS uplink: it relays the dashboard console to the
+# Claude API (Anthropic) and persists the conversation in claude_messages.
+# Verifies the caller ITSELF (auth.getUser on the Authorization header) —
+# gateway check off so the CORS preflight passes, same as wa-send. It reads
+# the Anthropic API key from the write-only claude_config table via the
+# service role; the key never reaches the browser.
+[functions.claude-chat]
+verify_jwt = false
+
+# agent-worker — the daily pulse (07:30 AST): a deterministic digest over the
+# business tables (stale rate, e-NCF runway, quiet quotes, stuck configurator
+# leads, overdue tasks, failed agent actions, receipt queue), day-over-day
+# deduped via agent_notes; ONE Claude call (claude_config) narrates it and may
+# file <=3 catalog proposals into the approval inbox; the brief posts to the
+# JARVIS console + a push. Quiet day -> silent. {cron:true} Bearer service key;
+# {ensureCron:true} any signed-in team member (self-armed from the dashboard).
+[functions.agent-worker]
+verify_jwt = false
+
+# agent-collections — the cobranza agent (08:30 AST): deterministic aging over
+# sales_postings + payments (MONEY-EQUAL to resolveReceivables), planCollections
+# picks the day's overdue targets by cadence tier (gentle/firm/urgent, deduped
+# via agent_notes); ONE Claude call drafts a warm de-usted per-client message
+# (fallback deterministic), each filed as a send_client_message PROPOSAL for
+# human approval — it never sends. Kill switch settings.cobranza_agent (OFF).
+# {cron:true} Bearer service key; {ensureCron:true} any signed-in team member.
+[functions.agent-collections]
+verify_jwt = false
+
+# togo-quote-worker — the self-fulfilling configurator loop: pg_cron pings it
+# per minute ({cron:true}, Bearer service key); it claims NEW togo_requests,
+# builds the SAME modular quote the manual promote creates (parity-pinned),
+# and sends the share link via the approved WhatsApp quote template — or, with
+# settings.togo_auto_quote off (the default), files a send_togo_quote proposal
+# for one-tap approval in JARVIS. {ensureCron:true} (any signed-in team
+# member) self-arms the cron; {execute:<id>} is the approval callback.
+[functions.togo-quote-worker]
+verify_jwt = false
+
+# wa-campaign-worker — the Difusión scheduler: pg_cron pings it per minute
+# ({cron:true}, Bearer service key); it claims campaigns whose scheduled_at is
+# due and broadcasts their FROZEN recipient list through wa-send, one chunk per
+# tick, until the queue drains. {ensureCron:true} (any signed-in team member)
+# self-arms the cron from the Difusión page.
+[functions.wa-campaign-worker]
+verify_jwt = false
+
+# agent-actions executes ONE approved row of the agent_actions queue (the
+# propose → approve → execute layer): JARVIS/workers propose, a human approves
+# in the dashboard, THIS function claims atomically and runs the verb through
+# an existing guarded path (activities insert, wa-send template-only,
+# togo-quote-worker). Callers: a signed-in team member (dashboard button) or
+# a sibling function (Bearer service key) — checked in-code, gateway off for
+# the CORS preflight.
+[functions.agent-actions]
+verify_jwt = false
+
+# pib-ingest imports the weekly Ligne Roset "Product Information Briefing".
+# Primary path: a daily pg_cron pings it with {cron:true} (Bearer service key) →
+# it scans the connected Gmail for new PIB emails, downloads the PIB PDF via the
+# stored Google OAuth token, parses it with Claude (native PDF document block),
+# and upserts pib_briefings. Also serves {scanGmail}/{ensureCron} (a signed-in
+# team member / admin) and a manual {base64} upload. Gateway verify_jwt is off so
+# the CORS preflight passes AND the cron's service-key Authorization isn't treated
+# as a user JWT — the function checks each path in-code, same as lr-catalog.
+[functions.pib-ingest]
+verify_jwt = false
+
+# expediente-extract reads an import expediente's documents (DUA/Colector,
+# supplier invoices, BL, transport/port receipts) with Claude and returns a DRAFT
+# of the expediente (embarques/líneas/costos + Colector figures) for the dealer to
+# review before contabilizar — it never posts. POST {documents:[{name,mimeType,
+# base64}]} with a signed-in team member's JWT; the Anthropic key stays server-side
+# (claude_config). verify_jwt off so the CORS preflight passes; the function checks
+# the caller's JWT in-code (same shape as pib-ingest / claude-chat).
+[functions.expediente-extract]
+verify_jwt = false
+
+# wa-draft suggests a reply for the WhatsApp inbox: it relays a compact
+# conversation transcript to the Claude API (Anthropic) and returns a draft for
+# the dealer to review and send themselves — it never sends or persists.
+# Verifies the caller ITSELF (auth.getUser on the Authorization header) — gateway
+# check off so the CORS preflight passes, same as wa-send. Reads the Anthropic
+# key from the write-only claude_config table via the service role.
+[functions.wa-draft]
+verify_jwt = false
+
+# meta-social links + reads the team's Facebook Page / Instagram / Ads data
+# for the JARVIS social pulse. Verifies the caller ITSELF (auth.getUser on the
+# Authorization header) — gateway check off so the CORS preflight passes, same
+# as wa-send. It reads the Meta token from the write-only meta_social_config
+# table via the service role; the token never reaches the browser.
+[functions.meta-social]
+verify_jwt = false
+
+# meta-capi reports the dealer's real outcomes to the Meta Conversions API — the
+# server-side half of the Pixel. Called three ways, none of which can carry a
+# user JWT: the PUBLIC lead functions (store-lead, togo-embed) and quote-share
+# call it server-to-server with the service-role key in x-internal-secret, the
+# pg_cron retry drain calls it with the service key as a bearer, and the app
+# calls it with a team member's session (verified in-code, auth.getUser). So the
+# gateway check is off, exactly like meta-social. Customer identifiers are
+# SHA-256 hashed before they ever leave events.ts; the Meta token stays
+# server-side in meta_social_config.
+[functions.meta-capi]
+verify_jwt = false
+
+# dalle-image backs the JARVIS image-generation pane: it relays a prompt to
+# OpenAI gpt-image-1 — using dropped reference images as REAL inputs to the edit
+# endpoint (input_fidelity) when present, else pure text-to-image — renders the
+# results to the target size and stores them in the public `social` bucket.
+# Verifies the caller
+# ITSELF (auth.getUser on the Authorization header) — gateway check off so the
+# CORS preflight (which carries no JWT) passes, same as wa-send. The OpenAI key
+# is read write-only from openai_config via the service role; it never reaches
+# the browser.
+[functions.dalle-image]
+verify_jwt = false
+
+# google-api — Gmail (send) + Google Drive (folders/upload/list) on ONE Google
+# OAuth account. Verifies the caller ITSELF (auth.getUser on the Authorization
+# header) — gateway check off so the CORS preflight passes, same as wa-send. The
+# OAuth client creds + refresh token live in the write-only google_oauth_config
+# table (service role only); the access token is a server-owned cache and never
+# reaches the browser. The GET callback is the public OAuth redirect.
+[functions.google-api]
+verify_jwt = false
+
+# Instagram webhooks (comments + mentions). Public callback — Meta calls it
+# unauthenticated; it verifies the hub token and persists to ig_events.
+[functions.meta-webhook]
+verify_jwt = false
+
+# The scheduling-engine worker. pg_cron pings it with the service-role key;
+# its ensureCron action self-registers that cron job.
+[functions.ig-publish-worker]
+verify_jwt = false
+
+# hl-watch — the container ETA watcher. pg_cron pings it daily (Bearer service
+# key); { ensureCron: true } (any logged-in user) registers the job. Polls
+# Hapag-Lloyd for containers on in-motion orders and persists the summary onto
+# containers.tracking_* (JARVIS derives the "ETA se movió" events from it).
+[functions.hl-watch]
+verify_jwt = false
+
+# meta-receipts pulls Meta Ads billing per closed cycle into the meta_receipts
+# draft queue (reviewed + posted as gastos). pg_cron pings it monthly with the
+# service-role key; the in-app "Sincronizar" button calls it as an authenticated
+# user. It verifies the caller ITSELF (service-role bearer OR auth.getUser), so
+# the gateway check is off — same as meta-social.
+[functions.meta-receipts]
+verify_jwt = false
+
+# vendor-receipts scans the connected Gmail for recurring foreign-SaaS charges
+# (Google Workspace, Google Cloud, Shopify), captures each invoice PDF and parks
+# a review draft in vendor_receipts. Verifies the caller ITSELF (service-role
+# bearer for the daily cron OR auth.getUser for the in-app button), so the
+# gateway check is off — same as meta-receipts. Reads the Google refresh token
+# from google_oauth_config via the service role; tokens stay server-side.
+[functions.vendor-receipts]
+verify_jwt = false
+
+# ── DGII e-CF RECEPTOR services (certification steps 8–11) ──────────────────
+# The three web services DGII validates to certify us as a RECEPTOR (the
+# inbound half of e-CF, the part ecf-send does NOT do). DGII / other emisores
+# call them server-to-server with NO Supabase JWT, so the gateway check must be
+# off; auth is the semilla→token flow itself (fe-autenticacion mints the token,
+# fe-recepcion / fe-aprobacioncomercial verify it). Exposed publicly at
+# soft.alcover.do/fe/* via the Vercel rewrites in vercel.json. All three read
+# the team .p12 from the write-only ecf_credentials table via the service role,
+# exactly like ecf-send. See docs/ecf-certification.md.
+[functions.fe-autenticacion]
+verify_jwt = false
+
+[functions.fe-recepcion]
+verify_jwt = false
+
+[functions.fe-aprobacioncomercial]
+verify_jwt = false
+
+# push-notify backs Web Push for the installed PWA: GET hands the browser the
+# VAPID public key (public by definition — needed logged-in but the gateway
+# must not demand a JWT, the CORS preflight has no Authorization header), POST
+# broadcasts a notification and does its own auth in-code (service-role from
+# sibling functions like wa-webhook, or a team member's JWT for the test send).
+[functions.push-notify]
+verify_jwt = false
+
+# togo-match asks Claude to PICK the Ligne Roset root that prices an uploaded
+# model (or one of its componentes) from the shortlist the browser already
+# narrowed with lib/togo/modelMatch. It SUGGESTS and never writes — no db
+# mutation of any kind, same contract as wa-draft. Verifies the caller ITSELF
+# (auth.getUser on the Authorization header) — gateway check off so the CORS
+# preflight passes, same as wa-draft. Reads the Anthropic key from the
+# write-only claude_config table via the service role.
+[functions.togo-match]
+verify_jwt = false

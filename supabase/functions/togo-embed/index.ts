@@ -1,0 +1,840 @@
+// togo-embed — backs the PUBLIC, no-login Togo configurator widget (embeddable in
+// the dealer's website via an <iframe>).
+//
+//   GET                → the public Togo catalog: the active `togo_models` with
+//          their RETAIL price (list × the dealer's default margin; markup baked
+//          in, never the list/cost), the FX rate and store identity. No token —
+//          it's public.
+//   GET  ?dealer=<slug> → the SAME catalog, SCOPED + re-priced + re-branded for
+//          one of the many Ligne Roset dealers embedding this widget: only the
+//          colecciones it carries (`dealers.collections`; empty = all of them),
+//          prices scaled by its price factor (markup × FX) and presented per its
+//          pricing_mode (full/from/hidden), store identity swapped to the
+//          dealer's, plus a `dealer` block the widget renders
+//          (locale/currency/logo). Unknown or inactive slug → 404. No ?dealer →
+//          today's Alcover payload verbatim.
+//   GET  ?svg=<id,id,…> → the plan OUTLINES for a few models: `{ [id]: svg }`.
+//          The catalog no longer ships the CAD outline (it was half its bytes,
+//          for a field only the DXF export reads — see payload.ts), so the
+//          widget asks for the pieces it actually placed, when it exports.
+//          Bounded (≤40 sanitized ids) and gated like the catalog itself:
+//          active, drawable models only. Public, no token.
+//   GET  ?inbox=<token> → the dealer's PRIVATE, token-gated lead inbox: the
+//          togo_requests routed to that dealer (newest first), shaped public-safe,
+//          plus a model-id→name map so the inbox can label items. The inbox_token
+//          is the ONLY authorization (the dealer is logged-out); an inactive
+//          dealer can still read its leads. Unknown token → 404.
+//   POST               → a quote REQUEST (lead): the visitor's contact + their
+//          plan layout is stored as a PENDING row in `togo_requests` — held on the
+//          dealer's Togo workspace (Solicitudes tab), NOT injected into
+//          Cotizaciones. `body.dealer` (a slug) routes the lead to that dealer
+//          (unknown → 400); absent → Alcover's own embed (dealer_id null). The
+//          dealer triages it and promotes the ones they want into the regular
+//          quote pipeline (a one-tap "Pasar a cotización" → a draft quote).
+//          IDEMPOTENT: the row carries a content `lead_key` (leadDedupe.ts) and
+//          a repeat of that key within the window reuses the request instead of
+//          inserting — a flaky-network retry is one lead, not two quotes and
+//          two WhatsApps.
+//   POST ?inbox action → `{ inbox:<token>, action:'setStatus', id, status }`: the
+//          token-gated inbox marking one of ITS OWN leads pending/contacted
+//          (never converted/dismissed — those are app-side). Unknown token → 404.
+//
+// Why a function: used logged-OUT, but the DB is behind RLS (`to authenticated`).
+// This runs with the service role and exposes only public-safe data + writes a
+// pending lead the dealer must act on. verify_jwt=false (see config.toml).
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import {
+  applyDealerPricing,
+  applyPricingMode,
+  buildPriceIndex,
+  dealerPublicShape,
+  filterModelsForDealer,
+  INBOX_SETTABLE_STATUSES,
+  injectCollectionStructure,
+  priceInboxItems,
+  sanitizePartFinishes,
+  sanitizePartMaterials,
+  shapeInboxRequest,
+  snapshotBytesFromDataUrl,
+} from './dealer.ts';
+import { isMissingColumn, leadDedupeDecision, leadDedupeKey } from './leadDedupe.ts';
+import {
+  cacheHeadersFor,
+  catalogModelShape,
+  etagMatches,
+  etagOf,
+  inboxModelShape,
+  parseSvgIds,
+  readAllPages,
+} from './payload.ts';
+
+type Admin = ReturnType<typeof createClient>;
+type Row = Record<string, unknown>;
+
+const TEAM_PROFILE_ID = 'team';
+const MAX_ITEMS = 40;
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-api-version',
+};
+
+// PRIVATE BY DEFAULT: every answer is `no-store` unless a branch deliberately
+// opts into the shared cache (see `cacheable` below). The inbox is token-gated
+// lead data and the POSTs are writes — a stray `public` header on either would
+// let a CDN serve one dealer's leads to the next caller.
+function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/json',
+      ...cacheHeadersFor('post'),
+      ...headers,
+    },
+  });
+}
+
+// A PUBLIC GET answer, shared-cacheable and conditionally revalidated: the body
+// is serialized ONCE, its content hash becomes the ETag, and a matching
+// `If-None-Match` gets an empty 304. Before this, every widget mount
+// re-downloaded the whole catalog (cf-cache-status DYNAMIC, no validator) — on
+// a phone, on every open.
+async function cacheable(req: Request, body: unknown, branch: 'catalog' | 'svg'): Promise<Response> {
+  const text = JSON.stringify(body);
+  const etag = await etagOf(text);
+  const headers = {
+    ...CORS_HEADERS,
+    'Content-Type': 'application/json',
+    ...cacheHeadersFor(branch, etag),
+  };
+  if (etagMatches(req.headers.get('if-none-match'), etag)) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(text, { status: 200, headers });
+}
+
+const num = (v: unknown): number => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const clampPct = (v: unknown): number => Math.min(500, Math.max(0, num(v)));
+const newId = (): string => crypto.randomUUID();
+const str = (v: unknown, max = 200): string => String(v ?? '').slice(0, max);
+
+// The catalog pricing machinery (splitGrade / baseProductFor / familyFor) lives
+// in dealer.ts — the pure Model — so the catalog projection (payload.ts) and the
+// inbox pricer share ONE implementation; the per-model SHAPES both ends emit are
+// payload.ts's. This file is the imperative shell: auth, reads, writes, routing.
+
+/**
+ * A team-scoped read, PAGED — the local mirror of togo-quote-worker's
+ * readAllTeamRows (sibling functions stay self-contained: nothing imports across
+ * function folders). The loop itself is payload.ts's `readAllPages`, so its
+ * termination is unit-pinned instead of retyped per call site.
+ *
+ * `orderBy` is REQUIRED and must be unique-ish WITHIN the profile — `reference`
+ * for products (unique index on `(profile_id, reference)`), the PK `id`
+ * elsewhere. A `.range()` window over an unordered read is free to skip one row
+ * and repeat another, and PostgREST reports neither.
+ */
+async function readAll(
+  admin: Admin,
+  table: string,
+  columns: string,
+  { orderBy, orFilter }: { orderBy: string; orFilter?: string },
+): Promise<Row[]> {
+  return readAllPages<Row>(async (from, to) => {
+    let q = admin.from(table).select(columns).eq('profile_id', TEAM_PROFILE_ID);
+    if (orFilter) q = q.or(orFilter);
+    const { data, error } = await q.order(orderBy).range(from, to);
+    return { data: (data || []) as Row[], error };
+  }, table);
+}
+
+/** The shared catalog, optionally SCOPED to the colecciones one dealer carries.
+    `dealer` null (Alcover's own embed) — and a dealer with no `collections` —
+    read the whole catalog, exactly as before the column existed. */
+async function loadContext(admin: Admin, dealer: Row | null = null) {
+  // Every whole-table read here is PAGED: togo_models is read UNFILTERED (605
+  // rows today, the active gate is applied below in JS) and grows a whole LR
+  // library folder at a time, and a model lost past the cap takes its piece out
+  // of the palette with no error anywhere.
+  const [settingsRes, modelRows, materialRows, fabricRows] = await Promise.all([
+    admin.from('settings').select('*').eq('profile_id', TEAM_PROFILE_ID).maybeSingle(),
+    readAll(admin, 'togo_models', '*', { orderBy: 'id' }),
+    readAll(admin, 'materials', 'id, name, grade, category, composition, price, price_unit, colors, not_in_pricelist_at, discontinued_at', { orderBy: 'id' }),
+    readAll(admin, 'model_fabrics', 'id, pattern_names', { orderBy: 'id' }),
+  ]);
+  const settings = (settingsRes.data as Row) || {};
+  const ex = (settings.exchange_rate || settings.bsc || settings.bpd || {}) as { buy?: unknown; sell?: unknown };
+  const rates = { USD: 1, DOP: Number(ex.sell) || Number(ex.buy) || 60.0 };
+  const marginPct = clampPct(settings.default_margin_pct);
+  // A group marked Estructura simply HAS its colección's acabados — the palette
+  // is a colección-level parameter stored per model, so a row that never had the
+  // fan-out written into it would offer the visitor NOTHING to pick. Injected
+  // HERE, once, before the active filter: the union must see every row (the
+  // palette belongs to the family, not to whichever piece happens to be active),
+  // and this is the one place `models` is shaped, so the catalog payload and the
+  // roots sweep below read the same rows. Adds `finishes` keys only — the roots
+  // sweep, partCount and every price path are blind to it by shape.
+  //
+  // The dealer's SCOPE is applied here too, and here ONLY: `models` is what the
+  // catalog payload is built from AND what the roots sweep below reads, so a
+  // scoped dealer neither offers a colección it doesn't carry nor pays for its
+  // price list. The estructura injection still runs over EVERY row first (the
+  // palette belongs to the family, not to whichever piece a dealer stocks).
+  const models = filterModelsForDealer(injectCollectionStructure(modelRows), dealer)
+    .filter((m) => m.active !== false && m.svg)
+    .sort((a, b) => num(a.sort_order) - num(b.sort_order));
+
+  // Load ONLY the catalogue SKUs under the active models' roots — the products
+  // table is 27k+ rows. Sanitised to alphanumerics so a stray root can't break
+  // out of the PostgREST or() filter. Part SKU roots (the shared cushion/bolster
+  // products tagged in `parts.roots`) ride the same sweep so a part prices
+  // exactly like a base.
+  //
+  // The root filter shrinks the read; it does NOT bound it. The roots are
+  // 8-digit prefixes of ≈23 graded SKUs each, so the sweep crossed PostgREST's
+  // silent 1000-row cap the moment the palette passed ~43 roots: 87 active roots
+  // → 1,839 rows in prod (2026-08-01), of which 839 simply weren't there. Not a
+  // "sin precio" this time but something quieter — a family ladder arriving
+  // moth-eaten (a settee offering 6 of its 23 grades), i.e. a piece priced on a
+  // partial grade table. Hence readAll: ordered by `reference` (unique per
+  // profile) so a page boundary can neither skip nor repeat a SKU.
+  const roots = [...new Set(
+    models.flatMap((m) => {
+      const partRoots = Object.values(((m.parts as Row | null)?.roots as Row | null) || {});
+      return [String(m.product_root || ''), ...partRoots.map((r) => String(r || ''))];
+    }).filter((r) => /^[A-Za-z0-9]+$/.test(r)),
+  )];
+  const products = roots.length
+    ? await readAll(admin, 'products', 'reference, name, price_usd, dimensions', {
+      orderBy: 'reference',
+      orFilter: roots.map((r) => `reference.like.${r}*`).join(','),
+    })
+    : [];
+
+  return { settings, rates, marginPct, models, products, materials: materialRows, fabrics: fabricRows };
+}
+
+// Resolve an ACTIVE dealer by its public ?dealer slug (the catalog + lead paths).
+// null when the slug is unknown or the dealer is inactive — the caller answers 404
+// / 400 accordingly. Alcover's own embed passes no slug and never hits this.
+async function dealerBySlug(admin: Admin, slug: string): Promise<Row | null> {
+  const s = slug.trim();
+  if (!s) return null;
+  const { data } = await admin
+    .from('dealers').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('slug', s).eq('active', true)
+    .maybeSingle();
+  return (data as Row) || null;
+}
+
+// Resolve a dealer by its private inbox token (the inbox path). An INACTIVE
+// dealer still resolves here — it may read its own leads after being switched off.
+async function dealerByToken(admin: Admin, token: string): Promise<Row | null> {
+  const t = token.trim();
+  if (!t) return null;
+  const { data } = await admin
+    .from('dealers').select('*')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('inbox_token', t)
+    .maybeSingle();
+  return (data as Row) || null;
+}
+
+// `dealer` (a resolved dealers row) → the same shared catalog SCOPED to the
+// colecciones it carries, re-priced by the dealer's price factor (markup × FX),
+// presented per its pricing_mode, and re-branded. null builds Alcover's own
+// payload verbatim (dealer: null) — today's behavior.
+async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Row> {
+  const { settings, rates, marginPct, models, products, materials, fabrics } = await loadContext(admin, dealer);
+  const retail = (list: number) => Math.round(list * (1 + marginPct / 100) * 100) / 100;
+
+  // Offered fabrics per family root (model_fabrics.pattern_names, already stored
+  // fabricKey-normalized) → the picker's per-model fabric allowlist.
+  const offeredByRoot = new Map<string, string[]>();
+  for (const f of fabrics) {
+    offeredByRoot.set(String(f.id), Array.isArray(f.pattern_names) ? (f.pattern_names as string[]) : []);
+  }
+
+  // The public-safe materials catalog — only OFFERED rows (in price list + on
+  // site), colors reduced to {name, code}. Swatches render from the public Ligne
+  // Roset CDN (swatchUrl(code)) client-side; no Storage bytes cross.
+  const offeredMaterials = materials
+    .filter((r) => r.not_in_pricelist_at == null && r.discontinued_at == null)
+    .map((r) => ({
+      id: r.id, name: r.name, grade: r.grade || null, category: r.category,
+      composition: r.composition || null, price: r.price ?? null, priceUnit: r.price_unit || null,
+      // textureUrl (public togo-textures bucket, from the dealer's pCon .matz
+      // library) lets the 3D tile the REAL fabric; rgb is its exact tone; the
+      // .mat PBR port (dif multiplier, roughness, specular, physical tile cm)
+      // makes the 3D shade it with pCon fidelity.
+      // jsonb content keeps the app's camelCase — no case mapping here.
+      colors: Array.isArray(r.colors)
+        ? (r.colors as Row[]).map((c) => ({
+            name: String(c?.name || ''), code: String(c?.code || ''),
+            textureUrl: c?.textureUrl ? String(c.textureUrl) : null,
+            // The pCon `bumps` normal map (real weave relief) for this color.
+            normalUrl: c?.normalUrl ? String(c.normalUrl) : null,
+            rgb: c?.rgb ? String(c.rgb) : null,
+            dif: c?.dif ? String(c.dif) : null,
+            rough: Number.isFinite(Number(c?.rough)) ? Number(c.rough) : null,
+            spec: Number.isFinite(Number(c?.spec)) ? Number(c.spec) : null,
+            tileCm: Number(c?.tileCm) > 0 ? Number(c.tileCm) : null,
+            tileCmY: Number(c?.tileCmY) > 0 ? Number(c.tileCmY) : null,
+          }))
+        : [],
+    }));
+
+  // The per-model projection lives in payload.ts (pure, node-importable) so the
+  // ONE rule that matters about it — the public catalog carries NO `svg` — is
+  // pinned in tests/togoDealer.test.js instead of living in a comment here.
+  const out = models.map((m) => catalogModelShape(m, { products, retail, offeredByRoot }));
+  // Per-dealer presentation: scale every model's USD prices by the dealer's ONE
+  // price factor — markup × FX, straight off the row so the widget and the
+  // dealer's own inbox can't apply different halves — then strip per its
+  // pricing_mode (full/from/hidden). The catalog (togo_models/materials/fabrics)
+  // is SHARED, and `collections` decides only WHICH of it this dealer sees; no
+  // ?dealer → the raw retail catalog, dealer: null, exactly as before.
+  const dealerModels = dealer
+    ? out.map((m) => applyPricingMode(applyDealerPricing(m, dealer), dealer.pricing_mode))
+    : out;
+
+  return {
+    configured: dealerModels.length > 0,
+    // A dealer's own name/logo take over the storefront identity; the dealer's
+    // logo is a URL the client renders directly, so drop the Alcover image id.
+    storeName: dealer ? String(dealer.name || '') : (settings.company_name || 'Togo'),
+    logoImageId: dealer && dealer.logo_url ? null : (settings.logo_image_id || null),
+    dealer: dealer ? dealerPublicShape(dealer) : null,
+    rates,
+    models: dealerModels,
+    materials: offeredMaterials,
+    // Same reasoning as the storefront: loading the pixel is what writes `_fbp`,
+    // and a pixel id is not a credential. Without it every Lead this
+    // configurator reports goes out matched on IP alone.
+    metaPixelId: settings.meta_pixel_id || null,
+  };
+}
+
+/**
+ * The plan OUTLINES for a handful of models → `{ [id]: svg }`.
+ *
+ * The catalog stopped shipping `svg` (payload.ts: half its bytes, read by ONE
+ * surface), so the DXF export asks for the outlines of the pieces the visitor
+ * actually placed. Ids arrive already sanitized + capped (parseSvgIds); the rows
+ * pass the SAME gate loadContext applies — active and drawable — so this can
+ * never hand out a piece the palette refuses to offer. Public: an outline is
+ * catalogue geometry, exactly as public as the catalog it used to ride in.
+ */
+async function buildPlanSvgs(admin: Admin, ids: string[]): Promise<Row> {
+  if (!ids.length) return {};
+  const { data } = await admin
+    .from('togo_models').select('id, active, svg')
+    .eq('profile_id', TEAM_PROFILE_ID)
+    .in('id', ids);
+  const out: Row = {};
+  for (const m of ((data || []) as Row[])) {
+    if (m.active === false || !m.svg) continue;
+    out[String(m.id)] = String(m.svg);
+  }
+  return out;
+}
+
+/** Raw `fbclid` → the `fbc` the Conversions API matches on. Mirrors buildFbc in
+ *  meta-capi/events.ts (each Edge Function is its own dependency graph). */
+function buildFbc(fbclid: string, clickTimeMs: number): string {
+  const raw = String(fbclid || '').trim();
+  if (!raw) return '';
+  if (/^fb\.\d+\.\d+\./.test(raw)) return raw;
+  if (!/^[\w.-]{6,400}$/.test(raw)) return '';
+  return `fb.1.${Math.floor(clickTimeMs)}.${raw}`;
+}
+
+/** Report a conversion to Meta, server-side. Never throws, never blocks: the
+ *  event is durably queued before meta-capi tries to send it, and the cron
+ *  retries. Losing a marketing signal is survivable; losing the lead is not. */
+async function reportConversion(event: Row, source: string): Promise<void> {
+  try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return;
+    await fetch(`${SUPABASE_URL}/functions/v1/meta-capi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-internal-secret': SERVICE_ROLE_KEY },
+      body: JSON.stringify({ event, source }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch (e) { console.error('[togo-embed] capi failed:', (e as Error).message); }
+}
+
+/**
+ * A visitor built a PRICED composition → `ViewContent`.
+ *
+ * The configurator's mid-funnel signal: someone placed pieces and chose a
+ * fabric, so there is a real number on screen — but they haven't asked for a
+ * quote. That is the most valuable retargeting audience this business can
+ * build, and until now it was invisible: the only event the configurator sent
+ * fired on submit, which is the small minority who finish.
+ *
+ * No `content_ids`: Togo models are configurator pieces, not catalog products,
+ * and sending ids that match no catalog entry would connect to nothing. The
+ * value is the real estimate.
+ */
+async function captureView(body: Row, net: { ip: string; ua: string }): Promise<Row> {
+  const value = num(body.estimateUsd);
+  const sessionId = str(body.sessionId, 60).trim();
+  const fbc = buildFbc(str(body.fbclid, 400), Date.now());
+  const fbp = str(body.fbp, 100).trim();
+  await reportConversion({
+    name: 'ViewContent',
+    // The id's last-resort fallback takes the FIRST hop of the chain, not the
+    // chain: `net.ip` is now the full forwarding list (so pickClientIp can find
+    // an IPv6 in it), and folding a variable-length list into a dedupe key would
+    // quietly change what "the same visitor" means.
+    eventId: `view-togo-${sessionId || net.ip.split(',')[0] || 'anon'}`,
+    actionSource: 'website',
+    sourceUrl: str(body.sourceUrl, 500).trim(),
+    user: { country: 'do', fbc, fbp, clientIp: net.ip, clientUserAgent: net.ua },
+    custom: {
+      value: value > 0 ? value : undefined,
+      currency: 'USD',
+      contentName: 'Configurador Togo',
+      numItems: Math.max(0, Math.floor(num(body.pieces))) || undefined,
+    },
+  }, 'togo');
+  return { ok: true };
+}
+
+async function captureLead(
+  admin: Admin,
+  body: Row,
+  dealer: Row | null = null,
+  net: { ip: string; ua: string } = { ip: '', ua: '' },
+): Promise<Row> {
+  const contact = (body.contact || {}) as Row;
+  const name = str(contact.name, 120).trim();
+  const phone = str(contact.phone, 40).trim();
+  const email = str(contact.email, 160).trim();
+  const note = str(body.note, 1000).trim();
+  // Meta attribution captured by the widget from its own URL / cookies.
+  // `internal` = a signed-in TEAM browser testing the configurator
+  // (lib/togoEmbed): the request still lands, but Meta hears nothing.
+  const internal = body.internal === true;
+  const fbc = buildFbc(str(body.fbclid, 400), Date.now());
+  const fbp = str(body.fbp, 100).trim();
+  const sourceUrl = str(body.sourceUrl, 500).trim();
+  const rawItems = Array.isArray(body.items) ? (body.items as Row[]).slice(0, MAX_ITEMS) : [];
+  if (!name || (!phone && !email)) return Promise.reject(Object.assign(new Error('contact required'), { status: 400 }));
+  if (!rawItems.length) return Promise.reject(Object.assign(new Error('empty configuration'), { status: 400 }));
+
+  // Keep only placements of CURRENTLY-known models, normalized to the exact shape
+  // the dealer pane replays through the configurator VM. (camelCase keys survive
+  // the JSONB round-trip — the app's rowMapping only converts top-level columns.)
+  // The lead path only needs the set of valid (active, renderable, IN SCOPE)
+  // model ids — fetch just those, not the full catalog context (settings +
+  // materials + fabrics + the products sweep). Mirrors loadContext's model
+  // filter, PAGED for the same reason: a model past the cap is not "known", so
+  // the visitor's placement of it is dropped from the lead — and a plan made
+  // only of such pieces is refused outright as 'no known models'.
+  //
+  // The dealer's colección scope rides the SAME filter rather than a second
+  // path: a piece this dealer doesn't carry was never in its catalog, so a
+  // hand-posted placement of it is simply not a known model. `collection` is
+  // read here for exactly that.
+  const modelRows = await readAll(admin, 'togo_models', 'id, active, svg, collection', { orderBy: 'id' });
+  const known = new Set(
+    filterModelsForDealer(modelRows, dealer)
+      .filter((m) => m.active !== false && m.svg)
+      .map((m) => String(m.id)),
+  );
+  const items = rawItems
+    .map((it) => {
+      const base = { modelId: String(it.modelId || ''), x: num(it.x), y: num(it.y), rot: num(it.rot) };
+      const mat = it.material && typeof it.material === 'object' ? it.material as Row : null;
+      // Per-part fabric picks (cushion/bolster/arm) ride alongside the base
+      // material, sanitized to the same {grade, fabric, code} shape per role.
+      const partMaterials = sanitizePartMaterials(it.partMaterials);
+      const withParts = partMaterials ? { ...base, partMaterials } : base;
+      // Per-part FINISH picks ({ groupKey: optionId }) ride the same way —
+      // price-neutral in v1, absent when nothing survives the sanitizer.
+      const partFinishes = sanitizePartFinishes(it.partFinishes);
+      const withFinishes = partFinishes ? { ...withParts, partFinishes } : withParts;
+      if (mat && (mat.grade || mat.fabric)) {
+        return {
+          ...withFinishes,
+          material: { grade: str(mat.grade, 8), fabric: str(mat.fabric, 200), code: str(mat.code, 32) },
+        };
+      }
+      return withFinishes;
+    })
+    .filter((it) => known.has(it.modelId));
+  if (!items.length) return Promise.reject(Object.assign(new Error('no known models'), { status: 400 }));
+
+  const est = num(body.estimateUsd);
+  const nowISO = new Date().toISOString();
+  const requestId = newId();
+
+  // ── idempotency: the same submission twice is ONE lead ──
+  // A timeout after the insert, or a second tap on a hung «Enviar», used to
+  // land a second row — two leads, two quotes, two WhatsApps to the customer,
+  // two Meta Leads. Checked BEFORE the snapshot upload so a retry doesn't
+  // orphan a second render either. A read failure (the deploy window where the
+  // bundle is live before the migration) just means no dedupe this time: the
+  // lead always lands.
+  const leadKey = leadDedupeKey({
+    dealerId: dealer ? String(dealer.id) : '',
+    name, phone, email, note, items,
+  });
+  const { data: sameKey } = await admin
+    .from('togo_requests').select('id, created_at')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('lead_key', leadKey)
+    .order('created_at', { ascending: false }).limit(5);
+  const dedupe = leadDedupeDecision((sameKey || []) as Row[], Date.now());
+  if ('reuse' in dedupe) {
+    console.log('[togo-embed] lead repetido, reuso', dedupe.reuse);
+    return { ok: true, deduped: true };
+  }
+
+  // The visitor's composition RENDER (a PNG data URL captured from the 3D
+  // scene at submit, every piece in its chosen fabric). Stored once as a
+  // SHARED images row (`togosnap-<requestId>` — the prefix deleteImage
+  // refuses) so the Solicitudes card AND the quote line this request becomes
+  // show the exact picture the customer built. Best-effort: a storage hiccup
+  // or an oversized/mislabeled payload must never lose the lead.
+  let snapshotImageId: string | null = null;
+  const snapBytes = snapshotBytesFromDataUrl(body.snapshot);
+  if (snapBytes) {
+    try {
+      const imgId = `togosnap-${requestId}`;
+      const path = `${imgId}.png`;
+      const up = await admin.storage.from('images')
+        .upload(path, snapBytes, { contentType: 'image/png', cacheControl: '31536000', upsert: true });
+      if (up.error) throw new Error(up.error.message);
+      const { error: imgErr } = await admin.from('images').upsert({
+        id: imgId, kind: 'togo-snapshot', owner_id: requestId, label: '',
+        content_type: 'image/png', size: snapBytes.byteLength, storage_path: path,
+      });
+      if (imgErr) throw new Error(imgErr.message);
+      snapshotImageId = imgId;
+    } catch (e) {
+      console.error('[togo-embed] snapshot no guardado:', (e as Error).message);
+      snapshotImageId = null;
+    }
+  }
+
+  const row: Row = {
+    id: requestId, profile_id: TEAM_PROFILE_ID, status: 'pending',
+    // Route the lead to its dealer; null = Alcover's own embed (today's behavior).
+    dealer_id: dealer ? String(dealer.id) : null,
+    // A ROUTED lead is not Alcover's to auto-quote: it would create Alcover's
+    // customer, take Alcover's quote number and WhatsApp from Alcover's number.
+    // The claim already refuses a dealer row (claim_pending_togo_request), so
+    // this stamp is belt-and-braces — it keeps the pending index scanning only
+    // rows the worker can actually take, and it self-documents in the row itself
+    // WHY this lead was never auto-quoted. Alcover's own stays null = fresh.
+    auto_state: dealer ? 'dealer' : null,
+    contact: { name, phone, email }, items, note: note || null,
+    estimate_usd: est > 0 ? est : null,
+    snapshot_image_id: snapshotImageId,
+    // The ad click that produced this lead, carried until the dealer promotes
+    // it into a quote — that is when the click id moves onto the contact.
+    meta_fbc: fbc || null,
+    created_at: nowISO, updated_at: nowISO,
+  };
+  let { error } = await admin.from('togo_requests').insert({ ...row, lead_key: leadKey });
+  if (isMissingColumn(error, 'lead_key')) {
+    // Deploy window: the bundle can go live before its migration. The lead is
+    // worth more than its dedupe key — record it, loudly, without the key.
+    console.error('[togo-embed] lead_key todavía no existe — inserto sin clave de dedupe');
+    ({ error } = await admin.from('togo_requests').insert(row));
+  }
+  if (error) throw error;
+
+  // A fresh web lead → push to the team (category 'leads'), via the sibling
+  // push-notify function. Best-effort: a push hiccup must never fail the
+  // visitor's submission.
+  try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (SUPABASE_URL && SERVICE_ROLE_KEY) {
+      // Name the routing dealer in the push so the team sees WHICH dealer's embed
+      // produced the lead; Alcover's own embed (no dealer) reads as today.
+      const who = dealer ? `${name} (via ${String(dealer.name || '')})` : name;
+      // The estimate the widget posted is in the CURRENCY THAT WIDGET SHOWED —
+      // for a routed dealer that is retail × markup × FX, so stamping "US$" on
+      // it states a number 60× off for a peso dealer. Alcover's own embed is
+      // dollars and reads exactly as before.
+      const estText = dealer
+        ? `${String(dealer.currency || 'USD')} ${Math.round(est).toLocaleString('en-US')}`
+        : `US$${Math.round(est).toLocaleString('en-US')}`;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/push-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          category: 'leads',
+          title: 'Nueva solicitud Togo 🛋️',
+          body: `${who} — ${items.length} módulo(s)${est > 0 ? ` · ~${estText}` : ''}`,
+          url: '/#/togo',
+          tag: 'togo-request',
+        }),
+      });
+      if (!res.ok) console.error('[togo-embed] push-notify answered', res.status);
+    }
+  } catch (e) { console.error('[togo-embed] push notify failed:', (e as Error).message); }
+
+  // ── Meta Conversions API: a configurator build IS a `Lead`, and a valued one
+  // — the visitor priced a real composition, so the estimate rides as the event
+  // value and Meta can optimize for the builds that are actually worth money.
+  //
+  // ONLY for Alcover's own embed. This widget serves other Ligne Roset dealers
+  // (dealer_id routes the lead), and their leads are THEIR conversions — feeding
+  // them into Alcover's pixel would train the ad accounts on demand Alcover
+  // never sees and can't sell. And never for a team browser's own test build.
+  if (!dealer && !internal) {
+    await reportConversion({
+      name: 'Lead',
+      eventId: `lead-togo-${requestId}`,
+      actionSource: 'website',
+      sourceUrl,
+      user: {
+        email, phone,
+        firstName: name.split(/\s+/)[0] || '',
+        lastName: name.split(/\s+/).slice(1).join(' '),
+        country: 'do',
+        externalId: requestId,
+        fbc, fbp,
+        clientIp: net.ip,
+        clientUserAgent: net.ua,
+      },
+      custom: {
+        value: est > 0 ? est : undefined,
+        currency: 'USD',
+        contentName: `Togo — ${items.length} módulo(s)`,
+        numItems: items.length,
+        orderId: requestId,
+      },
+    }, 'togo');
+  }
+
+  return { ok: true };
+}
+
+// The dealer's private, token-gated lead inbox: its OWN togo_requests (newest
+// first, capped), shaped public-safe + PRICED, plus the geometry/plan-symbol the
+// client draws each item from. `dealer` is already token-resolved by the caller.
+//
+// DELIBERATELY UNSCOPED by `collections`: the scope decides what a dealer is
+// OFFERED, never what it already captured. A lead taken while the dealer carried
+// Prado must keep reading (and pricing, and drawing) after Prado is dropped from
+// its scope — no-vanish, the same rule that keeps a since-DEACTIVATED model in
+// this read.
+// Payload: { dealer, requests, models, modelNames } where
+//   • requests[].items[].priceUsd — per-item retail × the dealer's price factor
+//     (markup × FX; pricing_mode does NOT gate the inbox — the dealer always
+//     sees prices), and requests[].totalUsd sums them.
+//   • models — { [id]: { name, widthCm, depthCm, svg } } for exactly the models
+//     the returned leads reference (active OR since-deactivated), so the plan
+//     draws even after a model is switched off; falls back gracefully (missing
+//     model ⇒ absent from the map, item priced null).
+//   • modelNames — every model id→name, KEPT verbatim for back-compat.
+async function loadInbox(admin: Admin, dealer: Row): Promise<Row> {
+  const [reqRes, modelRows, settingsRes] = await Promise.all([
+    admin.from('togo_requests').select('*')
+      .eq('profile_id', TEAM_PROFILE_ID).eq('dealer_id', String(dealer.id))
+      .order('created_at', { ascending: false }).limit(200),
+    // PAGED like loadContext's: read unfiltered (a lead may reference a
+    // since-deactivated model), so a model past the cap would drop out of
+    // `modelNames` AND out of the price index — the lead would draw blank and
+    // price null, with nothing saying why.
+    readAll(
+      admin, 'togo_models',
+      'id, name, collection, width_cm, depth_cm, svg, product_root, mesh_url, mesh_scale, mesh_up_axis, mesh_rotate_y, parts, mount, mount_height_cm, updated_at',
+      { orderBy: 'id' },
+    ),
+    admin.from('settings').select('default_margin_pct').eq('profile_id', TEAM_PROFILE_ID).maybeSingle(),
+  ]);
+  const requestRows = (reqRes.data || []) as Row[];
+  // Same read-time injection as loadContext: the inbox's 3D snapshot renders
+  // the lead from `models[id].parts`, so a merely-MARKED estructura group must
+  // carry its colección's palette here too (updated_at rides the select — the
+  // union's freshest-wins rank needs the clock, same as the catalog read).
+  const allModels = injectCollectionStructure(modelRows);
+  const settings = (settingsRes.data as Row) || {};
+  const marginPct = clampPct(settings.default_margin_pct);
+  const retail = (list: number) => Math.round(list * (1 + marginPct / 100) * 100) / 100;
+
+  // modelNames — every model id→name, unchanged (back-compat).
+  const modelNames: Record<string, string> = {};
+  for (const m of allModels) modelNames[String(m.id)] = String(m.name || '');
+
+  // The model ids the returned leads actually reference — leads may point at
+  // since-deactivated models, so we include a referenced model regardless of
+  // its `active` flag (togo_models is fetched unfiltered above).
+  const referencedIds = new Set<string>();
+  for (const r of requestRows) {
+    const items = Array.isArray(r.items) ? (r.items as Row[]) : [];
+    for (const it of items) {
+      const id = String((it as Row)?.modelId || '');
+      if (id) referencedIds.add(id);
+    }
+  }
+  const referenced = allModels.filter((m) => referencedIds.has(String(m.id)));
+
+  // Geometry + plan-symbol SVG for exactly the referenced models (the client
+  // draws the 2D plan from these); svg falls back to null when absent. The mesh
+  // rides along too (null ⇒ no dealer-uploaded FBX) so the inbox can render the
+  // SAME colored 3D snapshot the internal Solicitudes tab does.
+  //
+  // KEEPS `svg` where the public catalog dropped it (payload.ts): DealerInbox
+  // renders that outline as the lead's plan and has no mesh pipeline to derive
+  // one from, and this list is the few models a dealer's own leads reference —
+  // not 605 of them on every visitor's first paint.
+  const models: Record<string, ReturnType<typeof inboxModelShape>> = {};
+  for (const m of referenced) models[String(m.id)] = inboxModelShape(m);
+
+  // ONE products query, scoped to the referenced models' roots — same pattern as
+  // loadContext, PAGED for the same reason: the root filter shrinks the read but
+  // does not bound it (≈23 graded SKUs per root, and a busy dealer's 200 leads
+  // can reference the whole palette), and a grade lost past the cap prices that
+  // lead's item on a partial ladder. Sanitised so a stray root can't break the
+  // PostgREST or() filter. No referenced models ⇒ no query.
+  const roots = [...new Set(
+    referenced.flatMap((m) => {
+      const partRoots = Object.values(((m.parts as Row | null)?.roots as Row | null) || {});
+      return [String(m.product_root || ''), ...partRoots.map((r) => String(r || ''))];
+    }).filter((r) => /^[A-Za-z0-9]+$/.test(r)),
+  )];
+  const products = roots.length
+    ? await readAll(admin, 'products', 'reference, name, price_usd', {
+      orderBy: 'reference',
+      orFilter: roots.map((r) => `reference.like.${r}*`).join(','),
+    })
+    : [];
+
+  // Price every lead's items at retail × the dealer's PRICE FACTOR — the same
+  // dealer row the widget was priced from, so the inbox states the number the
+  // visitor was shown (the inbox is NOT gated by pricing_mode — the dealer
+  // always sees its own prices).
+  const priceIndex = buildPriceIndex(referenced, products, retail);
+  const requests = requestRows.map((r) => {
+    const shaped = shapeInboxRequest(r);
+    const { items, totalUsd } = priceInboxItems(shaped.items, priceIndex, dealer);
+    return { ...shaped, items, totalUsd };
+  });
+
+  return { dealer: dealerPublicShape(dealer), requests, models, modelNames };
+}
+
+// An inbox action: the dealer marking one of ITS OWN leads pending/contacted.
+// Guards on THREE fronts — the status must be inbox-settable (never
+// converted/dismissed), the row must belong to this dealer, and its CURRENT
+// status must itself be inbox-settable (an app-side converted/dismissed lead is
+// never re-opened from the public inbox). A missing/foreign id → 404.
+async function inboxSetStatus(admin: Admin, dealer: Row, body: Row): Promise<Row> {
+  const id = str(body.id, 80).trim();
+  const status = str(body.status, 40).trim();
+  if (!INBOX_SETTABLE_STATUSES.includes(status)) {
+    return Promise.reject(Object.assign(new Error('invalid status'), { status: 400 }));
+  }
+  if (!id) return Promise.reject(Object.assign(new Error('request not found'), { status: 404 }));
+  const { data, error } = await admin.from('togo_requests')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('profile_id', TEAM_PROFILE_ID)
+    .eq('id', id)
+    .eq('dealer_id', String(dealer.id))
+    .in('status', INBOX_SETTABLE_STATUSES as string[])
+    .select('id');
+  if (error) throw error;
+  if (!data || !data.length) {
+    return Promise.reject(Object.assign(new Error('request not found'), { status: 404 }));
+  }
+  return { ok: true };
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return json({ error: 'server not configured' }, 500);
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  try {
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      // Private inbox read (token-gated) — an inactive dealer can still read leads.
+      const inbox = url.searchParams.get('inbox');
+      if (inbox) {
+        const dealer = await dealerByToken(admin, inbox);
+        if (!dealer) return json({ error: 'unknown dealer' }, 404);
+        // no-store (json's default): token-gated lead data must never enter a
+        // shared cache under a URL somebody else can replay.
+        return json(await loadInbox(admin, dealer), 200, cacheHeadersFor('inbox'));
+      }
+      // Plan outlines on demand — what the catalog stopped carrying.
+      const svgIds = url.searchParams.get('svg');
+      if (svgIds != null) {
+        return await cacheable(req, await buildPlanSvgs(admin, parseSvgIds(svgIds)), 'svg');
+      }
+      // Public catalog — optionally re-priced/re-branded for a named dealer.
+      const slug = url.searchParams.get('dealer');
+      if (slug) {
+        const dealer = await dealerBySlug(admin, slug);
+        if (!dealer) return json({ error: 'unknown dealer' }, 404);
+        return await cacheable(req, await buildCatalog(admin, dealer), 'catalog');
+      }
+      return await cacheable(req, await buildCatalog(admin), 'catalog');
+    }
+    if (req.method === 'POST') {
+      const body = (await req.json().catch(() => ({}))) as Row;
+      // Inbox action (mark a lead pending/contacted) — token-gated, not a lead.
+      if (body.inbox) {
+        const dealer = await dealerByToken(admin, str(body.inbox, 200));
+        if (!dealer) return json({ error: 'unknown dealer' }, 404);
+        return json(await inboxSetStatus(admin, dealer, body));
+      }
+      // IP + user agent are Meta match signals that exist only on the request.
+      // BOTH IP headers ride as ONE chain — never cf-connecting-ip exclusively.
+      // meta-capi's pickClientIp walks the whole chain and prefers IPv6 (an IPv4
+      // here against the pixel's IPv6 reads as two people for one visit, which
+      // is what Meta flagged on this dataset), so no candidate may be
+      // pre-filtered at the door: dropping x-forwarded-for whenever Cloudflare
+      // answered hid every IPv6 address sitting in it.
+      const viewNet = {
+        ip: [req.headers.get('cf-connecting-ip'), req.headers.get('x-forwarded-for')]
+          .filter(Boolean).join(','),
+        ua: req.headers.get('user-agent') || '',
+      };
+      // A priced composition — a signal, not a lead: no contact, no row, and
+      // ONLY for Alcover's own embed. A routed dealer's visitor is THEIR
+      // audience; feeding them to Alcover's pixel would train the ad accounts
+      // on demand Alcover never sees.
+      if (body.view) {
+        if (body.dealer) return json({ ok: true, skipped: 'dealer embed' });
+        return json(await captureView(body.view as Row, viewNet));
+      }
+      // A lead — optionally routed to a dealer named by slug (unknown → 400).
+      let dealer: Row | null = null;
+      if (body.dealer) {
+        dealer = await dealerBySlug(admin, str(body.dealer, 200));
+        if (!dealer) return json({ error: 'unknown dealer' }, 400);
+      }
+      // Same chain rule as the view path above (IPv6 must survive to pickClientIp).
+      const net = {
+        ip: [req.headers.get('cf-connecting-ip'), req.headers.get('x-forwarded-for')]
+          .filter(Boolean).join(','),
+        ua: req.headers.get('user-agent') || '',
+      };
+      return json(await captureLead(admin, body, dealer, net));
+    }
+    return json({ error: 'method not allowed' }, 405);
+  } catch (e) {
+    const status = (e as { status?: number })?.status || 500;
+    if (status >= 500) console.error('[togo-embed] failed:', e);
+    return json({ error: (e as Error)?.message || 'failed' }, status);
+  }
+});

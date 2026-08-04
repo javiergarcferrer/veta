@@ -1,0 +1,1887 @@
+/* ── Alcover brand typography ─────────────────────────────────────────────
+   Three faces, each with one job (per the brand sheet):
+     • Lausanne   — body / UI type (the default sans, Tailwind `font-sans`).
+                    The only family we ship multiple weights of (400–700).
+     • Söhne      — headers (Tailwind `font-display`). Ships ONE weight
+                    (Halbfett ≈ 600), so every heading renders at that weight.
+     • Rauschen B — the company wordmark only (Tailwind `font-wordmark`),
+                    a single Semibold cut.
+   woff2 only (every target browser supports it); font-display: swap so text
+   paints immediately in the fallback and re-renders when the face arrives —
+   no invisible-text flash on a cold load. Italic is Lausanne-only (the app's
+   sole italic need); Söhne/Rauschen synthesise if ever asked, which they
+   aren't.
+
+   size-adjust: 106% — Lausanne's x-height (≈0.52) sits a touch below the
+   system font the app rendered before it loaded, so the same px read slightly
+   small. size-adjust scales the glyphs up ~6% WITHOUT changing the px scale or
+   any rem-based spacing, so text gets bigger but layout density doesn't shift.
+   Söhne/Rauschen carry the same factor so the type hierarchy stays in step.
+   Dial this one number if text still reads small/large. */
+@font-face {
+  font-family: 'Lausanne';
+  src: url('/fonts/Lausanne-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+@font-face {
+  font-family: 'Lausanne';
+  src: url('/fonts/Lausanne-400Italic.woff2') format('woff2');
+  font-weight: 400; font-style: italic; font-display: swap; size-adjust: 106%;
+}
+@font-face {
+  font-family: 'Lausanne';
+  src: url('/fonts/Lausanne-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+@font-face {
+  font-family: 'Lausanne';
+  src: url('/fonts/Lausanne-600.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+@font-face {
+  font-family: 'Lausanne';
+  src: url('/fonts/Lausanne-700.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+/* Söhne — one weight, mapped across 400–700 so any `font-medium`/`-semibold`/
+   `-bold` heading resolves to it instead of synthesising or falling back. */
+@font-face {
+  font-family: 'Sohne';
+  src: url('/fonts/Sohne-Halbfett.woff2') format('woff2');
+  font-weight: 400 700; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+/* Rauschen B — the wordmark cut. */
+@font-face {
+  font-family: 'Rauschen B';
+  src: url('/fonts/RauschenB-Semibold.woff2') format('woff2');
+  font-weight: 400 700; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+
+/* ── LIGNE ROSET's own type (owner-supplied, 2026-07) ───────────────────────
+   VERLAG, in its Light and Book cuts — it carries every role on the public
+   Ligne Roset surfaces (the configurator's `.togo-rams` skin): display, the
+   eyebrows, body copy and inputs alike. The internal app keeps Alcover's own
+   Lausanne/Söhne/Rauschen.
+
+   Chalet Comprimé was paired with it here for the display roles and has been
+   dropped (owner, 2026-07) — Verlag sets the whole page. 405 glyphs and full
+   Spanish accents, verified on import.
+
+   Light covers the 100–350 band and Book 351–700, so `font-light` picks Light
+   for wordmark-scale headings and normal text picks Book. Two real cuts, so
+   nothing is ever synthesised.
+
+   ⚠️ When importing any further .otf: verify the face actually LOADS with
+   `document.fonts.check('400 72px Verlag')`, never by eye. A conversion can be
+   structurally valid (fontTools reads it back, the server serves it 200) and
+   still be rejected by Chromium's font sanitizer — the face lands in the
+   FontFaceSet as `error` with a bare "NetworkError" and every heading silently
+   falls through to the next family in the stack, which looks like nothing is
+   wrong at all. That happened to Chalet here; a full CFF rewrite
+   (`python3 -m fontTools.subset SRC.otf --glyphs='*' --layout-features='*'`,
+   then re-flavour to woff2) was what fixed it. Verlag needed no rebuild. */
+/* `size-adjust: 122%` is MEASURED, not taste. Verlag's x-height is 0.420 em;
+   Lausanne's is 0.517 em and it ships with size-adjust 106%, so its effective
+   x-height is 0.548 em. Dropping Verlag in at the same font-size therefore
+   rendered every label in the configurator ~23% smaller than the size values
+   were tuned for — which is exactly what "the typography looks small" was.
+   Rather than re-tune forty px values (and leave the next face swap to redo
+   them), the correction lives here, on the face.
+   122% and not the full 131%: Verlag is a geometric face with a LOW x-height
+   under TALL caps (0.733 em vs Lausanne's effective 0.757), so matching the
+   x-heights exactly would overshoot every uppercase eyebrow by a quarter.
+   122% lands lowercase within a few percent of Lausanne and lets the caps run
+   slightly large, which this UI wanted anyway. */
+@font-face {
+  font-family: 'Verlag';
+  src: url('/fonts/Verlag-Light.woff2') format('woff2');
+  font-weight: 100 350; font-style: normal; font-display: swap; size-adjust: 122%;
+}
+@font-face {
+  font-family: 'Verlag';
+  src: url('/fonts/Verlag-Book.woff2') format('woff2');
+  font-weight: 351 700; font-style: normal; font-display: swap; size-adjust: 122%;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ── Theme tokens — the single source of truth for color ───────────────────
+     Tailwind's ink / brand / surface / canvas scales resolve to these channel
+     triplets (see tailwind.config.js), so the entire app re-skins from this one
+     block. The LIGHT values equal the exact hexes the app always shipped —
+     light mode is unchanged to the pixel — and `.dark` only overrides what must
+     change. Triplets are bare `R G B` (no rgb()/commas) so Tailwind's
+     `/<alpha-value>` opacity modifier keeps working. */
+  :root {
+    color-scheme: light;
+    /* warm-neutral ink ramp — lightest paper (50) → darkest ink (900) */
+    --ink-50: 247 247 246;  --ink-100: 232 231 227; --ink-200: 207 204 196;
+    --ink-300: 171 167 154; --ink-400: 135 131 116; --ink-500: 108 104 89;
+    --ink-600: 84 79 67;    --ink-700: 59 56 48;    --ink-800: 38 36 31;
+    --ink-900: 23 22 18;
+    /* terracotta / clay brand ramp */
+    --brand-50: 251 244 236;  --brand-100: 247 231 212; --brand-200: 238 203 171;
+    --brand-300: 232 167 109; --brand-400: 217 136 63;  --brand-500: 199 107 41;
+    --brand-600: 168 86 32;   --brand-700: 125 62 28;   --brand-800: 97 47 22;
+    --brand-900: 77 39 19;
+    /* surface roles: page canvas, raised panel, faint nested fill */
+    --canvas: 243 241 237;
+    --surface: 255 255 255;
+    --surface-2: 247 247 246;
+    /* card sheen (lit-from-above) + stat-card inset top highlight */
+    --card-sheen: linear-gradient(180deg, #ffffff 0%, #fcfbf9 100%);
+    --card-hi: rgba(255, 255, 255, 0.75);
+  }
+
+  .dark {
+    color-scheme: dark;
+    /* inverted-lightness warm ink ramp — darkest surface (50) → brightest text
+       (900). Not a naive invert: text steps (500–900) are tuned for AA on the
+       dark canvas, surfaces (50–200) stay warm, never pure black. */
+    --ink-50: 38 35 30;     --ink-100: 47 44 38;    --ink-200: 61 57 50;
+    --ink-300: 84 79 70;    --ink-400: 122 116 104; --ink-500: 156 149 136;
+    --ink-600: 184 177 164; --ink-700: 209 203 192; --ink-800: 230 226 217;
+    --ink-900: 243 240 233;
+    /* clay ramp, lightness-inverted: deep tints (low) for fills, bright clay
+       (high) for text/accents so `text-brand-700` stays legible on dark. */
+    --brand-50: 51 34 23;     --brand-100: 64 42 29;    --brand-200: 90 58 40;
+    --brand-300: 140 86 56;   --brand-400: 184 116 80;  --brand-500: 214 138 102;
+    --brand-600: 224 150 112; --brand-700: 233 173 132; --brand-800: 240 190 155;
+    --brand-900: 245 205 175;
+    /* surfaces step LIGHTER with elevation (Material dark-elevation model) */
+    --canvas: 23 21 18;
+    --surface: 32 30 26;
+    --surface-2: 40 37 32;
+    --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 55%);
+    --card-hi: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Pin a subtree to the LIGHT ramp regardless of the global theme. Two uses:
+     `.theme-chrome` — always-dark chrome (sidebar, mobile topbar, the
+       ProfileMenu inside it): its `bg-ink-900 / text-ink-100` styling resolves
+       to the original dark palette in BOTH themes, so the chrome stays put while
+       the page canvas flips around it.
+     `.theme-light` — always-light "paper" (the client document in ClientPreview,
+       shown both in the authed editor preview and the public link): its
+       ink/brand tokens must read like the printed PDF even when the dealer's app
+       is in dark mode.
+     Custom properties inherit, so re-declaring them on the wrapper overrides the
+     global (.dark) values for its whole subtree. */
+  .theme-chrome,
+  .theme-light {
+    --ink-50: 247 247 246;  --ink-100: 232 231 227; --ink-200: 207 204 196;
+    --ink-300: 171 167 154; --ink-400: 135 131 116; --ink-500: 108 104 89;
+    --ink-600: 84 79 67;    --ink-700: 59 56 48;    --ink-800: 38 36 31;
+    --ink-900: 23 22 18;
+    --brand-50: 251 244 236;  --brand-100: 247 231 212; --brand-200: 238 203 171;
+    --brand-300: 232 167 109; --brand-400: 217 136 63;  --brand-500: 199 107 41;
+    --brand-600: 168 86 32;   --brand-700: 125 62 28;   --brand-800: 97 47 22;
+    --brand-900: 77 39 19;
+    --surface: 255 255 255;
+    --surface-2: 247 247 246;
+  }
+
+  /* Pin a subtree to the DARK ramp regardless of the global theme —
+     `.theme-studio` is the Modelos workbench (the 3D model/part studio): a
+     dark stage with the muted-terracotta accents of the original orange
+     configurator, identical in both app themes. Same custom-property
+     inheritance trick as .theme-chrome, opposite direction. */
+  .theme-studio {
+    color-scheme: dark;
+    --ink-50: 38 35 30;     --ink-100: 47 44 38;    --ink-200: 61 57 50;
+    --ink-300: 84 79 70;    --ink-400: 122 116 104; --ink-500: 156 149 136;
+    --ink-600: 184 177 164; --ink-700: 209 203 192; --ink-800: 230 226 217;
+    --ink-900: 243 240 233;
+    --brand-50: 51 34 23;     --brand-100: 64 42 29;    --brand-200: 90 58 40;
+    --brand-300: 140 86 56;   --brand-400: 184 116 80;  --brand-500: 214 138 102;
+    --brand-600: 224 150 112; --brand-700: 233 173 132; --brand-800: 240 190 155;
+    --brand-900: 245 205 175;
+    --canvas: 23 21 18;
+    --surface: 32 30 26;
+    --surface-2: 40 37 32;
+    --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 55%);
+    --card-hi: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Honour reduced-motion globally (the enter/exit animations, hover lifts and
+     theme transitions all collapse to ~instant). Individual maps/dropdowns
+     already guard themselves; this is the app-wide safety net. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer base {
+  /* App-shell scroll model: html / body / #root are pinned to the viewport
+     and never scroll themselves. The Layout's <main> is the single scroll
+     container. This is what makes the page feel like a native app on iOS:
+       - no rubber-band of the whole page when the user drags content
+       - the Safari URL bar never animates in/out on scroll (it would
+         repaint half the layout every time, costing perceived perf)
+       - swipe-back gestures don't fight with vertical scrolling
+       - the fixed mobile topbar / sticky totals stay glued to the chrome
+         instead of jittering as the viewport resizes mid-scroll.
+     overscroll-behavior: none belt-and-suspenders the lock for engines
+     that still allow a 1-pixel overscroll bounce on overflow:hidden. */
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  /* Browser TABS only. In a tab the initial containing block is the LARGE
+     viewport (URL bar collapsed), so a `100%` shell would hide its bottom
+     chrome behind the bar as it slides back in; `dvh` is the unit that tracks
+     it. An INSTALLED app has no such bar and keeps the `100%` above — see the
+     standalone note below. Written as a NEGATED query rather than as a
+     standalone override on top, so the installed shell can never be sized by a
+     viewport unit even if this rule is edited later. */
+  @supports (height: 100dvh) {
+    html:not(.is-standalone),
+    html:not(.is-standalone) body,
+    html:not(.is-standalone) #root { height: 100dvh; }
+  }
+  /* ...EXCEPT the embed launch card, which is a GUEST inside a dealer's page.
+     Everything above is right for the app: it is what stops iOS rubber-banding
+     the whole page and keeps the Safari URL bar from animating on every scroll.
+     But `overscroll-behavior: none` also stops a scroll from CHAINING out of
+     this document — and when the document is an iframe on someone else's site,
+     that means a wheel or a swipe over the card is swallowed and the host page
+     simply stops scrolling. The visitor hits the card and the page feels stuck.
+     Note this bites even though nothing here scrolls: the rule applies to the
+     viewport's scroll container whether or not it has overflow to give.
+     So the card relaxes THAT ONE PROPERTY and nothing else. The height and the
+     `overflow: hidden` stay, and they matter: they are what keeps the card's own
+     document from being scrollable at all. Freeing the overflow instead made the
+     document 23px taller than the iframe, and Chrome LATCHES a wheel gesture to
+     the first scrollable ancestor it finds — 23px of slack was enough to swallow
+     the whole gesture and the host still never moved. Nothing to scroll plus
+     chaining allowed is the combination that actually passes the scroll through.
+     `is-embed-card` is set by EmbedLaunchCard for exactly as long as the card is
+     mounted — the configurator itself, a full-screen surface in its own tab,
+     keeps the full lock. */
+  html.is-embed-card,
+  html.is-embed-card body,
+  html.is-embed-card #root {
+    overscroll-behavior: auto;
+  }
+  /* Installed-PWA height — the plain `height: 100%` above, and NOTHING else.
+     There is deliberately no rule here; this comment is why.
+
+     `100%` resolves against the initial containing block = the LAYOUT VIEWPORT:
+     the box the engine lays this document into, and the box `position: fixed`
+     pins against. In an iOS home-screen app that box IS the visible area —
+     which is exactly why fixed bottom chrome (the quote TotalsDock) always
+     pinned correctly even in the builds where IN-FLOW bottom chrome fell off
+     the screen. The shell now lives in the same coordinate space as the one
+     thing that never got this wrong.
+
+     Neither viewport UNIT describes that box, which is why each was tried and
+     each shipped a bug:
+       • 100dvh lands ONE home-indicator inset SHORT of the window, so the shell
+         (and the body's canvas background) ends above the physical bottom edge
+         and the manifest background leaks through as a dead grey/white band on
+         EVERY page — the original "dead strip at the bottom".
+       • 100vh overshoots by ONE STATUS-BAR height. With
+         `apple-mobile-web-app-status-bar-style: black` (index.html) iOS lays the
+         standalone web view out BELOW the status bar, but `vh` keeps resolving
+         against the whole SCREEN — so the shell hangs ~59px past the visible
+         bottom: the JARVIS view switcher cut in half, the last ~59px of every
+         inner scroll container unreachable on every page.
+
+     And a MEASURED height (`var(--rs-vvh, 100vh)`) was the answer after that —
+     it is the bug this replaces. It was correct only while every
+     visualViewport read was, and WebKit over-reports the height on a cold PWA
+     launch (measured before the web view settles below the status bar) and on
+     resume (it replays pre-suspend metrics for a few hundred ms). The baseline
+     that fed this rule only ever GREW, so ONE bad sample latched a too-tall
+     shell for the entire session, unrecoverable without an app reset: the
+     WhatsApp composer and the JARVIS switcher hanging under the home indicator
+     — reported twice, 2026-08. THE SHELL MUST NOT DEPEND ON A NUMBER JS WENT
+     AND MEASURED. `--rs-vvh` survives only for what genuinely needs a LIVE
+     reading (the keyboard-tracking panes far below) and is itself now clamped
+     to this same layout viewport — see lib/viewportMetrics. */
+
+  /* NOTE (Tienda scroll, 2026-07): an `is-store` unpin briefly made the
+     public storefront scroll the DOCUMENT instead of its own container — on
+     the dealer's iPhone that killed scrolling outright. The storefront is
+     back on the shell's inner-scroll model like every page; the ORIGINAL
+     "buggy scroll" complaint was the sticky header's backdrop-blur (iOS
+     glitches backdrop-filter on sticky elements inside scroll containers),
+     which the header now avoids by being opaque. Don't re-attempt the
+     document-scroll unpin without testing on a real iPhone. */
+
+  /* iOS-tuned defaults:
+     - prevent the text-size jump Safari applies when the address bar collapses
+     - block the tap-and-hold callout / image save sheet on interactive UI
+     - kill the grey/blue tap-highlight flash (we provide our own :active feedback) */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    /* Pristine type rendering: proper kerning, standard ligatures and
+       contextual alternates for Lausanne/Söhne. Kept to safe, universally
+       beneficial features (no stylistic sets that could swap glyphs), so it
+       sharpens the type without shifting layout. */
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    /* Premium-flat canvas (Claude / Stripe / Shopify school): a calm warm
+       paper tone (#f3f1ed) a clear step below the white cards. Depth comes
+       purely from tonal elevation (canvas → card + sheen → overlay +
+       shadow-pop), never from a background gradient or texture: the owner
+       wants a clean, flat surface — the terracotta corner blooms (`app-wash`)
+       AND the older film-grain layer are deliberately GONE. Don't reintroduce
+       either. */
+    background-color: rgb(var(--canvas));
+    /* iOS treats position: fixed on a child as an Anchor for scroll-into-view
+       when a focused input is covered by the keyboard. Keeping body as a
+       static block lets that machinery work even though it doesn't scroll. */
+    position: relative;
+  }
+  ::selection { background-color: #a85620; color: #ffffff; }
+
+  /* Prevent iOS Safari auto-zoom on input focus (triggers when font-size < 16px). */
+  @media (max-width: 767px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+
+  /* Hide WebKit / Firefox number-input spinners. They eat ~15px on the
+     right edge of every type="number" field, which on a phone is the
+     difference between "$18,500" fitting and getting clipped. Power
+     users can still step values with ArrowUp / ArrowDown — those work
+     on a bare number input regardless of spinner visibility. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* iOS Safari treats `input[type="date"]` as a replaced element with an
+     intrinsic content width, so it ignores `width:100%` + `min-width:0` and
+     overflows its container (the dense expediente/factura forms push past the
+     card edge on a phone). Reset the native appearance so the field obeys our
+     box model like every other `.input`; the calendar-picker indicator is kept
+     so tapping still opens the native date wheel. Same "make native inputs
+     respect our layout on mobile" intent as the number-spinner reset above. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
+  /* ===========================================================
+     Native interactive elements, themed to the design system.
+     Generic on purpose — any component can reach for a bare
+     <details>/<summary>, <progress> or <meter> and get the
+     AlcoverSoft look without bespoke wrapper classes. This is the
+     "use the platform" play: native disclosure state, native
+     determinate/measure bars, no JS open/close bookkeeping.
+     =========================================================== */
+
+  /* Disclosure (<details>/<summary>). Kill the default triangle
+     marker (both the standards `list-style` route and WebKit's
+     private ::-webkit-details-marker) so a component can supply
+     its own chevron via `.disclosure-chevron` below. Cursor is a
+     pointer because the whole summary row is the click target. */
+  summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  /* Chevron utility: drop a <ChevronDown> (or any element) with
+     this class inside a <summary>; it rotates 180° when the parent
+     <details> is open. Pair with a lucide <ChevronDown size={…}/>
+     to match the hand-rolled disclosures it replaces. */
+  .disclosure-chevron {
+    transition: transform 150ms ease;
+  }
+  details[open] .disclosure-chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Determinate progress (<progress value max>). Flatten the
+     native chrome to a rounded ink-100 track with a brand-500
+     fill. WebKit needs the track (::-webkit-progress-bar) and the
+     fill (::-webkit-progress-value) styled separately; Firefox
+     exposes only the fill (::-moz-progress-bar) and paints the
+     element's own background as the track. */
+  progress {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 0.5rem;
+    border: none;
+    border-radius: 9999px;
+    overflow: hidden;
+    background-color: theme('colors.ink.100');
+    color: theme('colors.brand.500'); /* IE/legacy fill hint */
+  }
+  progress::-webkit-progress-bar {
+    background-color: theme('colors.ink.100');
+    border-radius: 9999px;
+  }
+  progress::-webkit-progress-value {
+    background-color: theme('colors.brand.500');
+    border-radius: 9999px;
+    transition: width 200ms ease;
+  }
+  progress::-moz-progress-bar {
+    background-color: theme('colors.brand.500');
+    border-radius: 9999px;
+  }
+  /* Generic "goal reached" modifier — flips the value bar to emerald so a
+     determinate bar can signal completion (e.g. a dispatch-minimum met).
+     Lives here rather than as a Tailwind arbitrary variant because vendor
+     ::-webkit-/::-moz- progress pseudo-elements don't reliably round-trip
+     through `[&::-webkit-progress-value]:` utilities. */
+  progress.is-complete::-webkit-progress-value {
+    background-color: theme('colors.emerald.500');
+  }
+  progress.is-complete::-moz-progress-bar {
+    background-color: theme('colors.emerald.500');
+  }
+
+  /* Measure (<meter low high optimum value max>). Unlike
+     <progress> the browser picks the fill colour from where the
+     value falls relative to low/high/optimum — perfect for a
+     margin-health gauge (too thin → rose, healthy → emerald,
+     padded → amber). We map the three WebKit value buckets to the
+     app's semantic colours and round the same ink-100 track.
+     Firefox's ::-moz-meter-bar can't be split by bucket, so it
+     gets the optimal colour as a sane default. */
+  meter {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 0.5rem;
+    border: none;
+    border-radius: 9999px;
+    overflow: hidden;
+    background-color: theme('colors.ink.100');
+  }
+  meter::-webkit-meter-bar {
+    background-color: theme('colors.ink.100');
+    border: none;
+    border-radius: 9999px;
+  }
+  /* value within [optimum side] of the range — the good zone */
+  meter::-webkit-meter-optimum-value {
+    background-color: theme('colors.emerald.500');
+    border-radius: 9999px;
+  }
+  /* value in an acceptable-but-not-ideal zone */
+  meter::-webkit-meter-suboptimum-value {
+    background-color: theme('colors.amber.400');
+    border-radius: 9999px;
+  }
+  /* value in the worst zone (below low / above high on the bad side) */
+  meter::-webkit-meter-even-less-good-value {
+    background-color: theme('colors.rose.500');
+    border-radius: 9999px;
+  }
+  meter::-moz-meter-bar {
+    background-color: theme('colors.emerald.500');
+    border-radius: 9999px;
+  }
+
+  /* Faster, more deterministic taps: removes the legacy 300ms click delay and
+     suppresses pinch / double-tap zoom inside interactive controls. */
+  a, button, [role="button"], input, select, textarea, label {
+    touch-action: manipulation;
+  }
+
+  /* Drag handles, icon buttons, etc. shouldn't be selectable on long-press. */
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* ── Long-press selects nothing ────────────────────────────────────────────
+     Tap-and-hold anywhere in the back-office used to flash the whole screen
+     blue (iOS text selection) and pop the "Copy" callout — pure noise in an app
+     whose text is data to read, not prose to quote. Suppress selection + the
+     callout app-wide, then re-enable it exactly where it earns its keep:
+       • fields the user edits (input / textarea / contenteditable),
+       • an explicit `.select-text` opt-in for a rare copyable value,
+       • the public client surfaces (`html.is-public` — the shared quote /
+         contrato / cuenta / tienda on a CUSTOMER's device, where copying a bank
+         detail or a total is a legitimate need; those mirror the PDF).
+     Inputs MUST re-enable `-webkit-user-select` explicitly: on iOS a `none`
+     ancestor otherwise kills the caret/selection handles inside the field. */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea,
+  [contenteditable]:not([contenteditable="false"]),
+  .select-text,
+  html.is-public body {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  /* The public Togo configurator (soft.alcover.do) is an `is-public` route, so
+     the rule above re-enables text selection + the iOS callout across its whole
+     body — wrong for a drag-to-build tool, where long-pressing the 3D canvas or
+     the floating chrome flashes a page-wide blue selection and pops the "Copy /
+     Look Up" menu. `.no-select-ui` on the configurator root re-suppresses both,
+     re-enabling selection only inside real editable controls (fabric search,
+     dimension inputs). A directly-matched rule beats the inherited value, so it
+     wins over `html.is-public body` regardless of specificity. */
+  .no-select-ui {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .no-select-ui input,
+  .no-select-ui textarea,
+  .no-select-ui [contenteditable],
+  .no-select-ui [contenteditable] * {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
+
+@layer base {
+  /* Headers → Söhne (the brand header face). Applied to every semantic
+     heading so titles across the whole UI pick it up without per-component
+     edits; the eyebrow/label primitives below opt in too. Söhne ships one
+     weight, so headings render at that single weight regardless of the
+     font-medium/semibold utility they also carry. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: theme('fontFamily.display');
+    /* Danish-editorial display headers: a hair of negative tracking so Söhne
+       sets tight and confident at large sizes (Fredericia/Anthom register).
+       Subtle enough not to disturb dense UI labels. */
+    letter-spacing: -0.012em;
+  }
+}
+
+@layer base {
+  /* Vercel/Linear style keyboard focus ring — invisible until tabbed. In the
+     terracotta brand color so keyboard focus reads as a deliberate brand cue
+     instead of a plain dark box. */
+  *:focus { outline: none; }
+  :where(a, button, [role="button"], input, select, textarea):focus-visible {
+    outline: 2px solid theme('colors.brand.600');
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+}
+
+@layer components {
+  /* Buttons. On coarse pointers (phones / tablets) the min-height jumps to
+     44px to satisfy the Apple HIG / WCAG SC 2.5.5 touch-target rule; on
+     mice we keep the tighter 36px so the desktop UI stays dense.
+     :active fallbacks replace the iOS tap-highlight we suppressed above. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 min-h-9 coarse:min-h-11 text-sm font-medium transition-[background-color,color,transform,box-shadow] duration-100 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] select-none;
+  }
+  .btn-primary   { @apply btn bg-ink-900 text-ink-50 shadow-sm hover:bg-ink-800 hover:shadow-md hover:-translate-y-px active:bg-ink-700 active:shadow-sm active:translate-y-0; }
+  .btn-secondary { @apply btn bg-surface text-ink-900 border border-ink-200 shadow-xs hover:bg-ink-50 hover:border-ink-300 hover:shadow-sm hover:-translate-y-px active:bg-ink-100 active:translate-y-0; }
+  .btn-ghost    { @apply btn text-ink-700 hover:bg-ink-100 hover:shadow-xs hover:-translate-y-px active:bg-ink-200 active:translate-y-0; }
+  .btn-danger   { @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-md hover:-translate-y-px active:bg-red-800 active:translate-y-0; }
+  /* Brand CTA — the terracotta primary action. A lit clay gradient surface
+     with a warm glow so it reads as the single loudest control on screen;
+     brightness nudges replace flat hover/active color swaps on the gradient. */
+  .btn-brand    { @apply btn text-white bg-brand-grad shadow-glow hover:brightness-110 hover:shadow-glow hover:-translate-y-px active:brightness-95 active:translate-y-0; }
+
+  /* Square icon-only button — 44x44 on touch, 36x36 on mouse. Use this for
+     close (×), overflow (⋯), chevrons, paginators, etc. instead of
+     <button className="p-1">. */
+  .btn-icon {
+    @apply inline-flex items-center justify-center w-9 h-9 coarse:w-11 coarse:h-11 rounded-md text-ink-700 hover:bg-ink-100 active:bg-ink-200 active:scale-[0.94] transition-[background-color,transform] duration-100 disabled:opacity-50 disabled:pointer-events-none select-none;
+  }
+  /* Destructive icon button — quiet at rest (ink-300), turns red on intent.
+     One recipe for every per-row delete/detach across Quotes, Orders and
+     OrderDetail, so the danger affordance reads identically everywhere. */
+  .btn-icon-danger {
+    @apply btn-icon text-ink-300 hover:text-red-600 hover:bg-red-50 active:text-red-700 active:bg-red-100;
+  }
+
+  /* Inputs. Same coarse-pointer touch-target treatment as buttons. The
+     16px-on-mobile rule above keeps Safari from auto-zooming on focus. */
+  .input {
+    @apply w-full rounded-md border border-ink-200 bg-surface px-3 py-2 min-h-9 coarse:min-h-11 text-sm text-ink-900 placeholder:text-ink-400 shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-ink-300 focus:border-brand-500 focus:outline-none focus:shadow-focus;
+    caret-color: rgb(var(--brand-500));
+  }
+  /* A `type="search"` input whose component already renders its own clear (×)
+     button. Suppress WebKit's native search cancel button (so there aren't two)
+     AND the iOS contacts/credentials AutoFill buttons. Note: this only removes
+     the in-field affordances — keeping a field as `type="search"` (not text) and
+     free of contact words ("nombre", "email", …) in its placeholder/labels is
+     what stops iOS from raising the "AutoFill Contact" QuickType bar at all. */
+  .search-clean::-webkit-search-cancel-button,
+  .search-clean::-webkit-search-decoration,
+  .search-clean::-webkit-contacts-auto-fill-button,
+  .search-clean::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none !important;
+    pointer-events: none;
+    height: 0;
+    width: 0;
+    margin: 0;
+  }
+  .label { @apply block font-display text-[11px] font-medium text-ink-500 mb-1.5 uppercase tracking-[0.06em]; }
+  /* Card = the resting elevated surface. Softer 2xl radius (warm editorial),
+     a faint top-down gradient sheen (lit-from-above), a warm hairline border,
+     and the warm layered `soft` shadow. This is the tonal step above the
+     canvas — the single biggest fix for the "flat" feeling. */
+  .card  {
+    @apply rounded-2xl border border-ink-100 shadow-soft transition-[box-shadow,transform,border-color] duration-200;
+    background-color: rgb(var(--surface));
+    background-image: var(--card-sheen);
+  }
+  /* Interactive card — for cards that are links/buttons. Lifts on hover with a
+     deeper shadow + a hairline terracotta border so the whole surface reads as
+     tappable, not just a cursor change. Pairs with `hover:-translate-y-0.5`
+     at the call site where a lift is wanted. */
+  .card-interactive { @apply card cursor-pointer hover:shadow-md hover:border-brand-200 hover:-translate-y-0.5; }
+  .card-pad { @apply p-5; }
+  /* Subtle nested surface — Radix step-2/3: a faint inset panel for areas
+     INSIDE a card (table heads, secondary fills, sub-sections) that need to
+     read as recessed rather than as another raised card. */
+  .surface-subtle { @apply rounded-xl bg-ink-50 border border-ink-100/80; }
+
+  /* ── Line-entry grid (shared LineItemsEditor desktop table) ───────────
+     A real ERP data sublist (NetSuite/Odoo/365 register): the CELL is the
+     boundary. Inside `<table.line-grid>` every input/select sheds its own
+     box chrome and fills the cell edge-to-edge, hairline gridlines rule the
+     columns, and the ACTIVE cell lights up (focus-within wash + a 1px inset
+     brand ring) — the spreadsheet feel of a mature ERP. Only the desktop
+     table opts in; the mobile stacked view (outside the table) keeps its
+     boxed, labeled inputs. Tokens only (ink/brand), so it flips light↔dark
+     for free — no `:root` light value is touched. */
+  .line-grid .input {
+    @apply border-transparent bg-transparent shadow-none rounded-none px-0;
+  }
+  /* Row hover wash sits UNDER the active-cell highlight. The focused-cell rule
+     is given HIGHER specificity than the hover rule (incl. the hover+focus
+     compound), so the brand wash + inset ring win even while the pointer is
+     over the row it just clicked into (a bare `td:focus-within` would lose the
+     background to `tr:hover td` and only the ring would survive). */
+  .line-grid tbody tr:hover td { background-color: rgb(var(--ink-500) / 0.035); }
+  .line-grid td:focus-within,
+  .line-grid tbody tr:hover td:focus-within {
+    background-color: rgb(var(--brand-500) / 0.06);
+    box-shadow: inset 0 0 0 1px rgb(var(--brand-500) / 0.5);
+  }
+  /* No doubled hairline where the last row meets the add-line footer. */
+  .line-grid tbody tr:last-child td { border-bottom: 0; }
+  /* Sticky lead column for wide registers (nómina): the identity column stays
+     put while the grid scrolls horizontally. Needs a SOLID fill (the row-hover
+     wash above is translucent and would let scrolled cells ghost through), so
+     the hover shade is pre-mixed to land on the same tone as the wash. */
+  .line-grid .grid-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: rgb(var(--surface));
+  }
+  .line-grid tbody tr:hover td.grid-sticky {
+    background-color: color-mix(in srgb, rgb(var(--surface)) 96.5%, rgb(var(--ink-500)));
+  }
+
+  /* ── Stat surfaces (the analytics panel's dimensional layer) ──────────
+     .stat-card  — a KPI tile one tonal step ABOVE .card: an inset top
+                   highlight (lit edge), a faint clay bloom in the corner,
+                   and a hover lift, so figures read as material tiles
+                   instead of flat rectangles.
+     .stat-value — the headline figure: display face, tight, tabular.
+     .icon-tile  — the small squircle icon plate; tint with a .tint-*.
+     .tint-*     — soft tinted gradient washes for icon plates / accents
+                   (kept here so the palette stays one move to retune). */
+  .stat-card {
+    @apply card relative overflow-hidden;
+    box-shadow: inset 0 1px 0 var(--card-hi), theme('boxShadow.soft');
+  }
+  .stat-card:hover {
+    box-shadow: inset 0 1px 0 var(--card-hi), theme('boxShadow.md');
+  }
+  .stat-card::after {
+    content: '';
+    @apply absolute pointer-events-none;
+    inset: -45% -35% auto auto;
+    width: 75%;
+    height: 95%;
+    background: radial-gradient(closest-side, rgba(199, 107, 41, 0.08), transparent 72%);
+  }
+  .stat-value { @apply font-display text-2xl leading-none font-semibold tabular-nums tracking-tight text-ink-900; }
+  .icon-tile { @apply w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ring-black/5 shadow-xs; }
+  .tint-brand   { background-image: linear-gradient(135deg, #f7e7d4, #eecbab); color: #7d3e1c; }
+  .tint-emerald { background-image: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; }
+  .tint-rose    { background-image: linear-gradient(135deg, #ffe4e6, #fecdd3); color: #be123c; }
+  .tint-sky     { background-image: linear-gradient(135deg, #e0f2fe, #bae6fd); color: #0369a1; }
+  .tint-ink     { background-image: linear-gradient(135deg, #f7f7f6, #e8e7e3); color: #544f43; }
+  /* Dark mode: the light pastel icon plates glare on a dark card, so each maps
+     to a deep, desaturated tint with a bright icon — same treatment as the
+     status pills, keeping the two families visually consistent. */
+  .dark .tint-brand   { background-image: linear-gradient(135deg, #3a261b, #4a3022); color: #e9ad84; }
+  .dark .tint-emerald { background-image: linear-gradient(135deg, #16271e, #1d3327); color: #6ee7a8; }
+  .dark .tint-rose    { background-image: linear-gradient(135deg, #2a1418, #381c22); color: #fb7185; }
+  .dark .tint-sky     { background-image: linear-gradient(135deg, #14203a, #1b2c49); color: #7dd3fc; }
+  .dark .tint-ink     { background-image: linear-gradient(135deg, #2f2c26, #3a3730); color: #c8c1b4; }
+
+  /* Section divider — editorial rhythm between a page's layers (monitor /
+     analysis / drill on the panel): an eyebrow + a fading hairline. */
+  .section-rule { @apply flex items-center gap-3 pt-1; }
+  .section-rule > span { @apply eyebrow whitespace-nowrap; }
+  .section-rule::after {
+    content: '';
+    @apply h-px flex-1;
+    background: linear-gradient(90deg, theme('colors.ink.200'), transparent);
+  }
+  .kbd   { @apply rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[10px] font-mono text-ink-600; }
+  .badge { @apply inline-flex items-center rounded-md bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-700; }
+  .badge-brand { @apply inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700; }
+  /* Chip — the small uppercase micro-pill used for line-item status
+     badges, toggles and markers (Compuesto / Conjunto / Alternativa /
+     Opcional, the "unir en conjunto" connector, swatch tags, …). This
+     primitive owns only the SHAPE; pass colour/border/hover via utilities
+     (e.g. `chip bg-brand-50 text-brand-700 border border-brand-100`, or
+     `chip text-ink-600 bg-ink-100 border border-ink-200`, or a dashed
+     ghost `chip text-ink-500 border border-dashed border-ink-300`). Keeping
+     colour at the call site avoids a combinatorial explosion of modifiers
+     while still collapsing the 10-line shape boilerplate to one token.
+     Distinct from `.badge` (rounded-md, sentence-case) by being a pill in
+     tracked small-caps. */
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors; }
+  /* Interactive chip — a .chip-sized control that is a BUTTON (the quote
+     editor's Opcional / Alternativa / family toggles). Deliberately NOT the
+     .chip pill: actions must read as buttons (Shopify school) — sentence
+     case, solid border, white surface, slight shadow — while read-only
+     badges stay small-caps pills. Toggle call sites paint their ON state
+     (e.g. `text-brand-700 bg-brand-50 border-brand-200`); the OFF state is
+     this base. Coarse-pointer floor so a thumb can actually hit it. */
+  .chip-action { @apply inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-surface px-2 py-1 text-[11px] font-medium text-ink-600 shadow-xs transition-colors hover:border-ink-300 hover:bg-ink-50 hover:text-ink-900 active:bg-ink-100 coarse:min-h-11 coarse:px-3; }
+  /* Tab pill — the in-page tab switcher of the accounting module (Ledger,
+     Facturación, Gastos/606, Estados, CxC/CxP). Compose with .btn:
+     `btn tab-pill` at rest, `btn tab-pill-active` for the open tab. */
+  .tab-pill        { @apply bg-ink-100 text-ink-600 hover:bg-ink-200 active:bg-ink-300; }
+  /* text-ink-50 (not literal white) so the label inverts with the pill: in dark
+     mode bg-ink-900 lifts to near-white and the text drops to dark ink. */
+  .tab-pill-active { @apply bg-ink-900 text-ink-50 shadow-sm; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-500 bg-ink-50/70 border-b border-ink-100; }
+  .table td { @apply px-3 py-2 border-b border-ink-100; }
+  .table tbody tr:hover { @apply bg-ink-50; }
+
+  /* Drag-to-resize handle (useColumnWidths) — a thin grab strip on the right
+     edge of a resizable header cell. The th is positioned relative by the hook;
+     the handle straddles the cell border and only shows its accent on hover/drag
+     so it stays invisible until reached for. Desktop pointer affordance; mobile
+     renders cards, not tables. */
+  .rs-col-resize {
+    /* Wide, easy-to-grab hit area (straddles the cell border) with a slim
+       visible rule inside it — the grab zone is far bigger than the line it
+       shows, so the handle is forgiving to land on (mouse and touch) without
+       looking heavy. */
+    @apply absolute top-0 right-0 z-10 h-full w-5 translate-x-1/2 cursor-col-resize select-none;
+    touch-action: none;
+  }
+  .rs-col-resize::after {
+    /* The visible grip: a 2px rule, thickening to the brand accent on
+       hover/drag so the reach target announces itself. */
+    content: '';
+    @apply absolute inset-y-1 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors;
+  }
+  .rs-col-resize:hover::after, .rs-col-resize:active::after { @apply bg-brand-400; }
+  /* Coarse (touch) pointers get an even wider grab zone — a fingertip needs it. */
+  @media (pointer: coarse) {
+    .rs-col-resize { @apply w-8; }
+  }
+  /* While dragging, kill selection + force the resize cursor everywhere. */
+  body.rs-resizing { @apply cursor-col-resize select-none; }
+
+  /* ===========================================================
+     Design-system primitives derived from the four-agent audit
+     of every view (May 18 2026). These patterns were duplicated
+     in 4–12 places each; collapsing them here is the difference
+     between an app that feels cohesive and one that reads as
+     five different surfaces stitched together.
+     =========================================================== */
+
+  /* ── Type scale ──────────────────────────────────────────────
+     Canonical ladder. Prefer these roles over arbitrary text-[Npx]
+     sizes, which had drifted to eight different values across the app:
+       Display    text-2xl / text-3xl   page + quote titles      ▸ Söhne
+       Title      text-lg               card / dialog titles      ▸ Söhne
+       Subtitle   text-base             product / entity names    ▸ Söhne
+       Body       text-sm               default running text  ← DEFAULT
+       Meta       text-xs               secondary / helper text
+       Micro      text-[11px]           dense numeric, captions
+       Eyebrow    .eyebrow              small-caps section label  ▸ Söhne
+       Eyebrow·xs .eyebrow-xs           dense in-component label  ▸ Söhne
+     The named Tailwind sizes are exact equivalents of the old arbitrary
+     ones — text-xs = 12px, text-sm = 14px, text-base = 16px, text-lg =
+     18px — so always use the named token, never text-[12px]/[14px]/etc.
+     9 / 10 / 11 / 13 / 15px have no named equivalent and remain as
+     deliberate in-between steps (the eyebrow primitives cover 10/11).
+
+     ── Typographic identity (two faces, complementary jobs) ─────
+     Every HEADING role (Display / Title / Subtitle / Eyebrow — page
+     titles, card & dialog titles, section labels, the name a card is
+     "about") carries `font-display` → Söhne, the brand display cut. It
+     ships ONE weight (Halbfett), so a heading reads at that weight no
+     matter the `font-medium/-semibold/-bold` next to it — the size +
+     small-caps tracking carry the hierarchy, not the weight.
+     Everything else — Body / Meta / Micro running text, table data,
+     form fields, buttons, captions, status pills, and money/stat VALUES
+     (`tabular-nums`) — is Lausanne, the body face, which DOES carry the
+     real 400 / 500 / 600 / 700 range. So weight contrast lives in
+     Lausanne; Söhne supplies the editorial header voice on top of it.
+     Net: if it's a label/title, give it `font-display`; if it's content
+     someone reads or a figure they scan, leave it Lausanne and weight it. */
+
+  /* Eyebrow — small uppercase widely-tracked label. The one we
+     standardized on after seeing text-[10px] / text-[11px] /
+     tracking-wide / tracking-wider / text-ink-500 / text-ink-600
+     in roughly every combination across the codebase. `.eyebrow` is the
+     11px contextual/section label; `.eyebrow-xs` is the denser 10px
+     in-component label (pricing-cell captions, popover headers); add
+     `text-brand-700` to either for the terracotta variant. */
+  .eyebrow { @apply font-display text-[11px] font-medium uppercase tracking-wider text-ink-500; }
+  .eyebrow-xs { @apply font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500; }
+
+  /* Section header inside a card — used 12+ times across
+     Dashboard, OrderDetail, ProfessionalDetail, Settings,
+     CustomerDetail, Quotes, Orders, admin/Users, admin/Commissions.
+     Always: title on the left, optional action on the right,
+     hairline below, generous-but-not-loud padding. */
+  .card-header { @apply px-5 py-3 border-b border-ink-100 flex items-center justify-between gap-3; }
+  .card-header h2 { @apply font-display font-semibold text-sm text-ink-900; }
+  .card-header .card-header-action { @apply text-xs text-ink-500 hover:text-ink-900 inline-flex items-center gap-1; }
+
+  /* Back-link — the "← Volver a …" affordance on every detail
+     page (CustomerDetail, ProfessionalDetail, OrderDetail, plus
+     the back-to-list buttons in the quote builder). Reads as a
+     tappable button: padded surface, hover background, active
+     press state, 36/44 minimum touch target. The -ml-2 cancels
+     the left padding visually so the text still aligns with the
+     page's gutter when at rest. Pair with an <ArrowLeft size={12}/>
+     at the call site. */
+  .back-link {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 min-h-8 coarse:min-h-10 mb-3 text-xs font-medium text-ink-700 border border-ink-200 bg-surface hover:bg-ink-50 hover:border-ink-300 hover:text-ink-900 active:bg-ink-100 active:border-ink-400 transition-colors select-none active:scale-[0.98];
+  }
+
+  /* Status pill — the semantic colors for quote status and
+     similarly-shaped status indicators. Every page that renders
+     these (Quotes list, Orders list, Dashboard, CustomerDetail,
+     ProfessionalDetail, admin/Users) was carrying its own copy
+     of the same dictionary. Centralising here means a single
+     edit changes every surface at once.
+
+     Roles:
+       draft     ink-100   in-progress, nothing to celebrate
+       sent      blue-100  waiting for the customer's response
+       accepted  emerald   committed money
+       declined  red       customer said no
+       archived  ink-100   historical, dim
+       pending   amber-100 admin-action required (used in admin
+                 pages for invitations / approvals)
+       active    emerald   currently signed in / working
+       inactive  ink-100   muted, off the team
+   */
+  .status-pill { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium; }
+  .status-pill-draft    { @apply bg-ink-100 text-ink-700; }
+  .status-pill-sent     { @apply bg-blue-100 text-blue-800; }
+  .status-pill-accepted { @apply bg-emerald-100 text-emerald-800; }
+  .status-pill-deposito { @apply bg-emerald-600 text-white; }
+  .status-pill-declined { @apply bg-red-100 text-red-700; }
+  .status-pill-archived { @apply bg-ink-100 text-ink-500; }
+  .status-pill-pending  { @apply bg-amber-100 text-amber-800; }
+  .status-pill-active   { @apply bg-emerald-100 text-emerald-800; }
+  .status-pill-inactive { @apply bg-ink-100 text-ink-500; }
+  /* Dark mode: the light Tailwind tints (blue-100 / emerald-100 …) glare on a
+     dark canvas, so each maps to a deep, desaturated tint with a bright, AA
+     foreground. draft / archived / inactive ride the ink ramp and flip on their
+     own. Values tuned per the dark-accent rule (lighten + desaturate). */
+  .dark .status-pill-sent     { background-color: rgb(20 32 58);  color: rgb(147 180 247); }
+  .dark .status-pill-accepted,
+  .dark .status-pill-active   { background-color: rgb(22 39 30);  color: rgb(110 231 168); }
+  .dark .status-pill-declined { background-color: rgb(42 20 24);  color: rgb(251 113 133); }
+  .dark .status-pill-pending  { background-color: rgb(42 33 16);  color: rgb(251 191 36); }
+  .dark .status-pill-deposito { background-color: rgb(5 120 87);  color: #ffffff; }
+
+  /* Auth card — Login + SetPassword centered cards. Same chrome
+     as regular cards but with `p-8` for a generous breathing
+     room when the card is the only thing on screen, plus
+     max-w-sm so the form is comfortable on a tablet without
+     stretching to absurd widths. */
+  .card-auth {
+    @apply rounded-2xl border border-ink-100 shadow-md p-8 w-full max-w-sm;
+    background-color: rgb(var(--surface));
+    background-image: var(--card-sheen);
+  }
+
+  /* ===========================================================
+     Quote line item — responsive shell driven by container
+     queries, not viewport breakpoints.
+
+     The shape the dealer sees has three bands (top strip /
+     identity / calculator) that need to reflow based on the
+     line's *own* width, not the viewport's. That matters
+     because the line list is the same component when it's:
+       - in the full-width quote builder on a 27" monitor
+       - inside the narrowed editor when the PDF panel is open
+       - in a future detail-drawer / inspector sidebar
+     A viewport-based `sm:` breakpoint can't see the difference;
+     a container query can.
+
+     The user's words after the previous iteration: "i am tired
+     of things being covered in their overflow. like i said,
+     this app should look perfect at ALL widths". So the rules
+     here are written defensively — every row has min-width: 0,
+     every grid total cell has minmax(0, 1fr), every long string
+     truncates with ellipsis instead of forcing horizontal
+     scroll on the parent.
+
+     Breakpoints picked from the design-system recipe in
+     project/preview/quote-line.html:
+       < 300px           calc collapses to single column
+       default           identity + calc stacked
+       ≥ 380px           bigger thumb / name / inputs
+       ≥ 640px           identity + calc side-by-side, calc 360
+       ≥ 820px           calc gets to 400
+     =========================================================== */
+  /* HARD RULES for this component, enforced by every rule below:
+       1. Never `text-overflow: ellipsis`. Dealers type long fabric
+          names, dimensions, references — truncating them puts data
+          out of reach.
+       2. Never `overflow: hidden` to "fix" a layout. That clips
+          content silently. If something would spill, make it grow,
+          wrap, or stack instead.
+       3. Inputs auto-grow via `field-sizing: content` (modern
+          browsers). The widthClass becomes a min-width hint, not
+          a max.
+       4. Money stays on one line (`white-space: nowrap`) but the
+          cell it lives in is allowed to grow as wide as it needs. */
+  .qli-row {
+    container-type: inline-size;
+    container-name: qli;
+    /* No overflow:hidden — silent clipping is the bug we're killing. */
+    min-width: 0;
+    padding: 0.875rem 0.75rem;
+  }
+  @container qli (min-width: 380px) {
+    .qli-row { padding: 1rem 1.25rem; }
+  }
+
+  .qli-body {
+    display: flex;
+    flex-direction: column;
+    /* 0.5rem, not 0.875 — the card stacks up to six zones (link bar,
+       swatch, notes, pricing, total, footer); at the old gap a phone card
+       read as islands of dead space between them. */
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .qli-identity {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* -----------------------------------------------------------------
+     Pricing row — ONE primitive shared by the standalone article line
+     and every compound component (see <PricingRow> in
+     QuoteLineItem.jsx). Reads as the last row of the card: a faint top
+     divider sets the math apart from the identity rows above it.
+
+     The equation `Cant. × Unitario = Total` is laid out as a CSS grid
+     of content-sized columns packed flush to the RIGHT of the row (via
+     `justify-content: end`), so the equation reads as one deliberate,
+     tight cluster aligned to the card's right edge — never an element
+     stranded across a dead gap. This is the fix for the "Cant × Unit on
+     the left, TOTAL flung to the far right" complaint: the operators,
+     inputs, and total now travel together as a unit.
+
+     At every width the Total carries the heaviest type. On narrow
+     containers the grid reflows to a labelled two-up stack (qty + unit
+     side-by-side, Total on its own full-width row) — see the container
+     query below. */
+  .qli-pricing {
+    border-top: 1px solid theme('colors.ink.100');
+    padding-top: 0.5rem;
+    margin-top: 0.125rem;
+    min-width: 0;
+  }
+  .qli-pricing-grid {
+    display: grid;
+    /* qty · × · unit · = · total — every column auto-sized to its
+       content. The grid spans the full row width, and `justify-content:
+       end` packs the columns flush against the RIGHT edge with no gaps
+       between them (grid only ever distributes *surplus* space, and we
+       send all of it to the left). That makes the equation read as one
+       tight, deliberate cluster aligned to the card's right edge — the
+       fix for the stranded-total / mid-row dead-gap bug, without any
+       fragile max-content width math. */
+    grid-template-columns: auto auto auto auto auto;
+    justify-content: end;
+    align-items: center;
+    column-gap: 0.625rem;
+    row-gap: 0.5rem;
+    min-width: 0;
+    width: 100%;
+    justify-items: start;
+  }
+  /* Each labelled cell (Cant. / Unitario / Total) stacks its eyebrow
+     over its value; the cell owns its own min-width so the column can't
+     collapse the input to zero. */
+  .qli-pricing-cell {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .qli-pricing-total {
+    /* Total is the right-most column; its content right-aligns so the
+       money string hugs the card edge and stacks cleanly with the
+       totals rail beside it. */
+    text-align: right;
+    align-items: flex-end;
+  }
+  .qli-pricing-total .qli-total-val {
+    white-space: nowrap;   /* money never breaks mid-string */
+  }
+  /* Operators are pure syntax. They live on the input baseline — the
+     grid centers each item, and because the operator has no eyebrow
+     row it would float above the inputs; the self-end pulls it down to
+     align with the value, replacing the old hand-tuned pb-2 nudge. */
+  .qli-pricing-op {
+    align-self: end;
+    padding-bottom: 0.5rem;
+    color: theme('colors.ink.300');
+    user-select: none;
+    line-height: 1;
+  }
+
+  /* Narrow container — the inline equation with operators no longer fits
+     (its natural cluster width is ~300–330px). Below 360px the operators
+     disappear (the cell labels carry the meaning) and the THREE cells stay
+     on ONE row: qty and unit content-sized on the left, the Total taking
+     the remaining space right-aligned. The previous fallback stacked the
+     Total onto its own bordered full-width row, which on a phone turned
+     every card's pricing into two tall bands of mostly dead space — the
+     single labelled row reads in one glance and saves ~3 lines per card. */
+  @container qli (max-width: 359px) {
+    .qli-pricing-grid {
+      width: 100%;
+      margin-inline-start: 0;
+      grid-template-columns: auto auto 1fr;
+      column-gap: 0.75rem;
+    }
+    .qli-pricing-op { display: none; }
+    .qli-pricing-cell { min-width: 0; }
+    .qli-pricing-total .qli-total-val { font-size: 1rem; }
+  }
+
+  /* Per-line footer action row (LineFooter in QuoteLineItem.jsx). The
+     actions used to hide behind a "⋯" menu; now they live in the open at
+     the bottom of every card. On FINE pointers (mouse) the row sits quiet
+     — dimmed to ~55% — so a dense desktop list stays calm, and lifts to
+     full opacity when the row is hovered or anything inside it is focused
+     (keyboard reachability). On COARSE pointers (touch) it's always full
+     opacity: phone/tablet dealers can't hover, so the actions must be
+     visible and tappable at rest. */
+  .qli-footer {
+    opacity: 0.55;
+    transition: opacity 150ms ease;
+  }
+  .qli-row:hover .qli-footer,
+  .qli-row:focus-within .qli-footer,
+  .qli-footer:hover,
+  .qli-footer:focus-within {
+    opacity: 1;
+  }
+  @media (pointer: coarse) {
+    .qli-footer { opacity: 1; }
+  }
+
+  /* Full-bleed header band inside a line card (the compound/modular species
+     header in QuoteLineItem's TopStrip). Negative margins cancel .qli-row's
+     padding exactly — keep the two in sync — so the tinted band runs edge to
+     edge like a GroupCard header, then re-pads its own content and re-spaces
+     itself from the body below. */
+  .qli-band {
+    margin: -0.875rem -0.75rem 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+  @container qli (min-width: 380px) {
+    .qli-band {
+      margin: -1rem -1.25rem 0.875rem;
+      padding: 0.5rem 1.25rem;
+    }
+  }
+
+  /* Secondary affordances inside a line card (e.g. the "+ add photo" tile)
+     follow the SAME visibility contract as .qli-footer: ghosted at rest on
+     fine pointers so a dense list stays calm, full on row hover / focus,
+     always visible on touch. Geometry never changes — only opacity — so
+     cards don't reflow under the cursor while scanning. */
+  .qli-reveal {
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .qli-row:hover .qli-reveal,
+  .qli-row:focus-within .qli-reveal,
+  .qli-reveal:hover,
+  .qli-reveal:focus-within {
+    opacity: 1;
+  }
+  @media (pointer: coarse) {
+    .qli-reveal { opacity: 1; }
+  }
+
+  /* Auto-growing single-line inputs. `field-sizing: content` sizes
+     the input to its value; the widthClass on the JSX side becomes a
+     min, not a max. Browser support is Chrome 123+, Safari 17.4+,
+     Firefox 123+ (early 2024). Pre-support fallback: the input renders
+     at its declared width — same as the previous behavior, no
+     regression.
+
+     `min-width: 2.5rem` is a floor so an EMPTY field (or one with only
+     a short placeholder like "—") can't collapse to ~0 under
+     field-sizing — without it, a placeholder-only ref/dim input clipped
+     to nothing on supporting browsers.
+
+     Cascade note: Tailwind's `min-w-*` utilities live in the `utilities`
+     layer, which is emitted AFTER this `components` layer, so any caller
+     that passes an explicit `min-w-*` overrides this floor (intended —
+     a caller asking for a wider min gets it). The bug was callers that
+     passed `min-w-0`, re-zeroing the floor; those have been changed to
+     stop passing it so this 2.5rem floor applies. */
+  .qli-grow {
+    field-sizing: content;
+    min-width: 2.5rem;
+    max-width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   In-app PDF printing (PrintPdfModal). While the modal is mounted it stamps
+   body[data-print-pdf]; on `window.print()` these rules swap the entire app
+   for the rasterized PDF pages — one image per sheet, no margins (the PDF
+   already carries its own). This is what makes "Imprimir" structurally unable
+   to download: we never navigate the browser to a PDF resource at all. */
+@media print {
+  body[data-print-pdf] > *:not(.print-pdf-root) { display: none !important; }
+  body[data-print-pdf] .print-pdf-root {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+    z-index: auto !important;
+  }
+  body[data-print-pdf] .print-pdf-frame {
+    display: block !important;
+    max-width: none !important;
+    background: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+  body[data-print-pdf] .print-pdf-pages {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  body[data-print-pdf] .print-pdf-chrome { display: none !important; }
+  body[data-print-pdf] .print-pdf-page {
+    /* width/height are injected by PrintPdfModal to the PDF's exact page box
+       (in pt) so each block is precisely one sheet. */
+    max-width: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    break-after: page;
+    break-inside: avoid;
+  }
+  body[data-print-pdf] .print-pdf-page:last-child { break-after: auto; }
+  /* Fit the raster INSIDE the page box (object-fit: contain, centered) instead
+     of stretching it to the box width. The canvas dims are ceil()'d, so the
+     raster is a fraction too tall; contained within the definite-size box this
+     is an invisible letterbox rather than an overflow that would push a blank
+     sheet after every page. */
+  body[data-print-pdf] .print-pdf-page img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+}
+/* NOTE: the @page { size … ; margin: 0 } that pairs with these rules — plus the
+   .print-pdf-page width/height that sizes each block to the same sheet — is
+   injected by PrintPdfModal only while it's mounted (@page can't be scoped by
+   selector, and a global zero margin would mangle normal Cmd+P printing
+   elsewhere). The size comes from the PDF's own page box (pt). */
+
+@layer utilities {
+  /* Safe-area helpers. With viewport-fit=cover on the meta viewport these
+     resolve to non-zero values on notched iPhones (and zero everywhere else,
+     so they're free on Android / desktop). Use the `-area` versions when you
+     want exactly the inset, and the `max(…)` arbitrary-value form when you
+     need a minimum padding on top: pb-[max(0.75rem,env(safe-area-inset-bottom))]. */
+  .pt-safe-area { padding-top: env(safe-area-inset-top); }
+  .pb-safe-area { padding-bottom: env(safe-area-inset-bottom); }
+  .pl-safe-area { padding-left: env(safe-area-inset-left); }
+  .pr-safe-area { padding-right: env(safe-area-inset-right); }
+  .px-safe-area { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  .py-safe-area { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .mt-safe-area { margin-top: env(safe-area-inset-top); }
+  .mb-safe-area { margin-bottom: env(safe-area-inset-bottom); }
+  .inset-safe-bottom { bottom: env(safe-area-inset-bottom); }
+
+  /* Home-indicator clearance that applies ONLY in an installed PWA. A bottom-
+     pinned bar must pad past the home indicator in standalone (there's no
+     browser chrome there) — but in a regular Safari tab the browser's own
+     bottom toolbar already occupies that inset, so adding it there just leaves a
+     dead white strip under the bar. We gate SOLELY on the `is-standalone` class
+     that main.jsx sets from navigator.standalone (Apple's definitive iOS
+     home-screen flag). We deliberately DON'T also gate on
+     `@media (display-mode: standalone)`: iOS Safari can mis-match that query in
+     a normal tab, which stamped this pad onto the bar in Safari and left the
+     dead white band under it. The JS flag already covers Android/desktop
+     installs (main.jsx falls back to the display-mode query only when
+     navigator.standalone is undefined), so the class alone is both sufficient
+     and reliable. */
+  .pb-safe-standalone { padding-bottom: 0; }
+  html.is-standalone .pb-safe-standalone { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* Bottom offset for fixed chrome stacked directly ABOVE the quote ModeBar
+     (phones only — the bar is md:hidden). The bar is 3.5rem of content plus,
+     in an installed PWA, the home-indicator inset it pads (pb-safe-standalone
+     above). Anything pinned on top of it must offset by that same SUM — a
+     plain bottom-14 leaves the dock's lower edge underneath the bar in
+     standalone, where the bar grows by the inset. Scoped to the bar's own
+     breakpoint so md+ keeps the caller's bottom-0. */
+  @media (max-width: 767.98px) {
+    .bottom-above-modebar { bottom: 3.5rem; }
+    html.is-standalone .bottom-above-modebar { bottom: calc(3.5rem + env(safe-area-inset-bottom)); }
+  }
+
+  /* Constrain scroll chaining / momentum where it matters. */
+  .overscroll-contain { overscroll-behavior: contain; }
+  .overscroll-none    { overscroll-behavior: none; }
+
+  /* ─── Virtual-keyboard choreography ──────────────────────────────────────
+     Driven by lib/useVirtualKeyboard, which toggles `html.kb-open` /
+     `html.kb-keep-open` and sets `--rs-keyboard` from window.visualViewport.
+
+     On iOS, fixed bottom chrome (the quote TotalsDock, the client Personalizar
+     pill, the save toast) gets shoved up above the keyboard and covers the
+     field being edited. These rules slide that chrome away instead — UNLESS the
+     focused field lives inside the chrome itself (`[data-kb-keep]`), in which
+     case the chrome is LIFTED above the keyboard so its own inputs stay in view. */
+  .kb-hide-when-open { transition: transform 0.22s ease, opacity 0.22s ease; }
+  html.kb-open .kb-hide-when-open {
+    transform: translateY(130%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Focus is inside a keep-zone → lift it clear of the keyboard. */
+  [data-kb-keep] { transition: transform 0.22s ease; }
+  html.kb-keep-open [data-kb-keep] {
+    transform: translateY(calc(-1 * var(--rs-keyboard, 0px)));
+  }
+  /* Give scroll containers room to bring the focused field above the keyboard
+     when it auto-scrolls into view. scroll-padding-bottom only fixes the scroll
+     ALIGNMENT — it reserves no real space — so the very LAST field in the
+     container (e.g. the permanently-open "Nuevo profesional…" / "Nuevo cliente…"
+     row at the bottom of the mobile sheet) has nothing below it to scroll
+     against and stays pinned behind the keyboard. The matching padding-bottom
+     adds that real scroll room so even the final input can rise clear of the
+     keyboard. Both are keyboard-gated, so they cost nothing when it's down. */
+  html.kb-open .kb-scroll-pad,
+  html.kb-keep-open .kb-scroll-pad {
+    scroll-padding-bottom: calc(var(--rs-keyboard, 0px) + 1rem);
+    padding-bottom: calc(var(--rs-keyboard, 0px) + 1rem);
+  }
+  /* The quote workspace's WhatsApp pane sizes itself to end exactly on the
+     ModeBar's top edge (it subtracts the bar's 3.5rem). While typing, the bar
+     slides away (.kb-hide-when-open), so the pane must reclaim that 3.5rem —
+     otherwise its composer floats a bar's-height above the keyboard. (No bottom
+     safe-area inset here: the home indicator is hidden behind the keyboard.) */
+  html.kb-open .kb-chat-pane {
+    height: calc(var(--rs-vvh, 100dvh) - 3.5rem - env(safe-area-inset-top));
+  }
+  /* The WhatsApp inbox thread fills the viewport minus the app chrome (Chats.jsx
+     sizes the locked column to `var(--rs-vvh) - topbar - both safe insets`).
+     `--rs-vvh` is the LIVE visual-viewport height published by useVirtualKeyboard
+     — the one measure that shrinks for the keyboard on BOTH engines (Safari-tab
+     overlay AND PWA resize), so the column's bottom edge always lands on the
+     keyboard's top edge and the composer sits flush, like native WhatsApp. The
+     ONLY thing this open-state rule changes is dropping the bottom safe-area
+     inset: with the keyboard up the home indicator hides behind it, so that inset
+     is no longer real space to reserve — reclaiming it removes the last sliver of
+     gap. Phones only (the bar's own breakpoint); md+ has no soft keyboard. */
+  @media (max-width: 767.98px) {
+    html.kb-open .kb-inbox-pane {
+      height: calc(var(--rs-vvh, 100dvh) - 55px - env(safe-area-inset-top));
+    }
+  }
+
+  /* ─── Mobile WhatsApp thread = a visual-viewport-locked overlay ───────────
+     The open conversation on a phone is pinned `position: fixed` to the EXACT
+     rectangle the soft keyboard leaves visible (`--rs-vv-top` / `--rs-vv-height`,
+     published live by useVirtualKeyboard from window.visualViewport). This is the
+     production-grade replacement for the old flow-based `calc(--rs-vvh - 55px -
+     insets)` sizing: that formula floated the composer above a dead gap whenever
+     the magic topbar constant, the safe-area insets or the `dvh` shell height
+     diverged from reality on a given device. By anchoring to the visual viewport
+     directly, the composer (the overlay's bottom child) rests flush on the
+     keyboard's top edge on EVERY engine — iOS Safari overlay, iOS PWA resize and
+     Android `interactive-widget` alike — with no height arithmetic at all. The
+     overlay covers the app topbar (the conversation is full-screen, like native
+     WhatsApp; ChatThread's own header carries Back). Phones only — md+ keeps the
+     split-pane via the desktop classes on the same element. */
+  @media (max-width: 767.98px) {
+    .rs-thread-mobile {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: var(--rs-vv-top, 0px);
+      height: var(--rs-vv-height, 100dvh);
+      /* Hard ceiling that does NOT depend on JS. On a fixed element a
+         percentage height resolves against the layout viewport, so this caps
+         the overlay at the box below its own top edge no matter what
+         --rs-vv-height claims. The composer is this overlay's BOTTOM child, so
+         an over-tall rectangle is exactly what pushed it under the home
+         indicator on the dealer's iPhone (2026-08). The var is clamped at the
+         source too (lib/viewportMetrics); this is the belt to that's braces. */
+      max-height: calc(100% - var(--rs-vv-top, 0px));
+      z-index: 45;
+      /* The overlay covers the app topbar, so it owns the status-bar inset:
+         pad the top by the safe area (its bg-surface fills the strip) so
+         ChatThread's own header clears the notch instead of hiding under it.
+         0 in a browser tab (portrait) — only standalone/landscape report one. */
+      padding-top: env(safe-area-inset-top);
+    }
+    /* Keyboard down → the conversation owns the whole window, so reserve the
+       home-indicator inset under the composer. Keyboard up → the home indicator
+       hides behind the keyboard, so drop it and let the composer sit flush. */
+    html:not(.kb-open) .rs-thread-mobile {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+}
+
+/* The composer attachment tray rising into the keyboard's place (ChatThread):
+   tapping "+" drops the keyboard and raises a 4-up action grid in its footprint. */
+@keyframes rs-sheet-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===================================================================
+   Container voyage map (ContainerTrackingMap) — Leaflet markers, the
+   animated route flow, and the heading-rotated vessel. Plain CSS (not a
+   Tailwind layer) so the Leaflet-targeted selectors are never purged.
+   =================================================================== */
+
+/* Let the route arcs glow without a hard edge. */
+.vmap-leaf .leaflet-container { background: #eef1f4; font-family: inherit; }
+.vmap-leaf .leaflet-control-zoom a { color: theme('colors.ink.700'); }
+.vmap-leaf .leaflet-popup-content { margin: 8px 10px; }
+.vmap-leaf .leaflet-popup-content-wrapper { border-radius: 10px; box-shadow: theme('boxShadow.pop'); }
+/* Dark mode: a warm-dark sea so the (light) tiles don't flash a cold slab
+   behind them, and the popup/tooltip surfaces pick up the dark card tone. */
+.dark .vmap-leaf .leaflet-container { background: #211f1b; }
+.dark .vmap-leaf .leaflet-popup-content-wrapper,
+.dark .vmap-leaf .leaflet-popup-tip { background: rgb(var(--surface)); color: rgb(var(--ink-800)); }
+.dark .vmap-leaf .leaflet-tooltip.vmap-label { background: rgba(32, 30, 26, 0.92); border-color: rgb(var(--ink-200)); color: rgb(var(--ink-700)); }
+
+/* Strip Leaflet's default white divIcon box so only our glyphs show. */
+.vmap-icon { background: transparent; border: 0; }
+.vmap-icon, .vmap-vessel-wrap { overflow: visible; }
+
+/* Port markers — small, crisp, divIcon-based so they can carry rings. */
+.vmap-dot { display: block; box-sizing: border-box; border-radius: 9999px; background: #fff; }
+.vmap-origin { width: 13px; height: 13px; background: theme('colors.brand.600'); border: 2.5px solid #fff; box-shadow: 0 0 0 1.5px theme('colors.brand.600'), theme('boxShadow.soft'); }
+.vmap-via    { width: 11px; height: 11px; border: 2.5px solid theme('colors.ink.500'); box-shadow: theme('boxShadow.soft'); }
+.vmap-dest   { width: 15px; height: 15px; border: 3px solid theme('colors.brand.600'); box-shadow: 0 0 0 3px rgba(168,86,32,0.18), theme('boxShadow.soft'); }
+.vmap-dest.vmap-arrived { background: theme('colors.emerald.600'); border-color: #fff; box-shadow: 0 0 0 3px rgba(5,150,105,0.20), theme('boxShadow.soft'); }
+
+/* The vessel: a heading-rotated glyph over a soft pulsing halo. */
+.vmap-vessel-wrap { position: relative; width: 30px; height: 30px; }
+.vmap-vessel-halo {
+  position: absolute; inset: 0; margin: auto; width: 30px; height: 30px; border-radius: 9999px;
+  background: radial-gradient(circle, rgba(5,150,105,0.35) 0%, rgba(5,150,105,0) 70%);
+  animation: vmap-pulse 2.4s ease-out infinite;
+}
+.vmap-vessel-glyph {
+  position: absolute; inset: 0; margin: auto; width: 24px; height: 24px;
+  display: grid; place-items: center; transform-origin: 50% 50%;
+  filter: drop-shadow(0 1px 2px rgba(23,22,18,0.45));
+}
+.vmap-vessel-glyph svg { width: 22px; height: 22px; display: block; }
+
+@keyframes vmap-pulse {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  70%  { transform: scale(2.0); opacity: 0; }
+  100% { transform: scale(2.0); opacity: 0; }
+}
+
+/* Animated directional flow on the not-yet-sailed leg (Leaflet draws the
+   polyline as an SVG <path>; we march its dashes toward the destination). */
+.vmap-flow { stroke-dasharray: 1 9; animation: vmap-dash 1.1s linear infinite; }
+@keyframes vmap-dash { to { stroke-dashoffset: -100; } }
+
+/* Permanent origin/destination labels: quiet, legible, no marker box. */
+.vmap-leaf .leaflet-tooltip.vmap-label {
+  background: rgba(255,255,255,0.92); border: 1px solid theme('colors.ink.100');
+  border-radius: 6px; padding: 1px 6px; font-size: 10px; font-weight: 600;
+  color: theme('colors.ink.700'); box-shadow: theme('boxShadow.soft');
+  text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+.vmap-leaf .leaflet-tooltip.vmap-label::before { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vmap-vessel-halo { animation: none; }
+  .vmap-flow { animation: none; }
+}
+
+/* ===================================================================
+   Dropdown primitive (primitives/Dropdown) — the portaled panel's enter
+   animation. Plain CSS so the keyframe is never purged.
+   =================================================================== */
+.dropdown-pop { animation: dropdown-pop 0.14s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes dropdown-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-pop { animation: none; }
+}
+
+/* A plain opacity fade — used by the full-screen swatch lightbox backdrop
+   (Tailwind arbitrary `animate-[fadeIn_120ms_ease-out]`). */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ===================================================================
+   Tienda (PublicStore) — tile entrance. One quiet rise per tile,
+   staggered via inline animation-delay (`both` keeps a delayed tile
+   invisible until its turn). Plays on mount only — a keyed grid swap
+   (landing ↔ collection) page-turns, a live search adds new matches in;
+   tiles already on screen never replay. Stilled under reduced motion.
+   =================================================================== */
+.store-rise { animation: store-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes store-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* The masthead ticker (RollingMasthead) — one line rising in from under its
+   hairline; the label's overflow-hidden box does the clipping that makes it
+   read as a roll. Also carries the back arrow in when it appears. */
+.store-roll { animation: store-roll 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes store-roll {
+  from { opacity: 0; transform: translateY(0.6em); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .store-rise, .store-roll { animation: none; }
+}
+
+/* ===================================================================
+   Container tracking panel (ContainerTracking) — side-by-side info + map
+   once the panel itself is wide enough. A container query (not a viewport
+   breakpoint) so it adapts to whatever width its host gives it — order
+   detail, quote editor, the grouped quotes table, or the public link.
+   =================================================================== */
+.vtrack { container: vtrack / inline-size; }
+.vtrack-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+@container vtrack (min-width: 34rem) {
+  .vtrack-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+  }
+  .vtrack-grid > .vtrack-summary { grid-column: 1; grid-row: 1; }
+  .vtrack-grid > .vtrack-points  { grid-column: 1; grid-row: 2; }
+  .vtrack-grid > .vtrack-map     { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Togo configurator skin (`.togo-rams` on <body> while the embed is mounted) —
+   LIGNE ROSET'S OWN SITE LANGUAGE, read off ligne-roset.com itself (owner,
+   2026-07: the pitch to Ligne Roset, so the configurator should look like it
+   belongs on their site). Its rules:
+     1. WHITE ground with a soft grey second surface — never a grey wash;
+     2. ink is a dark SLATE-NAVY, not pure black; secondary copy a soft grey.
+        Colour is carried by the FURNITURE, not the chrome;
+     3. actions are PILLS — fully rounded, dark fill for primary, white for
+        secondary on photography;
+     4. HAIRLINE-separated rows with generous height; no shadows, no sheen;
+     5. product photography sits DIRECTLY on white — no plate, no border, no
+        tinted tile behind it;
+     6. modest letterspacing (0.08em) — not the hard 0.15em of a spec sheet;
+     7. RED is reserved, and it is the ONE hue the chrome is allowed: it marks
+        destructive intent, so the eye finds delete without reading.
+
+   This replaced a deliberately austere reading (square everything, strict
+   monochrome, 0.15em eyebrows) that landed "a little sterile" — the owner's
+   words, and the second time an austere pass has been pulled here. The lesson
+   both times is the same: the restraint has to come from SPACE and HAIRLINES,
+   never from stripping the radius and the warmth out of the chrome. Ligne
+   Roset's own site is proof — it is mostly white and mostly type, and it reads
+   warm because the geometry is soft and the photography is unframed.
+
+   Scoped to `body.togo-rams`, which is why the shared components the embed
+   borrows (MaterialColorPicker, Modal, the portalled sheets) re-skin here
+   WITHOUT touching how they look inside the internal app. */
+
+/* 1 — Tokens. Ink is ligne-roset.com's slate-navy (#252C3D at 900), warming
+       the whole surface off pure neutral without introducing a second hue. The
+       brand ramp is remapped onto the SAME scale so every inherited
+       `bg-brand-*` / `text-brand-*` follows without a per-element override. */
+body.togo-rams {
+  /* The widget is white-locked (canvas/surface pinned below), so native
+     chrome — scrollbars, form controls — must never render in the OS's dark
+     scheme: a dark classic scrollbar against these white panes is the "hard
+     dark rail" the owner flagged (2026-08-01). */
+  color-scheme: light;
+  --ink-50: 249 250 251;  --ink-100: 243 244 246; --ink-200: 226 228 232;
+  --ink-300: 203 207 214; --ink-400: 148 155 168; --ink-500: 107 114 128;
+  --ink-600: 74 82 96;    --ink-700: 55 62 75;    --ink-800: 40 47 60;
+  --ink-900: 37 44 61;
+  --brand-50: 249 250 251;  --brand-100: 243 244 246; --brand-200: 226 228 232;
+  --brand-300: 203 207 214; --brand-400: 148 155 168; --brand-500: 107 114 128;
+  --brand-600: 74 82 96;    --brand-700: 55 62 75;    --brand-800: 40 47 60;
+  --brand-900: 37 44 61;
+  --canvas: 255 255 255;
+  --surface: 255 255 255;
+  --surface-2: 245 245 245;
+  --card-sheen: none;
+  --card-hi: transparent;
+}
+
+/* 1b — Type: Ligne Roset's own. VERLAG sets the entire surface. The three
+        utilities that hard-set a family (`font-display` → Söhne,
+        `font-wordmark` → Rauschen B, `font-sans` → Lausanne) are Alcover's
+        type and would otherwise punch through the inherited face, so they're
+        remapped rather than hunted down in the markup. */
+body.togo-rams { font-family: 'Verlag', 'Lausanne', system-ui, sans-serif; }
+body.togo-rams .font-display,
+body.togo-rams .font-wordmark,
+body.togo-rams .font-sans {
+  font-family: 'Verlag', 'Lausanne', system-ui, sans-serif;
+}
+/* Display sizes take Verlag LIGHT — at wordmark scale the Book cut reads heavy,
+   and light-weight display type is the inbox's own register. The app's headings
+   carry a `font-semibold` from its own scale, which is what this overrides. */
+body.togo-rams h1, body.togo-rams h2, body.togo-rams h3,
+body.togo-rams .font-wordmark { font-weight: 300; }
+
+/* …EXCEPT the launch card (`.togo-card-type`), which keeps ALCOVER's own type
+   (owner, 2026-07). The card is the shop-window tile that sits on the dealer's
+   page — the LOGO carries Ligne Roset there, so the two lines of type around it
+   are ours. Verlag stays on the configurator proper, which is the surface the
+   customer actually designs in. Nested one level deeper than the remap above,
+   so it wins on specificity without an `!important`. */
+body.togo-rams .togo-card-type,
+body.togo-rams .togo-card-type .font-sans {
+  font-family: 'Lausanne', system-ui, -apple-system, sans-serif;
+}
+body.togo-rams .togo-card-type .font-display {
+  font-family: 'Sohne', 'Lausanne', system-ui, sans-serif;
+}
+body.togo-rams .togo-card-type .font-wordmark {
+  font-family: '"Rauschen B"', Sohne, Lausanne, serif;
+}
+
+/* 2 — Geometry: PILLS for anything you press, soft rectangles for anything you
+       read. The previous pass squared every corner with one blanket
+       `border-radius: 0 !important`, and that single rule did most of the work
+       of making this feel sterile — every affordance lost the shape that says
+       "press me" (Norman's affordance: a pill reads as pressable pre-attentively,
+       a hard rectangle reads as a label). ligne-roset.com does the opposite:
+       its actions are fully-rounded pills. So the radius comes back, and the
+       controls go further and become proper pills. */
+body.togo-rams .btn,
+body.togo-rams .btn-primary,
+body.togo-rams .btn-brand,
+body.togo-rams .btn-secondary,
+body.togo-rams .btn-ghost,
+body.togo-rams .btn-icon,
+body.togo-rams .btn-icon-danger {
+  border-radius: 9999px;
+}
+
+/* 3 — Hairlines, not cards, and the HUD is GLASS. The floating panels read as
+       opaque white slabs before this: at 0.94 alpha the blur behind them does
+       nothing, so they cut the plan into pieces instead of hovering over it.
+       0.72 with a real blur lets the plan show through — the panel reads as a
+       layer above the work (depth cue) rather than a hole punched in it. */
+body.togo-rams .card { box-shadow: none; background-image: none; border-color: rgb(var(--ink-200)); }
+body.togo-rams .hud-panel {
+  background: rgb(255 255 255 / 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  backdrop-filter: blur(20px) saturate(1.15);
+  border: 1px solid rgb(255 255 255 / 0.65);
+  box-shadow: 0 1px 2px rgb(var(--ink-900) / 0.04), 0 8px 24px -12px rgb(var(--ink-900) / 0.10);
+}
+
+/* 4 — Controls. Pills, sentence-case-friendly, with a soft press. The primary
+       is a dark pill (ligne-roset.com's own "Newsletter" treatment) that
+       DEEPENS rather than inverting — an invert flips the figure/ground
+       relationship mid-gesture, which reads as the button disappearing. */
+body.togo-rams .btn { @apply font-normal transition-[background-color,color,border-color,transform] duration-150; }
+body.togo-rams .btn-primary,
+body.togo-rams .btn-brand {
+  @apply border bg-ink-900 text-white text-[11px] uppercase tracking-[0.08em] px-5;
+  border-color: rgb(var(--ink-900));
+  background-image: none;
+  box-shadow: none;
+}
+body.togo-rams .btn-primary:hover,
+body.togo-rams .btn-brand:hover {
+  background-color: rgb(var(--ink-700));
+  border-color: rgb(var(--ink-700));
+  color: #fff;
+  filter: none;
+  box-shadow: none;
+}
+body.togo-rams .btn-secondary {
+  @apply bg-white text-ink-900 text-[11px] uppercase tracking-[0.08em] px-5;
+  border-color: rgb(var(--ink-300));
+  box-shadow: none;
+}
+body.togo-rams .btn-secondary:hover { background-color: rgb(var(--ink-50)); border-color: rgb(var(--ink-900)); }
+body.togo-rams .btn-ghost:hover { @apply bg-ink-100; box-shadow: none; }
+/* A press is confirmed by a small scale, not a lift — the shadow-lift needs a
+   shadow to read against, and this skin has none. */
+body.togo-rams .btn:hover { transform: none; }
+body.togo-rams .btn:active { transform: scale(0.97); }
+
+/* 4b — DESTRUCTIVE actions wear red, always. Red is the only hue the chrome
+        keeps, and this is what it's for: an outlined red pill is found
+        pre-attentively, so "delete" never has to be read to be recognised. It
+        was greyed to ink by the monochrome pass, which made the single
+        irreversible control on the screen look exactly like the reversible ones
+        beside it — a real hazard, not a style preference. Outline, never a fill:
+        a solid red block draws more attention than a secondary action deserves. */
+body.togo-rams .btn-icon-danger {
+  color: rgb(220 38 38);
+  border: 1px solid rgb(220 38 38 / 0.45);
+}
+body.togo-rams .btn-icon-danger:hover {
+  color: #fff;
+  background-color: rgb(220 38 38);
+  border-color: rgb(220 38 38);
+}
+
+/* 5 — Inputs: a hairline box, no inner shadow, no coloured focus glow — the
+       border simply goes to ink when focused. Pill-free: a field is read, not
+       pressed, so it keeps a soft rectangle. */
+body.togo-rams .input {
+  box-shadow: none;
+  border-radius: 0.5rem;
+  border-color: rgb(var(--ink-200));
+}
+body.togo-rams .input:hover { border-color: rgb(var(--ink-300)); }
+body.togo-rams .input:focus { border-color: rgb(var(--ink-900)); box-shadow: none; }
+/* 0.08em, not 0.15em: ligne-roset.com letterspaces its labels lightly. The hard
+   spacing read as a spec sheet and, at 11px, actively hurt word recognition —
+   past ~0.1em the eye stops reading words and starts reading letters. */
+body.togo-rams .label,
+body.togo-rams .eyebrow { @apply tracking-[0.08em] text-ink-500; }
+
+/* 6 — Motion says what happened, and nothing else. The score-pop stays stilled
+       (a price is read, not celebrated), but the CTA's breath is BACK: it fires
+       only once the design is genuinely quotable, so it isn't decoration — it's
+       the one moment the interface has something to say. */
+body.togo-rams .togo-score { animation: none; }
+
+/* ── "Game feel" motion layer ─────────────────────────────────────────────────
+   The Rams skin keeps the chrome quiet; this layer makes the configurator feel
+   ALIVE — a toy you play with, not a form you fill in. Pieces spring in when
+   placed, rotate with a visible swing, the live estimate ticks like a score, the
+   "request a quote" CTA breathes once a real quote is ready, and the finished
+   screen bursts confetti. All pure CSS, all collapsed under reduced-motion. */
+
+/* A piece dropped onto the plan springs up from nothing (overshoot easing). */
+@keyframes togo-pop {
+  0%   { transform: scale(0.55); opacity: 0; }
+  55%  { transform: scale(1.07); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.togo-pop { animation: togo-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+
+/* Step screens (form / done / empty-start card) rise into place. */
+@keyframes togo-rise {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.togo-rise { animation: togo-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* The reward: a confetti burst on a sent request. Each bit reads its own
+   trajectory from CSS custom properties stamped inline (per-bit randomness). */
+@keyframes togo-confetti {
+  0%   { transform: translate3d(0, -14vh, 0) rotate(0deg);                 opacity: 1; }
+  100% { transform: translate3d(var(--dx, 0), 102vh, 0) rotate(var(--rot, 540deg)); opacity: 0; }
+}
+.togo-confetti > i {
+  position: absolute; top: 0; display: block; border-radius: 2px;
+  animation: togo-confetti var(--dur, 2.6s) cubic-bezier(0.2, 0.6, 0.35, 1) var(--delay, 0s) forwards;
+  will-change: transform, opacity;
+}
+
+/* The live estimate figure reacts when a reprice lands — the element is remounted
+   with a fresh React key, so this replays every time the number changes: a quick
+   scale pop that reads like a score ticking up, weighted to its left-bottom
+   corner so the figure grows from where it's anchored. */
+@keyframes togo-score {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+.togo-score { animation: togo-score 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: left bottom; }
+
+/* The hotbar tile that just placed a piece flashes once as tap confirmation —
+   visible even on touch, where the :active press never shows: a quick squeeze-in
+   with a brand-tinted ring that expands and fades, so a finger tap gets the same
+   "it landed" feedback a mouse hover would. */
+@keyframes togo-added {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgb(var(--brand-500) / 0.35); }
+  40%  { transform: scale(0.94); box-shadow: 0 0 0 5px rgb(var(--brand-500) / 0.18); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgb(var(--brand-500) / 0); }
+}
+.togo-added { animation: togo-added 0.42s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .togo-pop, .togo-rise, .togo-confetti > i,
+  .togo-score, .togo-added { animation: none !important; opacity: 1; }
+}
+
+/* Floating glass HUD panel — the chrome of the "game window". Translucent +
+   blurred so the canvas reads THROUGH the controls, hairline-bordered, lifted.
+   Every tool cluster (view toggle, tool icons, piece hotbar, estimate deck) is
+   one of these, floating over the full-bleed canvas. */
+.hud-panel {
+  background: rgb(var(--surface) / 0.82);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid rgb(var(--ink-200) / 0.7);
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 28px -10px rgb(var(--ink-900) / 0.22), 0 1px 0 0 rgb(255 255 255 / 0.5) inset;
+}
+/* SOLID variant — for the full-height panes whose INTERIOR scrolls (materials
+   rail, pieces drawer, design pane). Content scrolling inside a backdrop-
+   filtered element makes the compositor re-run the blur every frame, and here
+   the backdrop is the WebGL canvas — that per-frame 12–20px blur is the
+   stuttering scroll the owner hit (2026-08-01), same root cause as the Tienda
+   sticky header's "buggy scroll" (see the NOTE near the top of this file),
+   fixed the same sanctioned way: opaque. Glass stays on the small STATIC
+   clusters (toolbars, pills, hotbar) — nothing scrolls inside those, so they
+   never pay the per-frame cost. */
+.hud-panel-solid {
+  background: rgb(var(--surface));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body.togo-rams .hud-panel-solid {
+  background: #fff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  /* The glass border was white-on-white translucency; a solid white pane
+     needs the hairline to separate from the canvas, same as togo-rams .card. */
+  border-color: rgb(var(--ink-200));
+}
+/* Keyboard focus INSIDE a clipping HUD panel: the global ring sits 2px outside
+   the control and an overflow-hidden panel would clip it invisible — pull it
+   inward so a tabbing visitor always sees where they are. */
+.hud-panel :where(button):focus-visible,
+button.hud-panel:focus-visible {
+  outline-offset: -2px;
+}
+/* The hotbar scrolls without a visible track (a game inventory strip). */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Thin overlay-style scrollbar for panes that scroll independently inside a
+   full-height dashboard layout (dealer inbox master/detail). Quiet by default,
+   darkens under the pointer; track stays invisible so the hairline rules of
+   the editorial layout keep reading as the only lines on the page. */
+.scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(0 0 0 / 0.18) transparent; }
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+.scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(0 0 0 / 0.18); border-radius: 9999px; }
+.scroll-thin::-webkit-scrollbar-thumb:hover { background-color: rgb(0 0 0 / 0.35); }
+/* Dark mode needs the mirror image: an ink thumb on a dark pane is invisible,
+   and the platform default it falls back to is a fat light slab — the loudest
+   thing on screen, right where the eye lands while reading. */
+.dark .scroll-thin { scrollbar-color: rgb(255 255 255 / 0.22) transparent; }
+.dark .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(255 255 255 / 0.22); }
+.dark .scroll-thin::-webkit-scrollbar-thumb:hover { background-color: rgb(255 255 255 / 0.38); }
+
+/* The configurator's panes ride .scroll-thin too (owner, 2026-08-01: «do a
+   slender scroll bar similar to the one in the distributor inbox. or use the
+   same») — one scrollbar idiom for both surfaces. Its literal black/white
+   alphas are the point: a ramp-var thumb (the retired .scroll-brand) turned
+   into a grey slab under the embed's `togo-rams` slate remap. */
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Accounting density — a tighter Palantir / QuickBooks read for the whole
+   /accounting surface. Scoped to `.acct-dense` (set in Layout when the path is
+   under /accounting) and deliberately UNLAYERED so it overrides the Tailwind
+   utilities the pages apply inline (p-4, text-2xl, gap-3, …) without changing
+   the radius/shadow/spacing language anywhere else in the app.
+   ────────────────────────────────────────────────────────────────────────── */
+/* Flat data surfaces: square the editorial 2xl radius, drop the sheen, and
+   reduce the soft shadow to a single crisp hairline lift. */
+.acct-dense .card {
+  border-radius: 0.5rem;
+  background-image: none;
+  box-shadow: 0 1px 1px rgb(var(--ink-900) / 0.04);
+}
+/* Trim the generous container padding on cards used as section panels. (Cards
+   with no padding — e.g. those wrapping a full-bleed table — are left alone.) */
+.acct-dense .card.p-5,
+.acct-dense .card.card-pad { padding: 0.875rem; }
+.acct-dense .card.p-4 { padding: 0.75rem; }
+
+/* Page title: a compact toolbar heading, not an editorial splash. */
+.acct-dense h1 { font-size: 1.375rem; line-height: 1.75rem; }
+
+/* Tables read as a dense register: tighter rows, hairline rhythm. */
+.acct-dense .table th { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+.acct-dense .table td { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+
+/* Inputs/selects tighten on a precise pointer (desktop data entry); coarse
+   (touch) keeps its full tap target via the base .input min-height. */
+@media (pointer: fine) {
+  .acct-dense .input { padding-top: 0.3rem; padding-bottom: 0.3rem; min-height: 2rem; }
+}

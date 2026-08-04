@@ -1,0 +1,366 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, X, PackageSearch, ChevronRight, Loader2 } from 'lucide-react';
+import { useLiveQueryStatus } from '../../db/hooks.js';
+import { searchCatalogModels, catalogCategories, productsByCategory } from '../../db/database.js';
+import { resolveCatalogSearch, modelDescription } from '../../core/catalog/index.js';
+import { groupFamilies, productForGrade, familyStock } from '../../lib/catalog.js';
+import { formatMoney } from '../../lib/format.js';
+import { BRAND_LIGNE_ROSET } from '../../lib/constants.js';
+import ImageView from '../ImageView.jsx';
+
+/**
+ * Headless body for finding a catalog MODEL (a family of SKUs sharing the
+ * 8-digit root, e.g. "Togo Fireside Chair") and picking one. Owns ONLY the
+ * search box + the browse/search results; the caller wraps it in whatever
+ * chrome it needs and decides what picking a model means (e.g. CatalogPicker
+ * advances to the fabric/grade step to insert a new line).
+ *
+ * Scoped to ONE `brand` (the host decides which): the Catálogo picker passes
+ * Ligne Roset, the Inventario picker's LifestyleGarden tab passes LSG. Both
+ * browse (every CATEGORY of the brand, collapsed → lazy-loaded models, so
+ * nothing pulls the whole tens-of-thousands-row table) and search are filtered
+ * to that brand. Search is relevance-ranked (best first) grouped under each
+ * category — weights name > family > reference, exact > prefix > word-start >
+ * substring — and hits Postgres for a bounded matched set.
+ *
+ * Self-contained query state (debounced), so it resets cleanly each time the
+ * host modal mounts it.
+ *
+ * A host that already knows what the dealer is looking at seeds it:
+ * `initialQuery` opens ON that search (the studio passes the SKU root a part is
+ * bound to, so its family is on screen with nothing typed) SELECTED, so the
+ * first keystroke replaces it; `presets` are one-tap queries under the box
+ * (`{ label, q }` — the piece's colección, which the LR family names carry:
+ * "PRADO S/2 BACK CUSHIONS"). Both optional: omitted, this is the picker every
+ * other host has always rendered.
+ */
+const usd = (n) => formatMoney(Number(n) || 0, 'USD', { USD: 1 });
+
+export default function ModelBrowser({ profileId, onPick, brand = BRAND_LIGNE_ROSET, initialQuery = '', presets = [] }) {
+  // The seed lands on BOTH halves of the query state: the debounce spares a
+  // request per KEYSTROKE, and a seed is not one — waiting on it would paint
+  // the browse tree over results the host already asked for.
+  const [q, setQ] = useState(initialQuery);
+  const [dq, setDq] = useState(initialQuery.trim());
+  const inputRef = useRef(null);
+  const chips = (presets || []).filter((p) => p && p.label && p.q);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      // A seeded query is there to be REPLACED (the dealer opens on the part's
+      // current SKU and types the one that supersedes it), so it starts selected.
+      if (el.value) el.select();
+    }, 30);
+    return () => clearTimeout(id);
+  }, []);
+
+  // Debounce the query so each keystroke isn't its own request.
+  useEffect(() => {
+    const id = setTimeout(() => setDq(q.trim()), 200);
+    return () => clearTimeout(id);
+  }, [q]);
+
+  const searching = dq.length > 0;
+
+  // Two-band flex column: a PINNED search header that never scrolls, over a
+  // SINGLE scrolling results region. The host gives us a flush, non-scrolling
+  // modal body (`flushBody`), so this is the only scroller — the search box
+  // stays put even as the list grows long and even with the iOS keyboard up. We
+  // own the modal's horizontal padding here.
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex-shrink-0 px-4 sm:px-6 pt-4 pb-3">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className={q ? 'input search-clean pl-9 pr-9 coarse:pr-11' : 'input search-clean pl-9'}
+            placeholder="Buscar por modelo, referencia o familia…"
+            aria-label="Buscar en el catálogo"
+            // iOS raises the "AutoFill Contact" QuickType bar when it classifies
+            // a field as wanting contact info — and the trigger is the field's
+            // type + the words in its placeholder/label (the old "…por nombre…"
+            // read as a NAME field). A real `type="search"` with no contact
+            // words, autofill off, autocorrect/capitalize off keeps it a search
+            // box; `.search-clean` hides the native ✕ (we render our own).
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+          {q && (
+            // btn-icon matches the input's 36/44 height exactly, so the clear
+            // affordance fills the input's right end as a full-size touch target.
+            <button type="button" onClick={() => { setQ(''); inputRef.current?.focus(); }} className="btn-icon absolute right-0 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700" aria-label="Limpiar">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {chips.length > 0 && (
+          // Segmented pills (the material picker's category idiom): a tap swaps
+          // the seeded SKU for its whole collection, which is how a part gets
+          // reassigned inside the family it belongs to. Set both halves — a
+          // tap isn't a keystroke either.
+          <div className="mt-2 flex w-full overflow-hidden rounded-md border border-ink-200 bg-surface text-xs sm:inline-flex sm:w-auto">
+            {chips.map((p, i) => {
+              const on = q.trim().toLowerCase() === String(p.q).trim().toLowerCase();
+              return (
+                <button
+                  key={`${p.label}|${p.q}`}
+                  type="button"
+                  onClick={() => { setQ(p.q); setDq(String(p.q).trim()); }}
+                  aria-pressed={on}
+                  className={`min-h-9 flex-1 truncate px-2.5 py-1.5 transition-colors coarse:min-h-11 sm:flex-none ${i > 0 ? 'border-l border-ink-200' : ''} ${
+                    on ? 'bg-ink-900 text-ink-50' : 'text-ink-600 hover:bg-ink-50 active:bg-ink-100'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 pb-4">
+        {searching
+          ? <PickerSearch profileId={profileId} brand={brand} term={dq} onPick={onPick} />
+          : <PickerBrowse profileId={profileId} brand={brand} onPick={onPick} />}
+      </div>
+    </div>
+  );
+}
+
+const NO_CATEGORY = 'Sin categoría';
+const NONE_KEY = '__none__';
+/** Models rendered per search. The list is relevance-ordered, so this bounds
+ *  the DOM, never the answer — the best match is at the top by construction. */
+const SEARCH_LIMIT = 60;
+
+/** Price hint for a model row: a single price when ungraded, else "desde $lo". */
+function priceLabel(fam) {
+  if (!fam.graded) {
+    const p = productForGrade(fam, '');
+    return p ? usd(p.priceUsd) : '—';
+  }
+  const prices = fam.grades.map((g) => Number(productForGrade(fam, g)?.priceUsd) || 0).filter(Boolean);
+  return prices.length ? `desde ${usd(Math.min(...prices))}` : '—';
+}
+
+/** Sort categories A→Z, sinking the empty ("Sin categoría") bucket to the end. */
+function sortCat(a, b) {
+  if (!a && b) return 1;
+  if (a && !b) return -1;
+  return (a || '').localeCompare(b || '', 'es', { sensitivity: 'base' });
+}
+
+const byName = (a, b) =>
+  (a.name || a.root).localeCompare(b.name || b.root, 'es', { sensitivity: 'base' });
+
+/**
+ * Search mode — ONE flat list of models, best match first, scoped to the
+ * active brand. Owns its query so a fresh search shows a loader rather than a
+ * stale/empty flash. Exported so the Inventario picker can drop the LSG results
+ * into its combined cross-catalogue search (driven by ITS shared search box).
+ *
+ * Both halves changed together, and they had to: `searchCatalogModels` caps the
+ * fetch by MODEL instead of by SKU row (a 500-row cap over ~23-row models used
+ * to cut "EXCLUSIF SOFA" out of its own result set), and `resolveCatalogSearch`
+ * ranks what comes back by phrase / proximity / compactness instead of term
+ * presence — which is what puts the model the dealer typed the exact name of
+ * above its variants and above EXCLUSIF 2.
+ */
+export function PickerSearch({ profileId, brand, term, onPick }) {
+  const { data: products, loaded } = useLiveQueryStatus(
+    () => searchCatalogModels(profileId, term, { brand }),
+    [profileId, brand, term],
+    [],
+  );
+  const { models, more } = useMemo(
+    () => resolveCatalogSearch({ products, query: term, limit: SEARCH_LIMIT }),
+    [products, term],
+  );
+
+  if (!loaded) {
+    return (
+      <div className="px-3 py-10 text-center text-sm text-ink-500 flex items-center justify-center gap-2">
+        <Loader2 size={15} className="animate-spin" /> Buscando…
+      </div>
+    );
+  }
+  if (models.length === 0) {
+    return <div className="px-3 py-10 text-center text-sm text-ink-500">Sin coincidencias.</div>;
+  }
+  return (
+    <div className="rounded-lg border border-ink-100 py-1">
+      {models.map((m) => <ModelButton key={m.root} model={m} onPick={onPick} showCategory />)}
+      {more > 0 && (
+        <div className="px-3 pt-2 pb-1 text-[11px] text-ink-400">
+          {more} {more === 1 ? 'modelo más' : 'modelos más'} — afina la búsqueda.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Browse mode — the active brand's categories, collapsed; opening one
+ *  lazy-loads its models. Exported so the Inventario picker reuses it for the
+ *  LifestyleGarden browse tab (empty query). */
+export function PickerBrowse({ profileId, brand, onPick }) {
+  const { data: categories, loaded, error } = useLiveQueryStatus(
+    () => catalogCategories(profileId, brand),
+    [profileId, brand],
+    [],
+  );
+  const sorted = useMemo(
+    () => [...categories].sort((a, b) => sortCat(a.category, b.category)),
+    [categories],
+  );
+
+  if (!loaded) {
+    return (
+      <div className="px-3 py-10 text-center text-sm text-ink-500 flex items-center justify-center gap-2">
+        <Loader2 size={15} className="animate-spin" /> Cargando inventario…
+      </div>
+    );
+  }
+  if (error || sorted.length === 0) {
+    return (
+      <div className="px-3 py-10 text-center text-sm text-ink-500">
+        Catálogo vacío. Impórtalo en <b>Administración › Catálogos</b>.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {sorted.map((c) => (
+        // Key includes the brand: both brands can carry a same-named category,
+        // and a tab switch must reset the collapsed/lazy-open state.
+        <BrowseCategory key={`${brand}|${c.category || NONE_KEY}`} profileId={profileId} brand={brand} category={c.category} count={c.count} onPick={onPick} />
+      ))}
+    </div>
+  );
+}
+
+/** One collapsed category in browse mode; lazy-loads its models on first open. */
+function BrowseCategory({ profileId, brand, category, count, onPick }) {
+  const [everOpened, setEverOpened] = useState(false);
+  const label = category || NO_CATEGORY;
+  return (
+    <details
+      className="rounded-lg border border-ink-100 overflow-hidden group/cat"
+      onToggle={(e) => { if (e.currentTarget.open) setEverOpened(true); }}
+    >
+      <summary className="cursor-pointer list-none select-none px-3 py-3 sm:py-2.5 min-h-11 flex items-center justify-between gap-3 hover:bg-ink-50 active:bg-ink-100 transition-colors">
+        <span className="flex items-center gap-2 min-w-0">
+          <ChevronRight size={14} className="text-ink-400 flex-shrink-0 transition-transform group-open/cat:rotate-90" aria-hidden />
+          <span className="font-medium text-sm text-ink-900 truncate" title={label}>{label}</span>
+        </span>
+        <span className="text-[11px] text-ink-400 tabular-nums flex-shrink-0">{count}</span>
+      </summary>
+      {everOpened && <BrowseCategoryModels profileId={profileId} brand={brand} category={category} onPick={onPick} />}
+    </details>
+  );
+}
+
+/** Lazy body of a browse category — fetches its products and lists the models. */
+function BrowseCategoryModels({ profileId, brand, category, onPick }) {
+  const { data: products, loaded, error } = useLiveQueryStatus(
+    () => productsByCategory(profileId, category, brand),
+    [profileId, category, brand],
+    [],
+  );
+  const models = useMemo(() => [...groupFamilies(products)].sort(byName), [products]);
+
+  if (!loaded) {
+    return (
+      <div className="px-3 py-5 text-center text-sm text-ink-500 flex items-center justify-center gap-2 border-t border-ink-100">
+        <Loader2 size={14} className="animate-spin" /> Cargando…
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="px-3 py-4 text-sm text-red-700 border-t border-ink-100">No se pudieron cargar los productos.</div>;
+  }
+  if (models.length === 0) {
+    return <div className="px-3 py-4 text-sm text-ink-500 border-t border-ink-100">Sin productos.</div>;
+  }
+  return (
+    <div className="border-t border-ink-100 py-1">
+      {models.map((m) => <ModelButton key={m.root} model={m} onPick={onPick} />)}
+    </div>
+  );
+}
+
+/** A selectable model row — picking it hands the model up to the caller. Shows
+ *  the product's description (its Description-2 text + dimensions) under the name
+ *  so the dealer can tell what the model is; in the flat search list the row also
+ *  carries its category, which the old per-category accordions used to supply. */
+function ModelButton({ model, onPick, showCategory = false }) {
+  // Any member SKU carries the model-level descriptor + dimensions (they're
+  // the same across grades); take the leading grade's product as the sample.
+  const sample = productForGrade(model, model.grades?.[0] || '');
+  // Search rows arrive with the descriptor already projected by the VM; browse
+  // rows are raw families, so fall back to the sample.
+  const description = model.description ?? modelDescription(sample);
+  const hasPhoto = !!(sample?.imageId || sample?.imageSrc);
+  // Inventory gate — tracked models (LSG) show their live stock and an
+  // out-of-stock one cannot be picked at all (the store has nothing to sell).
+  const stock = familyStock(model);
+  const out = stock.tracked && stock.qty <= 0;
+  return (
+    <button
+      type="button"
+      onClick={() => { if (!out) onPick(model); }}
+      disabled={out}
+      title={out ? 'Agotado en LifestyleGarden — no se puede cotizar' : undefined}
+      className={`w-full text-left rounded-md px-3 py-2.5 min-h-11 flex items-center gap-3 transition-colors ${
+        out ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink-50 active:bg-ink-100'
+      }`}
+    >
+      {hasPhoto ? (
+        // The catalog's own photo (LSG); LR rows have none and keep the glyph.
+        <ImageView
+          id={sample.imageId}
+          fallbackUrl={sample.imageSrc || null}
+          alt=""
+          className="w-9 h-9 rounded-md object-cover bg-ink-100 flex-shrink-0"
+          placeholderClassName="w-9 h-9 rounded-md bg-ink-100 flex-shrink-0"
+        />
+      ) : (
+        <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-ink-100 text-ink-500 flex-shrink-0">
+          <PackageSearch size={15} />
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-ink-900 truncate">{model.name || model.root}</span>
+        <span className="block text-[11px] text-ink-500 truncate">
+          {[
+            showCategory ? (model.category || NO_CATEGORY) : null,
+            model.family,
+            model.graded ? `${model.grades.length} grados` : null,
+          ].filter(Boolean).join(' · ')}
+        </span>
+        {description && (
+          <span className="block text-[11px] text-ink-400 truncate" title={description}>{description}</span>
+        )}
+      </span>
+      <span className="flex flex-col items-end gap-0.5 flex-shrink-0">
+        <span className="text-xs tabular-nums text-ink-700 whitespace-nowrap">{priceLabel(model)}</span>
+        {stock.tracked && (
+          out
+            ? <span className="chip bg-red-50 text-red-700 border border-red-200">Agotado</span>
+            : <span className="chip bg-emerald-50 text-emerald-700 border border-emerald-200 tabular-nums">{stock.qty} en stock</span>
+        )}
+      </span>
+    </button>
+  );
+}

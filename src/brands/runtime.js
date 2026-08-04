@@ -34,6 +34,11 @@
 import { moduleSetFor } from './modules/index.js';
 
 let current = null;
+/** The registry default, resolved once. `activeModules()` is on the hot path
+ *  (every `splitSkuGrade`, every swatch tile), and `moduleSetFor` allocates a
+ *  fresh frozen set per call — so an uninstalled runtime must not pay for one
+ *  on every SKU it splits. */
+let fallback = null;
 
 /**
  * Install (or clear) the active brand's module set. Returns true when it
@@ -53,7 +58,9 @@ export function setActiveModules(set) {
 
 /** The active set — never null (see THE DEFAULT above). */
 export function activeModules() {
-  return current || moduleSetFor(null);
+  if (current) return current;
+  if (!fallback) fallback = moduleSetFor(null);
+  return fallback;
 }
 
 /** The active brand's SKU/grade grammar. */

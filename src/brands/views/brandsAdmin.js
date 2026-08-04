@@ -183,6 +183,15 @@ export function resolveModuleCapabilities(modules) {
         facts: [
           { label: 'Acepta', value: set.materials.extensions.join(' · ') },
           { label: 'Devuelve', value: 'código · nombre · color exacto · textura' },
+          // WHERE THE SWATCH PHOTO COMES FROM is the fact a dealer most needs
+          // before importing: a brand with no CDN paints its own scans, and
+          // that is a working answer, not a gap.
+          {
+            label: 'Muestras',
+            value: set.materials.swatch?.urlFor('0000')
+              ? `${set.materials.swatch.label} (foto del fabricante)`
+              : 'las muestras importadas (sin CDN del fabricante)',
+          },
         ],
       },
       {
@@ -198,6 +207,14 @@ export function resolveModuleCapabilities(modules) {
             value: set.catalog.grades.length ? set.catalog.grades.join(' ') : 'sin grados (un precio por SKU)',
           },
           { label: 'Lista de precios', value: set.catalog.priceColumns.join(',') },
+          // A brand whose model pages publish an offered-fabric roster can be
+          // linked to them; one that doesn't simply never shows the control.
+          {
+            label: 'Telas por modelo',
+            value: set.catalog.fabricLink?.supported
+              ? `enlace al catálogo del fabricante (${set.catalog.fabricLink.label})`
+              : 'todas las telas del grado',
+          },
         ],
       },
     ],

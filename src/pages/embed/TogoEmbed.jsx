@@ -274,6 +274,13 @@ export default function TogoEmbed() {
   const [placed, setPlaced] = useState([]);
   const [selectedUid, setSelectedUid] = useState(null);
   const [step, setStep] = useState('build'); // 'build' | 'form' | 'done'
+  // What the SENT request actually contained — the composition render that rode
+  // with it, the piece count, the estimate and the channel the dealer will
+  // answer on. RequestForm hands it over at submit and the confirmation screen
+  // receipts it. Held HERE rather than read back off `placed` because "design
+  // another" empties the plan, and a receipt that changes when the visitor
+  // starts a second sofa is not a receipt.
+  const [receipt, setReceipt] = useState(null);
   // ≥1280px → the desktop workspace: piece catalog + design inspector as side
   // panes; the floating hotbar / estimate deck / selected strip stay the
   // phone-and-tablet chrome. Live (resize crosses it), JS-gated (never both).
@@ -1862,7 +1869,7 @@ export default function TogoEmbed() {
     );
   }
 
-  if (step === 'done') return <DoneScreen storeName={storeName} logoUrl={dealerLogo} locale={locale} onReset={() => { setPlaced([]); setSelectedUid(null); setStep('build'); }} />;
+  if (step === 'done') return <DoneScreen storeName={storeName} logoUrl={dealerLogo} locale={locale} receipt={receipt} onReset={() => { setPlaced([]); setSelectedUid(null); setReceipt(null); setStep('build'); }} />;
   if (step === 'form') {
     const requestItems = placed.map((p) => {
       const partMaterials = sanitizePartMaterials(p.partMaterials);
@@ -1892,7 +1899,7 @@ export default function TogoEmbed() {
         estimateUsd={pricesHidden || unpricedPieces > 0 ? null : pricedUsd}
         total={pricesHidden || unpricedPieces > 0 ? null : fmt(pricedUsd, { from: fromMode })}
         onBack={() => setStep('build')}
-        onDone={() => setStep('done')}
+        onDone={(sent) => { setReceipt(sent || null); setStep('done'); }}
       />
     );
   }
@@ -4798,14 +4805,31 @@ function RequestForm({ storeName, items, estimateUsd, total, onBack, onDone, loc
       // gated on the SAME shape the server decodes, so a snapshot that ships is
       // one that lands. Strictly best-effort: a WebGL failure or an oversized
       // frame never blocks the lead.
+      let sentSnapshot = null;
       try {
         const snapshot = await renderTogoSceneThumb(scene3d, { width: 960, height: 600, encode: 'dataUrl' });
         const field = snapshotFieldFor(snapshot);
         if (field) payload.snapshot = field;
+        // The same frame is the confirmation screen's evidence — the visitor
+        // gets to SEE what they sent instead of taking "recibido" on faith.
+        // Kept off `field` on purpose: that gate is the SERVER's byte budget,
+        // and a render too heavy to travel is still perfectly showable in the
+        // tab that just drew it.
+        if (typeof snapshot === 'string' && snapshot.startsWith('data:image/')) sentSnapshot = snapshot;
       } catch { /* sin foto — el lead viaja igual */ }
       await submitTogoRequest(payload, dealerSlug);
       buzz([12, 40, 16, 40, 22]); // a little celebratory rumble on send
-      onDone();
+      // The receipt the confirmation screen renders. `total` is the formatted
+      // estimate exactly as the form showed it (null when prices are hidden or
+      // a piece is unpriceable — the same honesty rule the payload keeps), and
+      // the contact echo is whichever channel the dealer will actually reply
+      // on, so a typo'd address is visible while the visitor is still here.
+      onDone({
+        snapshot: sentSnapshot,
+        pieces: items.length,
+        total,
+        contact: form.email.trim() || form.phone.trim(),
+      });
     } catch (err) {
       setError(err?.message || t(locale, 'form.errorSend'));
       setBusy(false);
@@ -4870,37 +4894,131 @@ function RequestForm({ storeName, items, estimateUsd, total, onBack, onDone, loc
   );
 }
 
+/** One line of the sent-request receipt: an eyebrow label against its value,
+ *  closed by a hairline — the same label/figure pairing the form's estimate
+ *  block uses, so the two screens read as one document. `strong` promotes the
+ *  value to the light display size the estimate is set in everywhere else. */
+function DoneRow({ label, value, strong = false }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 py-2.5 border-b border-ink-100">
+      <dt className={`${EYEBROW} flex-shrink-0`}>{label}</dt>
+      {/* `break-all`, not `truncate`: the value most likely to outrun its line
+          is the address the dealer will answer on, and an ellipsis hides the
+          exact characters this row exists to let the visitor CHECK. Breaking
+          also keeps the column honest — a nowrap email is one unbreakable token,
+          and its min-content size propagates all the way up to the centring
+          container, which used to shove the whole receipt off the right edge of
+          a phone. */}
+      <dd className={`m-0 min-w-0 break-all text-right text-ink-900 ${strong ? 'text-xl font-light tracking-tight tabular-nums' : 'text-sm'}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 /** The confirmation screen. It used to burst confetti and spring a green check —
  *  "clearing a level". On the surface that sells Togo to Ligne Roset that reads
  *  as a consumer app, so the reward is now the RESTRAINT the rest of the skin
  *  keeps: the mark, the message set in light display type, and a hairline. The
  *  `Confetti` component is deliberately kept (below) — it's one line to put
- *  back if the owner wants the celebration on a non-brand deployment. */
-function DoneScreen({ storeName, onReset, locale, logoUrl }) {
+ *  back if the owner wants the celebration on a non-brand deployment.
+ *
+ *  What restraint must NOT cost is evidence. A screen that only says "recibido"
+ *  asks the visitor to take on faith the one thing they cannot check: the design
+ *  they spent ten minutes on vanishes at submit, the address they typed is
+ *  already off screen, and the estimate they were shown is gone. So the sent
+ *  request is RECEIPTED — the render that rode with the lead, the piece count,
+ *  the estimate as the form displayed it, and the channel the dealer will answer
+ *  on — under the same hairline rules the form above it is ruled with. A typo'd
+ *  email is now visible while the visitor is still on the screen that could fix
+ *  it (design another → send again), which is the whole difference between a
+ *  lead that closes and one that dies unanswered.
+ *
+ *  `receipt` is optional and every field of it is optional: the 3D snapshot can
+ *  fail (WebGL, memory, a device that refuses the encode), prices can be hidden
+ *  by the dealer, and an older mount can hand over nothing at all — each missing
+ *  piece drops its own row and the screen degrades to exactly the message it has
+ *  always been. */
+function DoneScreen({ storeName, onReset, locale, logoUrl, receipt = null }) {
+  const { snapshot = null, pieces = 0, total = null, contact = '' } = receipt || {};
+  const hasReceipt = !!(snapshot || pieces > 0 || contact);
   return (
-    <div className="relative min-h-full overflow-hidden bg-white text-ink-900 p-6 grid place-items-center">
-      <div className="togo-rise relative z-10 text-center max-w-sm">
-        {logoUrl
-          ? <img src={logoUrl} alt={storeName || ''} className="max-h-8 w-auto object-contain mx-auto mb-6" />
-          : (
-            <img
-              src="/ligne-roset-depuis-1860.png"
-              alt="Ligne Roset — depuis 1860"
-              className="w-40 h-auto mx-auto mb-6 select-none"
-              draggable={false}
-            />
+    // Scrollable, not clipped: the receipt makes this screen taller than the
+    // message ever was, and #root is a locked-height, overflow-hidden box — so
+    // a phone in landscape would simply lose the bottom of it. `overscroll-contain`
+    // keeps the drag from chaining out into a host page (same idiom as the splash).
+    <div className="relative h-full overflow-y-auto overscroll-contain scroll-thin bg-white text-ink-900">
+      {/* FLEX, not `grid place-items-center`: an auto grid track is sized off
+          its content, so one long word inside the column (an email) widened the
+          track past the viewport and the centred block hung over the right
+          edge. A flex line has a definite width no child can grow. */}
+      <div className="min-h-full flex items-center justify-center px-6 py-10 short:py-6">
+        <div className="togo-rise relative z-10 w-full max-w-sm text-center">
+          {/* The sender's mark, quieter than it was: on a confirmation the
+              MESSAGE outranks the letterhead, and a 160px lockup over a 24px
+              headline had that backwards. */}
+          {logoUrl
+            ? <img src={logoUrl} alt={storeName || ''} className="max-h-7 w-auto object-contain mx-auto mb-7" />
+            : (
+              <img
+                src="/ligne-roset-depuis-1860.png"
+                alt="Ligne Roset — depuis 1860"
+                className="w-32 short:!w-28 h-auto mx-auto mb-7 select-none"
+                draggable={false}
+              />
+            )}
+          {/* The one flourish the skin allows: a hairline square whose tick
+              STROKES ITSELF IN (see .togo-check). The old static 18px check
+              inside a 40px box read as an empty checkbox — a control waiting to
+              be ticked, not a receipt stamp. Drawing it is the confetti's job
+              done in the brand's own language, and it costs one keyframe. */}
+          <div className="w-12 h-12 mx-auto border border-ink-900 grid place-items-center" aria-hidden>
+            <svg className="togo-check" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </div>
+          {/* The step swap replaces the whole screen, which a screen reader has
+              no reason to re-announce — so the outcome says itself, politely. */}
+          <div role="status">
+            <h2 className="mt-6 text-[28px] short:!text-2xl font-light tracking-tight leading-[1.15]">{t(locale, 'done.title')}</h2>
+            <p className="mt-3 text-sm text-ink-500 leading-relaxed">{t(locale, 'done.subtitle', { store: storeName })}</p>
+          </div>
+
+          {hasReceipt && (
+            <div className="mt-8 short:mt-6 pt-7 border-t border-ink-200 text-left">
+              {snapshot && (
+                <figure className="m-0 mb-5">
+                  {/* Framed like the plan it is, not cropped like a hero: the
+                      render arrives 8:5 with a transparent field, so it sits on
+                      white inside a hairline with room to breathe. Draggable and
+                      selectable, unlike the chrome around it — this one image is
+                      the visitor's own design, and saving it is a thing someone
+                      reasonably wants to do with it. */}
+                  <img
+                    src={snapshot}
+                    alt={t(locale, 'done.designAlt')}
+                    className="w-full h-auto border border-ink-200 bg-white p-2"
+                  />
+                </figure>
+              )}
+              <dl className="m-0 flex flex-col">
+                {pieces > 0 && <DoneRow label={t(locale, 'done.design')} value={piecesLabel(locale, pieces)} />}
+                {total != null && <DoneRow label={t(locale, 'estimate.label')} value={total} strong />}
+                {contact && <DoneRow label={t(locale, 'done.contactAt')} value={contact} />}
+              </dl>
+            </div>
           )}
-        <div className="w-10 h-10 mx-auto border border-ink-900 grid place-items-center"><Check size={18} strokeWidth={1.5} /></div>
-        <h2 className="mt-6 text-2xl font-light tracking-tight leading-tight">{t(locale, 'done.title')}</h2>
-        <p className="mt-3 text-sm text-ink-500 leading-relaxed">{t(locale, 'done.subtitle', { store: storeName })}</p>
-        <div className="mt-7 pt-5 border-t border-ink-200">
-          <button
-            type="button"
-            onClick={onReset}
-            className={`${EYEBROW} text-ink-900 underline underline-offset-4 decoration-1 hover:decoration-2`}
-          >
-            {t(locale, 'done.reset')}
-          </button>
+
+          <div className={hasReceipt ? 'mt-6' : 'mt-7 pt-5 border-t border-ink-200'}>
+            <button
+              type="button"
+              onClick={onReset}
+              className={`${EYEBROW} text-ink-900 underline underline-offset-4 decoration-1 hover:decoration-2`}
+            >
+              {t(locale, 'done.reset')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

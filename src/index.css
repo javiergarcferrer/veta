@@ -1598,6 +1598,24 @@ body.togo-rams .font-wordmark,
 body.togo-rams .font-sans {
   font-family: 'Verlag', 'Lausanne', system-ui, sans-serif;
 }
+/* …and every SEMANTIC heading, which the body-level inheritance above cannot
+   reach: the base layer hard-sets `h1…h6` to Söhne by ELEMENT (see "Headers →
+   Söhne"), and an element rule beats an inherited family every time. So the two
+   bare headings in the widget — the request form's title and the confirmation's
+   — kept rendering in ALCOVER's display cut on a Ligne Roset surface. Worse,
+   Söhne ships ONE weight (Halbfett): the `font-weight: 300` the very next rule
+   applies had nothing lighter to resolve to, so the line the whole screen is
+   built around came out SEMIBOLD where the skin asks for light display type.
+   The wordmark heading on the splash was never affected — it carries
+   `.font-wordmark`, a class, which already won. Declared BEFORE the launch-card
+   exception below so that block still overrides it (the card keeps ALCOVER's
+   type by the owner's call; it has no heading element today, and this ordering
+   means it stays right if it ever grows one). */
+body.togo-rams h1,
+body.togo-rams h2,
+body.togo-rams h3 {
+  font-family: 'Verlag', 'Lausanne', system-ui, sans-serif;
+}
 /* Display sizes take Verlag LIGHT — at wordmark scale the Book cut reads heavy,
    and light-weight display type is the inbox's own register. The app's headings
    carry a `font-semibold` from its own scale, which is what this overrides. */
@@ -1747,6 +1765,21 @@ body.togo-rams .togo-score { animation: none; }
 }
 .togo-rise { animation: togo-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* The sent-request stamp (DoneScreen): the tick inside the confirmation's
+   hairline square DRAWS itself, once, a beat after the screen has risen. It is
+   the confetti's job — "it landed" — done in the brand's own language, and the
+   only flourish the monochrome skin spends on that screen. The dash array runs
+   a hair past the path's own length (≈22.6 units of the 24-unit viewBox) so a
+   full offset hides the stroke completely instead of leaving a stub. */
+@keyframes togo-check {
+  from { stroke-dashoffset: 26; }
+  to   { stroke-dashoffset: 0; }
+}
+.togo-check path {
+  stroke-dasharray: 26;
+  animation: togo-check 0.55s cubic-bezier(0.65, 0, 0.35, 1) 0.28s both;
+}
+
 /* The reward: a confetti burst on a sent request. Each bit reads its own
    trajectory from CSS custom properties stamped inline (per-bit randomness). */
 @keyframes togo-confetti {
@@ -1784,6 +1817,9 @@ body.togo-rams .togo-score { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .togo-pop, .togo-rise, .togo-confetti > i,
   .togo-score, .togo-added { animation: none !important; opacity: 1; }
+  /* No offset is declared outside the keyframe, so killing the animation lands
+     on the SVG default (0) — the tick is simply THERE, fully drawn. */
+  .togo-check path { animation: none !important; }
 }
 
 /* Floating glass HUD panel — the chrome of the "game window". Translucent +

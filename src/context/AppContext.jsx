@@ -5,7 +5,7 @@ import { supabase } from '../db/supabaseClient.js';
 import { shouldPullSessionRate } from '../lib/exchangeRate.js';
 import { EXCHANGE_RATE_PULL_ENABLED } from '../lib/constants.js';
 import { quotesToAutoArchive } from '../lib/quoteStages.js';
-import { moduleSetFor } from '../brands/index.js';
+import { moduleSetFor, setActiveModules } from '../brands/index.js';
 import useLocalPref from '../components/primitives/useLocalPref.js';
 import { useAuth } from './AuthContext.jsx';
 
@@ -224,6 +224,15 @@ export function AppProvider({ children }) {
   if (setBrandScope(brand ? { brandId: brand.id, catalogBrand: brand.settings?.catalogBrand || brand.slug || null } : null)) {
     scopeChanged.current = true;
   }
+  // The MODULE SET rides the same seam, for the same reason: the SKU grammar,
+  // the grade ladder and the swatch source are read from leaf call sites that
+  // never hold a brand (lib/catalog · lib/subtype · lib/swatchImage), so they
+  // ask brands/runtime for the open brand's adapters. Installed during render
+  // too — a component that resolves a SKU on its first paint must not read the
+  // previous brand's grammar. `moduleSetFor` never returns null, so this is
+  // always a real set (the registry's Ligne Roset fallback when a brand names
+  // nothing usable), which is exactly what the app did before brands existed.
+  setActiveModules(brandModules);
   // The refetch belongs AFTER the commit — invalidate() notifies every live
   // query, and doing that mid-render would set state in other components while
   // this one is still rendering. It fires on EVERY change including the first

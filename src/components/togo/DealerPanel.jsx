@@ -42,6 +42,9 @@ function Block({ icon: Icon, title, action, children, flush = false }) {
 
 export default function DealerPanel({
   vm, onEdit, onToggleActive, onRegenerateToken, onDelete, busy = false,
+  // The MANUFACTURER this dealer sells — it titles the embed iframe on their
+  // own site. Null ⇒ the neutral title (never another brand's name).
+  brandName = null,
 }) {
   if (!vm) return null;
   const { catalog, pricing, leads } = vm;
@@ -142,7 +145,7 @@ export default function DealerPanel({
       </div>
 
       <Block icon={Inbox} title="Kit de instalación" flush action={<RegenerateTokenButton onRegenerate={onRegenerateToken} busy={busy} />}>
-        <DealerKit slug={vm.slug} inboxToken={vm.inboxToken} name={vm.name} />
+        <DealerKit slug={vm.slug} inboxToken={vm.inboxToken} name={vm.name} brandName={brandName} />
       </Block>
 
       <Block

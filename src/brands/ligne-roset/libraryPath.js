@@ -1,6 +1,15 @@
 /**
  * LIBRARY PATH taxonomy — where a dropped `.3ds` files itself.
  *
+ * ── LIGNE ROSET BRAND PACKAGE ───────────────────────────────────────────────
+ * This file IS Ligne Roset's ARCHVIZ folder vocabulary, so it lives inside the
+ * brand boundary: only `brands/modules/ligneRoset.js` (the geometry adapter)
+ * imports it, and the core reaches it exclusively through that adapter's
+ * `resolveShape` / `parsePath`. It used to sit in `lib/togo/` and be imported
+ * straight by the studio's scene importer — which is exactly the assumption
+ * this move removes: a brand on another module set must never have its drop
+ * read through LR's folder words.
+ *
  * The dealer drags Ligne Roset's whole ARCHVIZ tree onto the Modelos studio
  * (thousands of files, one drop) and every one of them has to land under three
  * levels without anybody typing a word:

@@ -13,7 +13,6 @@ import { safeDynamicImport } from '../../lib/dynamicImport.js';
 import { autoUnitScale } from '../../lib/togo/togoModel.js';
 import { detectUpAxis, clusterFootprints, clusterName } from '../../lib/togo/sceneSplit.js';
 import { splitSolids } from '../../lib/togo/solidSplit.js';
-import { parseLibraryPath, resolveLibraryShape } from '../../lib/togo/libraryPath.js';
 import { loaderFor, normalizeLoaded, extOf, CREASE_ANGLE, ALCOVER_MESH_V } from './togoModelLoader.js';
 
 // Pieces whose footprint tops out under this are exporter debris (labels,
@@ -59,22 +58,6 @@ const nameFromFile = (fileName) =>
  * every walked/picked file; a loose file carries its bare name there.
  */
 const relPathOf = (file) => String(file?.relPath || file?.webkitRelativePath || file?.name || '');
-
-/**
- * The LIBRARY proposals for one dropped file — grupo / categoría / colección,
- * the three facts the dealer would otherwise type on every row when Ligne
- * Roset's whole 3D library lands in one drop.
- *
- * The RULE ITSELF is the Model (`lib/togo/libraryPath`): the batch's SHAPE says
- * where each level sits, and each path is then read BY INDEX. This is only the
- * accessor. `shape` is `resolveLibraryShape`'s plan for the whole drop — pass it
- * whenever the caller HAS the batch (that is what makes every sibling file in
- * one drop read identically); omit it on a genuine single-file drop, where the
- * Model derives the one path's own shape.
- */
-export function libraryProposalFor(file, shape) {
-  return parseLibraryPath(relPathOf(file), shape);
-}
 
 /** How many DISTINCT grupos/categorías/colecciones a piece list proposes — the
  *  one line the review step shows above the rows. */
@@ -334,10 +317,17 @@ export function splitScene(THREE, object) {
  * Casualties come back in `failed` so the review list can name them and the
  * dealer knows exactly which ones to redo.
  *
- * SOME PRODUCTS BRING THEIR OWN MATERIALS: an LR product folder holds the mesh
- * AND the bitmaps its materials name. Those ride the same drop, are paired to
- * the mesh of THEIR folder, and get baked into the exported GLB — so an
- * Intervalle imports as walnut and green lacquer instead of a grey shell.
+ * SOME PRODUCTS BRING THEIR OWN MATERIALS: a product folder can hold the mesh
+ * AND the bitmaps its materials name (Ligne Roset's do). Those ride the same
+ * drop, are paired to the mesh of THEIR folder, and get baked into the exported
+ * GLB — so an Intervalle imports as walnut and green lacquer, not a grey shell.
+ *
+ * WHAT THIS FUNCTION DOES NOT DO IS READ THE TAXONOMY. Where a file sits in a
+ * library says grupo / categoría / colección, but only in the vocabulary of the
+ * manufacturer who filed it — so that read belongs to the ACTIVE BRAND's
+ * geometry module and the caller does it (`resolveShape` over the whole drop,
+ * then `parsePath` per `sourceFile`). This module is the three.js half and stays
+ * brand-agnostic.
  *
  * @param {File[]|FileList} files  the dropped/picked files, processed in order.
  * @param {object} [opts]
@@ -352,10 +342,8 @@ export function splitScene(THREE, object) {
  *   failed: Array<{ name: string, error: string }>
  * }>} `THREE` is the module the returned meshes belong to — null only when
  *   nothing loaded at all, so it is always present when `pieces` is non-empty.
- *   `folderGroup`/`folderCategory`/`folderCollection` are PROPOSALS off where
- *   the file sits in the LR library (libraryProposalFor) — null per level when
- *   the drop can't tell, and always distinct from whatever the dealer ends up
- *   typing in the review step.
+ *   The three `folder*` fields come back NULL and are the caller's to fill from
+ *   the brand's module — see above.
  */
 export async function loadPiecesFromFiles(files, { onProgress } = {}) {
   const list = Array.from(files || []);
@@ -375,15 +363,6 @@ export async function loadPiecesFromFiles(files, { onProgress } = {}) {
   const failed = [];
   let THREE = null;
   let done = 0;
-
-  // ONE DROP, ONE SHAPE. The taxonomy levels are read POSITIONALLY, and where
-  // they sit is a property of the TREE, not of any one path — so the batch is
-  // measured once, here, and every file is filed against the same plan. Read per
-  // file instead and two siblings in the same folder can land at different
-  // levels the moment one of them is missing a segment. Measured over EVERY
-  // dropped path (not just the parsable ones): a `.jpg` sitting beside the
-  // models still hangs off the same tree and still says where its levels are.
-  const shape = resolveLibraryShape(list.map(relPathOf));
 
   for (const file of models) {
     onProgress?.({ done, total: models.length, current: file.name });
@@ -407,17 +386,19 @@ export async function loadPiecesFromFiles(files, { onProgress } = {}) {
       // IS the model name. Several pieces means the dealer laid a few articles
       // out in one plan, and there the clustered node names are all we have.
       const single = split.pieces.length === 1;
-      // Read ONCE per file, against the BATCH's shape: every piece split out of
-      // it came from the same file at the same place in the library, so they all
-      // inherit the same grupo/categoría/colección proposal.
-      const lib = libraryProposalFor(file, shape);
       for (const p of split.pieces) {
         pieces.push({
           ...p,
           name: (single && nameFromFile(file.name)) || p.name,
-          folderGroup: lib.group,
-          folderCategory: lib.category,
-          folderCollection: lib.collection,
+          // The TAXONOMY IS THE BRAND'S, so this loader does not read it. Every
+          // piece carries its `sourceFile`, and the caller files the whole batch
+          // through the ACTIVE BRAND's geometry module (one `resolveShape` over
+          // the drop, then `parsePath` per file) — see TogoCatalog's
+          // `onManyFiles`. These three stay on the shape so the review row's
+          // "what the drop proposed" fields have a home to be written into.
+          folderGroup: null,
+          folderCategory: null,
+          folderCollection: null,
           // PER FILE, never per batch: a folder mixes exports from different
           // pCon sessions and different source DWGs, so one model can be y-up
           // and the next z-up. One axis for the whole run lays half of them down.

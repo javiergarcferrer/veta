@@ -1,11 +1,12 @@
 /**
  * THE LIGNE ROSET MODULE SET — brand #1's ingest, expressed as three adapters.
  *
- * This file WRAPS; it does not re-implement. Every rule it exposes already
- * lives in an engine this app ships, and those engines stay the single source:
+ * This file is the ADAPTER; the rules themselves live in the Ligne Roset brand
+ * package next door (`brands/ligne-roset/*`), which is the only place in the
+ * app allowed to know them:
  *
- *   geometry   `lib/togo/libraryPath.js` — the ARCHVIZ taxonomy read (infer the
- *              batch's SHAPE, then read every path BY INDEX). Its exported
+ *   geometry   `ligne-roset/libraryPath.js` — the ARCHVIZ taxonomy read (infer
+ *              the batch's SHAPE, then read every path BY INDEX). Its exported
  *              vocabulary (LR_GROUPS, LR_VARIANT_MARKERS, prettifyLibraryName)
  *              answers the two fields the module contract adds on top —
  *              `model` and `variant` — without touching the engine.
@@ -15,10 +16,15 @@
  *              not claim to read one: it reads the scans (`4479_ANIS.jpg`,
  *              `ANIS 4479.png`) that carry the same two facts the configurator
  *              consumes — the weave and its exact tone — and refuses anything
- *              without an LR colour code rather than inventing one.
- *   catalog    `lib/catalog.js` splitSkuGrade + `lib/subtype.js` ALPHA_GRADES —
- *              the 8-digit root + grade-letter grammar the whole quote engine
- *              is built on.
+ *              without an LR colour code rather than inventing one. Its
+ *              `swatch` half points at ligne-roset.com's colorized-pattern CDN
+ *              (`ligne-roset/swatchSource.js`), which is what every swatch tile
+ *              in the app renders.
+ *   catalog    `ligne-roset/catalogGrammar.js` — the 8-digit root + grade-letter
+ *              SKU grammar and the 23-letter A–X ladder the quote engine reads
+ *              through `lib/catalog.ts` / `lib/subtype.ts`.
+ *   seeds      `ligne-roset/seeds.js` — LR's own Togo modules, LAZY, offered
+ *              only inside a Ligne Roset environment.
  *
  * It is the DEFAULT set (registry fallback), so a brand whose `modules` are
  * unset, unknown or half-written behaves exactly like this deploy always has.
@@ -27,9 +33,13 @@
 import {
   parseLibraryPath, resolveLibraryShape, prettifyLibraryName,
   LR_GROUPS, LR_VARIANT_MARKERS, LIBRARY_ROOTS,
-} from '../../lib/togo/libraryPath.js';
-import { splitSkuGrade } from '../../lib/catalog.js';
-import { ALPHA_GRADES } from '../../lib/subtype.js';
+} from '../ligne-roset/libraryPath.js';
+import {
+  LR_ALPHA_GRADES, LR_GRADE_GROUPS, LR_SPECIAL_GRADES, LR_LEGACY_GRADES,
+  isLrGrade, splitLrSku, lrFabricKey,
+} from '../ligne-roset/catalogGrammar.js';
+import { lrSwatchCode, lrSwatchUrl } from '../ligne-roset/swatchSource.js';
+import { LR_FABRIC_LINK } from '../ligne-roset/modelFabrics.js';
 import { readSwatchBitmap } from './swatchPixels.js';
 import { pick, parseMoney } from './csvRead.js';
 import {
@@ -88,7 +98,7 @@ function materialFromPath(relPath) {
   // rather than dropped.
   const m = /^(.*?)[\s_-]+([A-Za-z])$/.exec(folder.trim());
   const name = (m ? m[1] : folder).replace(/[_-]+/g, ' ').trim().toUpperCase();
-  const grade = m && ALPHA_GRADES.includes(m[2].toUpperCase()) ? m[2].toUpperCase() : null;
+  const grade = m && isLrGrade(m[2]) ? m[2].toUpperCase() : null;
   return { name, grade, category: /piel|leather|cuir/i.test(folder) ? 'leather' : 'fabric' };
 }
 
@@ -155,6 +165,20 @@ const materials = {
       material: materialFromPath(relPathOf(file)),
     };
   },
+  /**
+   * WHERE LIGNE ROSET PUBLISHES THE COLOUR — the CDN every swatch tile in the
+   * app renders from (`lib/swatchImage.ts` asks the ACTIVE brand for this).
+   * `proxied` is true because `swatch-proxy`'s `?code=` mode builds this exact
+   * path server-side, which is what lets the PDF read the bytes (the CDN sends
+   * no CORS) and what backs the resizing mirror.
+   */
+  swatch: {
+    id: 'lr-cdn',
+    label: 'ligne-roset.com (colorized-pattern)',
+    urlFor: lrSwatchUrl,
+    codeFor: lrSwatchCode,
+    proxied: true,
+  },
 };
 
 const catalog = {
@@ -162,9 +186,14 @@ const catalog = {
   label: 'SKU Ligne Roset (8 dígitos + grado)',
   summary: 'Un modelo tapizado es un root de 8 dígitos con una fila por grado (15420000A, 15420000G…). Los no tapizados son su propio root.',
   skuHint: '15420000A',
-  grades: ALPHA_GRADES,
+  grades: LR_ALPHA_GRADES,
+  gradeGroups: LR_GRADE_GROUPS,
+  specialGrades: LR_SPECIAL_GRADES,
+  legacyGrades: LR_LEGACY_GRADES,
+  isGrade: isLrGrade,
+  fabricKey: lrFabricKey,
   /**
-   * The catalogue's own grammar, verbatim (`lib/catalog` splitSkuGrade): 8
+   * The catalogue's own grammar (`ligne-roset/catalogGrammar` splitLrSku): 8
    * digits + a real grade letter is graded; anything else is its own root with
    * an empty grade. null only for an empty reference — a table's 8-char code is
    * a perfectly good ungraded SKU.
@@ -172,13 +201,13 @@ const catalog = {
   splitSku(ref) {
     const s = String(ref ?? '').trim();
     if (!s) return null;
-    return splitSkuGrade(s);
+    return splitLrSku(s);
   },
   composeSku(root, grade) {
     const r = String(root ?? '').trim();
     if (!r) return null;
     const g = String(grade ?? '').trim().toUpperCase();
-    return g && /^\d{8}$/.test(r) && ALPHA_GRADES.includes(g) ? `${r}${g}` : r;
+    return g && /^\d{8}$/.test(r) && isLrGrade(g) ? `${r}${g}` : r;
   },
   priceColumns: ['reference', 'description', 'price'],
   /**
@@ -195,7 +224,7 @@ const catalog = {
     const priceUsd = parseMoney(pick(row, ['price', 'precio', 'price_usd', 'priceusd', 'usd', 'pvp']));
     if (priceUsd == null) return null;
     const gradeCol = pick(row, ['grade', 'grado']).toUpperCase();
-    const grade = split.grade || (ALPHA_GRADES.includes(gradeCol) ? gradeCol : '');
+    const grade = split.grade || (isLrGrade(gradeCol) ? gradeCol : '');
     return {
       reference: catalog.composeSku(split.root, grade) || reference,
       root: split.root,
@@ -205,6 +234,22 @@ const catalog = {
       currency: (pick(row, ['currency', 'moneda']) || 'USD').toUpperCase(),
     };
   },
+  /** Ligne Roset publishes each model's real fabric roster on its product
+   *  pages; the studio's «Telas» row reads it through here. */
+  fabricLink: LR_FABRIC_LINK,
+};
+
+/**
+ * LIGNE ROSET'S OWN SAMPLE PIECES — the five Togo modules.
+ *
+ * LAZY, and that is not an optimisation detail: the seeds carry ~165 KB of
+ * inline SVG plans, and this module set is resolved by EVERY surface that reads
+ * a SKU or a swatch — including the public configurator, which can never import
+ * them. `load()` is what puts them in their own chunk.
+ */
+const seeds = {
+  label: 'Piezas de ejemplo Togo',
+  load: () => import('../ligne-roset/seeds.js').then((m) => m.TOGO_SEEDS),
 };
 
 export const LIGNE_ROSET_MODULES = defineModuleSet({
@@ -217,6 +262,7 @@ export const LIGNE_ROSET_MODULES = defineModuleSet({
   geometry,
   materials,
   catalog,
+  seeds,
 });
 
 export default LIGNE_ROSET_MODULES;

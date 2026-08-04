@@ -62,10 +62,10 @@ function KitRow({ icon: Icon, title, blurb, value, mono = true, children }) {
   );
 }
 
-export default function DealerKit({ slug, inboxToken, name }) {
+export default function DealerKit({ slug, inboxToken, name, brandName = null }) {
   const shareUrl = slug ? togoShareUrl(slug) : '';
   const inboxUrl = inboxToken ? dealerInboxUrl(inboxToken) : '';
-  const snippet = slug ? togoEmbedSnippet(slug) : '';
+  const snippet = slug ? togoEmbedSnippet(slug, { brandName }) : '';
 
   // The QR encodes the PUBLIC link (never the inbox one — that URL carries the
   // token, and a QR is made to be pointed at in a showroom). Loaded lazily and

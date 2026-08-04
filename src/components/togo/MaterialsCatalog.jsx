@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Check, ChevronLeft } from 'lucide-react';
-import { fabricKey, isMaterialOffered } from '../../lib/lrCatalog.js';
+import { isMaterialOffered } from '../../lib/nameKey.js';
+import { activeCatalogModule } from '../../brands/runtime.js';
 import { productForGrade } from '../../lib/catalog.js';
 import { locateColor } from '../../lib/swatchMatch.js';
 import { composeSubtype, composeFabricLabel } from '../../lib/subtype.js';
@@ -182,7 +183,7 @@ export default function MaterialsCatalog({
     const allow = nameFilter && nameFilter.size ? nameFilter : null;
     return (materials || [])
       .filter(isMaterialOffered)
-      .filter((m) => (allow ? allow.has(fabricKey(m.name)) : true))
+      .filter((m) => (allow ? allow.has(activeCatalogModule().fabricKey(m.name)) : true))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [materials, nameFilter]);
 

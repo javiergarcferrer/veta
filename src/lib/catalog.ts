@@ -2,18 +2,21 @@
  * Catalog family grouping — turns the flat product list (one row per priced
  * SKU) into MODELS (families) the quote builder picks from.
  *
- * Upholstered SKUs are "8-digit root + grade letter": e.g. the Togo Fireside
- * Chair is root `15420000` with one SKU per fabric grade (15420000A,
- * 15420000G, …). The trailing letter is the grade and maps 1:1 to the app's
- * GRADE_GROUPS / Material.grade taxonomy (A–R Telas, S Microfibra, U–X Pieles)
- * — so picking a fabric of a given grade resolves to that SKU's price.
+ * A GRADED model is one root with one priced row per fabric grade, and picking
+ * a fabric of a given grade resolves to that SKU's price. What a SKU LOOKS LIKE
+ * — where the root ends and whether the tail is a grade at all — is the
+ * MANUFACTURER'S grammar, not this module's: Ligne Roset writes 8 digits plus a
+ * letter off a 23-grade ladder (the Togo Fireside Chair is `15420000` with
+ * 15420000A, 15420000G, …), while a brand on the generic module set prices per
+ * SKU and its reference is simply itself. So the split is asked of the ACTIVE
+ * BRAND's catalog adapter (`brands/runtime.js`) and everything below is the
+ * grouping, which is the same for every brand.
  *
- * Non-graded SKUs (wood chairs, tables, lighting — 8-char alphanumeric codes
- * or 9-char codes whose tail isn't a grade) are their own single-member
- * family with grade ''.
+ * Ungraded SKUs are their own single-member family with grade ''.
  */
 
-import { ALPHA_GRADES, parseSubtype, composeSubtype } from './subtype.js';
+import { parseSubtype, composeSubtype } from './subtype.js';
+import { activeCatalogModule } from '../brands/runtime.js';
 import type {
   Product,
   QuoteLine,
@@ -22,20 +25,15 @@ import type {
   MaterialOptions,
 } from '../types/domain.ts';
 
-const GRADE_SET: ReadonlySet<string> = new Set(ALPHA_GRADES);
-
 /**
- * Split a SKU into its family root and grade. Only an "8 digits + grade
- * letter" SKU is treated as graded; everything else is its own root with an
- * empty grade.
+ * Split a SKU into its family root and grade, using the ACTIVE BRAND's grammar.
+ *
+ * The adapter answers null only for an unusable reference (blank); that is a
+ * root of '' with no grade here, so every caller keeps its "no root ⇒ nothing
+ * resolves" behaviour without a null check.
  */
 export function splitSkuGrade(sku: string | null | undefined): { root: string; grade: string } {
-  const s = (sku || '').trim();
-  const m = /^(\d{8})([A-Za-z])$/.exec(s);
-  if (m && GRADE_SET.has(m[2].toUpperCase())) {
-    return { root: m[1], grade: m[2].toUpperCase() };
-  }
-  return { root: s, grade: '' };
+  return activeCatalogModule().splitSku(sku) || { root: '', grade: '' };
 }
 
 export interface CatalogFamily {

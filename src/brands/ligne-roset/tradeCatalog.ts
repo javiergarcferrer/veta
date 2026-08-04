@@ -1,6 +1,16 @@
 /**
  * Ligne Roset catalog import — pure mapping + merge logic.
  *
+ * ── LIGNE ROSET BRAND PACKAGE ───────────────────────────────────────────────
+ * A reader for ONE manufacturer's trade data (its public website), so it lives
+ * inside the brand boundary rather than in `lib/`. What the CORE used to import
+ * from here has moved to where it belongs: the "/FR"-stripping fabric fold is
+ * now the catalog adapter's `fabricKey` (./catalogGrammar.js `lrFabricKey`),
+ * the plain accent fold is `lib/nameKey.ts`, and `isMaterialOffered` — two
+ * flags on a material row, nothing Ligne Roset about it — is `lib/nameKey.ts`
+ * too. Nothing outside this package imports this file today; it is kept whole
+ * so the website merge is here when the importer is wired up again.
+ *
  * The `lr-catalog` Edge Function returns a list of `LrPattern`s (fabric name,
  * type, composition, care remark, and every color with its catalog `code`),
  * either for one product or — in a full catalog sweep — for the entire site.
@@ -24,7 +34,7 @@
  * Pure (type-only import of the domain types) so it unit-tests without the
  * Supabase client. The merge is idempotent — re-running changes nothing.
  */
-import type { Material, MaterialCategory, MaterialColor } from '../types/domain';
+import type { Material, MaterialCategory, MaterialColor } from '../../types/domain';
 
 /** One color of a pattern, as returned by the `lr-catalog` function. */
 export interface LrColor {
@@ -92,33 +102,6 @@ export function normalizeName(name: string | null | undefined): string {
     .trim()
     .toUpperCase()
     .replace(/\s+/g, ' ');
-}
-
-/**
- * Canonical key for matching a fabric NAME across a model's offered patterns and
- * the `materials` catalog. Builds on `normalizeName` (case/accent/space folding)
- * and additionally strips the "/FR" fire-retardant suffix, because the catalog
- * consolidates "VIDAR" and "VIDAR/FR" into one material row (see catalogSync's
- * `frBase`) while a model page may list either. Used by the per-model fabric
- * restriction (`src/lib/lrModelFabrics.js`, `MaterialColorPicker`).
- */
-export function fabricKey(name: string | null | undefined): string {
-  return normalizeName(String(name || '').replace(/\s*\/\s*FR\b/i, ''));
-}
-
-/**
- * Whether a material is currently OFFERED — eligible to appear in a quote's
- * material picker. True only when it's on BOTH rosters: present in the price
- * list (`notInPricelistAt == null`, so it carries a current grade/price) AND
- * still on the Ligne Roset site (`discontinuedAt == null`). A material flagged
- * on either is KEPT in the catalog (dealer data + admin review survive, see the
- * merge above) but hidden from picking, so the dealer can't quote a fabric that
- * is no longer in the list or on the website.
- */
-export function isMaterialOffered(
-  m: Pick<Material, 'notInPricelistAt' | 'discontinuedAt'>,
-): boolean {
-  return m.notInPricelistAt == null && m.discontinuedAt == null;
 }
 
 /**

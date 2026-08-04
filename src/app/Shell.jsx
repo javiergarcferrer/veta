@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText } from 'lucide-react';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText, LayoutDashboard } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
@@ -14,6 +14,7 @@ import SignIn from './SignIn.jsx';
 // module"; the helper retries and recovers. It also keeps the public
 // distributor inbox from dragging the model studio down with it.
 const lazyPage = (loader) => lazy(() => safeDynamicImport(loader));
+const Dashboard = lazyPage(() => import('../pages/Dashboard.jsx'));
 const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
 const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
 const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
@@ -45,6 +46,8 @@ const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
  */
 
 const NAV = [
+  // `end` or the home link stays permanently active on every child route.
+  { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
   { to: '/modelos', label: 'Modelos', icon: Boxes },
   { to: '/distribuidores', label: 'Distribuidores', icon: Store },
   { to: '/solicitudes', label: 'Solicitudes', icon: Inbox },
@@ -72,10 +75,11 @@ function PublicRouteBodyClass() {
   return null;
 }
 
-function NavItem({ to, label, icon: Icon, onNavigate }) {
+function NavItem({ to, label, icon: Icon, onNavigate, end }) {
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
         `inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
@@ -246,7 +250,7 @@ function AdminApp() {
       <main className="flex-1 min-w-0 min-h-0 overflow-y-auto px-4 py-5 md:px-8 md:py-7 pb-safe-area">
         <Suspense fallback={<Loading />}>
           <Routes>
-            <Route index element={<Navigate to="/modelos" replace />} />
+            <Route index element={<Dashboard />} />
             <Route path="modelos" element={<TogoCatalog />} />
             <Route path="distribuidores" element={<TogoDealers />} />
             <Route path="solicitudes" element={<TogoRequests />} />

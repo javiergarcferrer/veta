@@ -20,6 +20,18 @@
  *
  * Nothing here is a placeholder: this set runs the same studio import, the same
  * material intake and the same price decode as the Ligne Roset one.
+ *
+ * ── THE BRAND WITH NO SWATCH CDN ────────────────────────────────────────────
+ * `materials.swatch.urlFor` answers NULL, on purpose and by design, because
+ * that is the truth: this manufacturer publishes no per-colour photo at a
+ * derivable public URL. It is not a missing feature — the colour's photo is the
+ * one the material intake ALREADY uploaded into our own bucket
+ * (`ParsedColor.textureUrl`), and every swatch surface already degrades to it
+ * (`lib/swatchImage.ts swatchTileUrl` → `sizedStorageImageUrl(textureUrl)`).
+ * So a generic brand's picker paints its own scans at tile size, through the
+ * Storage render endpoint, with no proxy hop at all. Inventing a URL here — a
+ * guessed CDN pattern — is the one thing that would break silently (a wall of
+ * 404s reading as "this brand has no colours").
  */
 
 import { readSwatchBitmap } from './swatchPixels.js';
@@ -166,6 +178,21 @@ const materials = {
         : null,
     };
   },
+  /**
+   * NO PUBLIC CDN — see the header. `urlFor` answers null so every caller takes
+   * the documented degrade (the colour's own uploaded scan), `codeFor` keeps
+   * the code as stored (there is no foreign filing convention to fold to), and
+   * `proxied` is false so nothing ever asks `swatch-proxy` for a source it has
+   * no allowlist entry for — that request would 400 and cost a round-trip to
+   * learn what this flag already says.
+   */
+  swatch: {
+    id: 'stored-swatch',
+    label: 'Muestras propias (Storage)',
+    urlFor: () => null,
+    codeFor: (code) => String(code ?? '').trim(),
+    proxied: false,
+  },
 };
 
 const catalog = {
@@ -176,6 +203,24 @@ const catalog = {
   /** No ladder: a generic brand prices per SKU. A price list that DOES carry a
    *  grade column still works — the grade travels with the row. */
   grades: [],
+  gradeGroups: [],
+  /** COM (customer's own material) is upholstery-trade vocabulary, not one
+   *  manufacturer's, so a generic brand recognises it too. */
+  specialGrades: ['COM'],
+  /** Nothing retired to keep reading — this set has no history. */
+  legacyGrades: [],
+  /**
+   * A grade is whatever single letter this brand's price list put in its grade
+   * column. There is no ladder to check membership against (that is the whole
+   * difference from Ligne Roset), so the test is the SHAPE — which keeps
+   * `composeSubtype` writing the canonical "Grade C — PAMPA" for a graded
+   * generic list, and therefore keeps `parseSubtype` round-tripping it.
+   */
+  isGrade: (token) => /^[A-Za-z]$/.test(String(token ?? '').trim()),
+  /** Plain fold: no fire-retardant twins to consolidate. */
+  fabricKey: (name) => String(name || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().toUpperCase().replace(/\s+/g, ' '),
   splitSku(ref) {
     const s = String(ref ?? '').trim();
     if (!s) return null;

@@ -1,46 +1,45 @@
 /**
- * Ligne Roset publishes a per-color swatch at a stable, public, Cloudflare-
- * cached path keyed on the catalog color code we already store
- * (`MaterialColor.code`): code "4479" → .../colorized-pattern/c_4479.jpg.
+ * SWATCH URLS — the photo behind a catalog colour code, resolved through the
+ * ACTIVE BRAND.
  *
- * We render these directly (hotlink) rather than copying them into Supabase
- * Storage. Deriving the URL from the code means every seed color shows its
- * own correct swatch with no upload, no import run, and no migration — and a
- * dealer-uploaded photo (`MaterialColor.imageId`) still wins wherever one
- * exists. A missing/discontinued code 404s; ImageView degrades that to its
- * neutral placeholder via onError, so a dead URL never shows a broken image.
+ * A manufacturer that publishes its colours on a public CDN gives us a swatch
+ * for free: derive the URL from the code we already store
+ * (`MaterialColor.code`) and every colour shows its own correct photo with no
+ * upload, no import run and no migration. Ligne Roset is such a brand (code
+ * "4479" → …/colorized-pattern/c_4479.jpg); its base path, and the way it files
+ * a code, live in `brands/ligne-roset/swatchSource.js` — NOT here. This module
+ * asks `brands/runtime.js` for whichever source the open brand actually has.
+ *
+ * THREE DEGRADES, in order, and none of them invents a URL:
+ *   1. the brand's CDN photo, at tile size through our resizing mirror;
+ *   2. the same photo full-size (no Supabase configured to mirror through);
+ *   3. the colour's OWN uploaded scan in our bucket (`textureUrl`) — which is
+ *      the FIRST stop for a brand with no CDN at all, since its `urlFor`
+ *      answers null.
+ * A dealer-uploaded photo (`MaterialColor.imageId`) still wins over all of it
+ * wherever one exists, and a missing/discontinued code 404s into ImageView's
+ * neutral placeholder via onError — so a dead URL never shows a broken image.
  */
-const LR_SWATCH_BASE =
-  'https://www.ligne-roset.com/media/ligne_roset_us/colorized-pattern';
+import { activeSwatchSource } from '../brands/runtime.js';
 
 /**
- * The catalog colour code as LIGNE ROSET FILES IT — our code with any leading
- * zeros dropped from an all-numeric string.
+ * The catalog colour code as THE ACTIVE BRAND'S SOURCE FILES IT.
  *
- * The price list pads some codes to four digits (ELITE «0950», ERPI «0973»,
- * LHUIS «0934» — 23 colours across those three families) and the CDN does not:
- * `c_0950.jpg` 404s, `c_950.jpg` is the swatch. Verified against the live host
- * 2026-08 — every padded code in the catalog behaves this way. Without this
- * those colours could not show a Ligne Roset swatch AT ALL, at any size, on any
- * surface: the tile fell through to its bare plate and read as a colour with no
- * photo rather than as a URL we were building wrong.
- *
- * NUMERIC ONLY, and never to nothing: an alphanumeric code is passed through
- * untouched (we have no evidence LR strips anything there), and «0» stays «0».
- * Mirrored server-side by `swatch-proxy`'s `lrSwatchCode` — the two build the
- * same LR path from the same code, so they must fold it the same way (pinned in
- * tests/catalogImages.test.js).
+ * Ligne Roset drops leading zeros from an all-numeric code: the price list pads
+ * some to four digits (ELITE «0950», ERPI «0973», LHUIS «0934» — 23 colours)
+ * and the CDN does not, so `c_0950.jpg` 404s where `c_950.jpg` is the swatch.
+ * That rule is the LR source's (`brands/ligne-roset/swatchSource.js`), mirrored
+ * server-side by `swatch-proxy`'s `lrSwatchCode`; a brand with no CDN has no
+ * foreign filing convention and keeps the code as stored.
  */
-export function lrSwatchCode(code: string | null | undefined): string {
-  const c = String(code ?? '').trim();
-  return /^\d+$/.test(c) ? c.replace(/^0+(?=\d)/, '') : c;
+export function swatchCode(code: string | null | undefined): string {
+  return activeSwatchSource().codeFor(code);
 }
 
-/** The Ligne Roset swatch image URL for a catalog color code, or null. */
+/** The active brand's swatch image URL for a catalog colour code, or null —
+ *  null both for an unusable code AND for a brand that publishes no swatches. */
 export function swatchUrl(code: string | null | undefined): string | null {
-  const c = lrSwatchCode(code);
-  if (!c) return null;
-  return `${LR_SWATCH_BASE}/c_${encodeURIComponent(c)}.jpg`;
+  return activeSwatchSource().urlFor(code);
 }
 
 /** The swatch URL for a CANONICAL fabric string — "KERALA/FR · FICELLE
@@ -77,11 +76,19 @@ const SUPABASE_ANON_KEY: string = VITE_ENV.VITE_SUPABASE_ANON_KEY || '';
  * Roset CDN sends no `Access-Control-Allow-Origin`, so a direct browser fetch
  * is blocked. The proxy fetches it server-side and re-serves it with CORS.
  *
- * Returns null when there's no code or no Supabase URL configured — callers
- * fall back to an empty swatch tile.
+ * ONLY FOR A `proxied` SOURCE. The proxy's `?code=` mode builds the upstream
+ * URL server-side from its own allowlist, so it can only answer for a source it
+ * knows; a brand whose swatches live in our own bucket needs no proxy at all
+ * (Storage sends CORS) and asking would just 400. The module set says which is
+ * which, so we never spend a round-trip to find out.
+ *
+ * Returns null when there's no code, no proxyable source, or no Supabase URL
+ * configured — callers fall back to an empty swatch tile.
  */
 export function swatchProxyUrl(code: string | null | undefined): string | null {
-  const c = lrSwatchCode(code);
+  const source = activeSwatchSource();
+  if (!source.proxied) return null;
+  const c = source.codeFor(code);
   if (!c) return null;
   return proxyUrl(`code=${encodeURIComponent(c)}`);
 }
@@ -119,33 +126,35 @@ function proxyUrl(query: string): string | null {
 /* ------------------------------------------------------------------ */
 
 /**
- * `swatchUrl` hands back a 2000×2000 ~250 KB baseline JPEG and the LR CDN
- * ignores every resize param — so a 16-px part chip, a 36-px material hero and
- * a 96-px picker tile all cost a quarter megabyte each. SILVERTEX has 58
- * colours; one scroll of the configurator's swatch wall was multiple MB.
+ * A brand CDN's original is routinely a 2000×2000 ~250 KB baseline JPEG that
+ * ignores every resize param (Ligne Roset's does) — so a 16-px part chip, a
+ * 36-px material hero and a 96-px picker tile all cost a quarter megabyte each.
+ * SILVERTEX has 58 colours; one scroll of the configurator's swatch wall was
+ * multiple MB.
  *
  * Two routes to the SAME pixels small, both ending at Supabase Storage's image
  * render endpoint (measured 2026-08: 26.8 KB at width 96 vs 245.9 KB — ~9× per
  * tile):
- *   • `swatch-proxy?code=…&w=…`, which mirrors the LR original into the
- *     `swatch-mirror` bucket once and 302s to the render endpoint.
- *   • the colour's own `textureUrl` — the scanned pCon weave sitting in the
- *     public `togo-textures` bucket. The browser hits `render/image/public/…`
- *     directly, with no hop through us.
+ *   • `swatch-proxy?code=…&w=…`, which mirrors the brand original into the
+ *     `swatch-mirror` bucket once and 302s to the render endpoint. Only for a
+ *     `proxied` swatch source (see `sizedSwatchUrl`).
+ *   • the colour's own `textureUrl` — the scanned weave sitting in the public
+ *     `togo-textures` bucket, where the material intake put it. The browser
+ *     hits `render/image/public/…` directly, with no hop through us. This is
+ *     the ONLY route for a brand that publishes no swatches of its own.
  *
- * THE LIGNE ROSET PHOTO WINS, ALWAYS (owner, 2026-08: every thumbnail in the
- * configurator is the image pulled from ligne-roset.com). The scanned weave is
- * what the 3D upholsters with and it tiles beautifully at 4 cm — but as a
- * THUMBNAIL the two sources are not interchangeable: the scan is a crop of
- * cloth under our own lighting, LR's is the colour as the brand publishes it,
- * and mixing them down one picker wall made the same catalog read as two.
- * `swatchTextureUrl` keeps the scan reachable as the one thing better than an
- * empty cell (see it), and a colour with no code at all still falls through to
- * it here — no-vanish.
+ * THE BRAND'S OWN PHOTO WINS WHEREVER THERE IS ONE (owner, 2026-08: every
+ * thumbnail in the configurator is the image pulled from ligne-roset.com). The
+ * scanned weave is what the 3D upholsters with and it tiles beautifully at 4 cm
+ * — but as a THUMBNAIL the two sources are not interchangeable: the scan is a
+ * crop of cloth under our own lighting, the brand's is the colour as the
+ * manufacturer publishes it, and mixing them down one picker wall made the same
+ * catalog read as two. `swatchTextureUrl` keeps the scan reachable as the one
+ * thing better than an empty cell (see it), and a colour with no code at all
+ * still falls through to it here — no-vanish.
  *
- * `swatchUrl`/`swatchUrlFromFabric` stay byte-identical on purpose: they are
- * the print/PDF path and the Shopify-mirror parity pin, and print wants the
- * full-resolution original.
+ * `swatchUrl`/`swatchUrlFromFabric` stay the full-resolution original on
+ * purpose: they are the print/PDF path, and print wants every pixel.
  */
 
 /** The snapped width ladder, shared with the proxy's `RENDER_WIDTHS`
@@ -188,21 +197,24 @@ export function sizedStorageImageUrl(
 }
 
 /**
- * The LR swatch for a code, through the proxy AT A SIZE (see the function's
- * mirror mode). Null when no Supabase URL is configured — callers fall back to
- * the direct hotlink, exactly like `swatchProxyUrl`.
+ * The brand's swatch for a code, through the proxy AT A SIZE (see the
+ * function's mirror mode). Null when the source isn't proxyable or no Supabase
+ * URL is configured — callers fall back to the direct hotlink, exactly like
+ * `swatchProxyUrl`.
  */
 export function sizedSwatchUrl(code: string | null | undefined, cssPx: number): string | null {
-  const c = lrSwatchCode(code);
+  const source = activeSwatchSource();
+  if (!source.proxied) return null;
+  const c = source.codeFor(code);
   if (!c) return null;
   return proxyUrl(`code=${encodeURIComponent(c)}&w=${swatchRenderWidth(cssPx)}`);
 }
 
 /**
- * THE url a swatch TILE should render: the Ligne Roset photo at tile size,
- * degrading to the full-size hotlink (no Supabase configured) and then to the
- * colour's own scan (no code to build an LR url from) so a tile can never come
- * up empty.
+ * THE url a swatch TILE should render: the brand's photo at tile size,
+ * degrading to the full-size hotlink (no Supabase configured, or a source the
+ * proxy can't mirror) and then to the colour's own scan (no code, or a brand
+ * with no CDN) so a tile can never come up empty.
  *
  * Takes a colour object (`{ code, textureUrl }`) or a bare code — the picker
  * wall has the whole colour, a part chip only ever carries its code.
@@ -221,11 +233,12 @@ export function swatchTileUrl(
  * The colour's OWN scanned weave at tile size — null when it has none.
  *
  * The picker's last resort, and only that: a discontinued colour can carry a
- * code the LR CDN no longer publishes, and an empty cell in a fabric picker is
- * worse than the same cloth from our own scanner. The caller reaches for this
- * on the image's `error`, never before it (see MaterialsCatalog's SwatchImg) —
- * which is what keeps "every thumbnail is the LR photo" true wherever LR has
- * one. Only the colour's OWN texture counts: the 3D's family fallback re-tints
+ * code the brand's CDN no longer publishes, and an empty cell in a fabric
+ * picker is worse than the same cloth from our own scanner. The caller reaches
+ * for this on the image's `error`, never before it (see MaterialsCatalog's
+ * SwatchImg) — which is what keeps "every thumbnail is the brand's photo" true
+ * wherever the brand has one. Only the colour's OWN texture counts: the 3D's
+ * family fallback re-tints
  * a SIBLING's weave, the right cloth in the wrong colour, and that must never
  * become a swatch.
  */

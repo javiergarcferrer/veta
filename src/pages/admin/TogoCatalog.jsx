@@ -20,7 +20,7 @@ import Modal from '../../components/Modal.jsx';
 import ModelStudio, { ProductBindModal, ACCEPT_3D as ACCEPT_3D_SET } from '../../components/togo/ModelStudio.jsx';
 import ModelManager from './ModelManager.jsx';
 import useFileIntake, { supportsDirectoryPicker } from '../../components/primitives/useFileIntake.js';
-import { TOGO_SEEDS } from '../../assets/togo/seeds.js';
+import { safeDynamicImport } from '../../lib/dynamicImport.js';
 
 // Exported so TogoWorkspace's workspace-wide drop target accepts the same set.
 // One definition (the studio's) reaches both. Deliberately MESHES ONLY: the
@@ -83,6 +83,8 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
   // module) — the reads below need no brand plumbing of their own, the data
   // layer already scopes them (db/brandScope).
   const { isAdmin, profileId, brand, brandModules } = useApp();
+  // The ACTIVE BRAND's sample-piece capability, if it has one (see below).
+  const seeds = brandModules?.seeds || null;
   const models = useLiveQuery(
     () => (profileId ? db.togoModels.where('profileId').equals(profileId).toArray() : Promise.resolve([])),
     [profileId], [],
@@ -165,6 +167,13 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
   // rows, so what gets renumbered is exactly the sequence the dealer sees.
 
   const importSeeds = useCallback(async () => {
+    // The seeds are the ACTIVE BRAND's OWN sample pieces, handed over by its
+    // module set — never imported from here, which is what used to make one
+    // manufacturer's sofa offerable inside another's environment. Lazy (they
+    // carry inline SVG plans) and through safeDynamicImport, like every other
+    // code-split load in the app.
+    const seedRows = await safeDynamicImport(() => seeds.load());
+    if (!seedRows?.length) return;
     // One-off direct fetch so seed auto-binding works without making the whole
     // tab eagerly load the catalog (this only runs from the empty state).
     const prods = await db.products.where('profileId').equals(profileId).toArray();
@@ -177,7 +186,7 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
     const existing = new Set((models || []).map((m) => (m.name || '').toLowerCase()));
     const base = models?.length ? Math.max(...models.map((m) => m.sortOrder || 0)) + 1 : 0;
     let i = 0;
-    for (const s of TOGO_SEEDS) {
+    for (const s of seedRows) {
       if (existing.has(s.name.toLowerCase())) continue;
       await db.togoModels.put({
         id: newId(), profileId, name: s.name, productRoot: autoRoot(s), productReference: null,
@@ -185,13 +194,13 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
         active: true, createdAt: Date.now(), updatedAt: Date.now(),
       });
     }
-  }, [models, profileId]);
+  }, [models, profileId, seeds]);
 
-  // The example pieces are LIGNE ROSET's own Togo modules (assets/togo/seeds),
-  // so they are offered only inside a Ligne Roset environment. Seeding another
-  // manufacturer's empty catalog with someone else's sofa would be inventing
-  // data — an empty brand shows an empty brand.
-  const canSeed = brandModules.setId === 'ligne-roset';
+  // A brand's sample pieces are ITS OWN FURNITURE, so the affordance exists
+  // exactly where the module set declares one. Seeding another manufacturer's
+  // empty catalog with someone else's sofa would be inventing data — an empty
+  // brand shows an empty brand.
+  const canSeed = !!seeds?.load;
 
   const [addOpen, setAddOpen] = useState(false);
 
@@ -209,6 +218,7 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
           is literally where the rail used to be. */}
       <ModelStudio
         modules={brandModules}
+        brandName={brand?.name || null}
         cards={cards}
         navIds={navIds}
         models={models}
@@ -447,9 +457,9 @@ function AddModelModal({
       // ONE DROP, ONE SHAPE — measured over EVERY dropped path (the sidecar
       // bitmaps included: a .jpg beside the models still hangs off the same
       // tree and still says where its levels are), then every piece is filed
-      // against that one plan by the BRAND's module. This re-files what the
-      // loader proposed with its built-in reader; for Ligne Roset the two are
-      // the same engine and the answer is identical.
+      // against that one plan by the BRAND's module. This is the ONLY taxonomy
+      // read in the batch path: `loadPiecesFromFiles` is the three.js half and
+      // returns the three `folder*` fields null on purpose.
       const shape = geometry?.resolveShape(Array.from(files).map(relPathOf));
       setScene({
         THREE: batch.THREE,
@@ -800,10 +810,11 @@ function AddModelModal({
                 </button>
                 {/* Opens on whatever is already picked (the seed is selected, so
                     retyping replaces it) with the colección being typed above as
-                    a one-tap search — the LR family names carry it. */}
+                    a one-tap search — a manufacturer's family names carry it. */}
                 <ProductBindModal
                   open={pickOpen}
                   onClose={() => setPickOpen(false)}
+                  brandName={brandName}
                   profileId={profileId}
                   currentRoot={root}
                   currentName={rootName || families.find((f) => f.root === root)?.name || ''}

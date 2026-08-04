@@ -5,7 +5,8 @@ import { swatchUrl, heroSwatchUrl } from '../../lib/swatchImage.js';
 import { locateColor } from '../../lib/swatchMatch.js';
 import { composeSubtype } from '../../lib/subtype.js';
 import { shouldAutoFocusInput } from '../../lib/autofocus.js';
-import { fabricKey, isMaterialOffered } from '../../lib/lrCatalog.js';
+import { isMaterialOffered } from '../../lib/nameKey.js';
+import { activeCatalogModule } from '../../brands/runtime.js';
 import { productForGrade } from '../../lib/catalog.js';
 import { formatMoney } from '../../lib/format.js';
 import { primaryFiber, compositionGroup, NO_COMPOSITION } from '../../lib/composition.js';
@@ -149,7 +150,7 @@ export default function MaterialColorPicker({
     const needle = q.trim().toLowerCase();
     return list
       .filter((m) => (allowGrade ? allowGrade.has(String(m.grade || '').toUpperCase()) : true))
-      .filter((m) => (nameAllow ? nameAllow.has(fabricKey(m.name)) : true))
+      .filter((m) => (nameAllow ? nameAllow.has(activeCatalogModule().fabricKey(m.name)) : true))
       .filter((m) => (category ? m.category === category : true))
       .filter((m) => {
         if (!needle) return true;
@@ -423,7 +424,7 @@ function MaterialList({
         </div>
         <div className="text-sm font-medium text-ink-900">Catálogo vacío</div>
         <p className="text-xs text-ink-500 mt-1 max-w-sm mx-auto">
-          Pídele al administrador que importe el catálogo Ligne Roset 10.2025 en
+          Pídele al administrador que importe el catálogo de materiales de la marca en
           {' '}<span className="font-mono">Administración → Materiales</span>.
         </p>
       </div>

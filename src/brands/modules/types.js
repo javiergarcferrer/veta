@@ -13,8 +13,14 @@
  *
  *   geometry   how a dropped 3D library FILES ITSELF (which extensions are
  *              models, and what a path says about a piece's taxonomy)
- *   materials  how a dropped material archive becomes COLORS the 3D can wear
- *   catalog    the SKU GRAMMAR and the price-list decode
+ *   materials  how a dropped material archive becomes COLORS the 3D can wear,
+ *              and WHERE the brand publishes each colour's swatch photo
+ *   catalog    the SKU GRAMMAR, the GRADE LADDER and the price-list decode
+ *
+ * plus ONE optional set-level capability, `seeds` — a brand that ships sample
+ * pieces (see the Ligne Roset set) so a fresh environment isn't empty. It is a
+ * capability and not a hardcoded check because sample data is A BRAND'S OWN
+ * FURNITURE: offering it to another manufacturer would invent their catalog.
  *
  * Nothing here is React, Supabase or three.js: an adapter is a pure reader over
  * strings and Files, so the studio, the brand admin and any future importer all
@@ -69,11 +75,39 @@
  *                 prefix). null ⇒ the caller decides.
  *   }
  *
+ *   swatch        WHERE THIS BRAND PUBLISHES A COLOUR'S PHOTO — the second half
+ *                 of "materials", and the one every screen reads:
+ *
+ *     urlFor(code) → string|null   the brand's own full-size swatch for a
+ *                 catalog colour code. NULL IS A REAL ANSWER: a manufacturer
+ *                 with no public CDN has no such URL, and the app must degrade
+ *                 (the colour's own stored scan, then an empty plate) rather
+ *                 than invent one. Never throws.
+ *     codeFor(code) → string       the code as that source FILES it (Ligne
+ *                 Roset drops leading zeros); '' when there is no usable code.
+ *     proxied     boolean — true when `swatch-proxy`'s `?code=` mode can serve
+ *                 this source (it builds the URL server-side, so it only knows
+ *                 the sources listed in its own allowlist). False ⇒ callers
+ *                 never route a code through the proxy, so they never ask the
+ *                 server for a brand it cannot resolve.
+ *
  * ── catalog ─────────────────────────────────────────────────────────────────
  *   id, label, summary
  *   skuHint       how a SKU reads, for the brand admin ('15420000A')
  *   grades        the grade ladder, cheapest-first ([] when the brand doesn't
  *                 price by grade)
+ *   gradeGroups   the same ladder as the picker groups it —
+ *                 [{ label, grades }] ([] when there is no ladder)
+ *   specialGrades non-letter grades the brand still quotes ('COM')
+ *   legacyGrades  retired spellings a stored value may still carry, so a read
+ *                 round-trips instead of silently losing the dealer's data
+ *   isGrade(token) → boolean — does this token name a grade for this brand?
+ *                 The one question `composeSubtype` asks before writing the
+ *                 canonical "Grade C — PAMPA".
+ *   fabricKey(name) → string — the fold that matches a fabric NAME across the
+ *                 brand's sources (its per-model roster vs. the materials
+ *                 catalog). Brand-owned because the collapsing rules are
+ *                 (Ligne Roset consolidates "VIDAR" and "VIDAR/FR").
  *   splitSku(ref) → { root, grade } | null — the grammar. `grade` is '' for a
  *                 SKU the brand doesn't grade; null ONLY when `ref` is unusable.
  *   composeSku(root, grade) → string|null — the inverse, for a price row that
@@ -83,6 +117,21 @@
  *                 | null. `row` is one CSV record as an object keyed by its
  *                 (lower-cased) header. null = not a priced row (a blank line, a
  *                 header repeat, a row with no usable price) — never a throw.
+ *   fabricLink    OPTIONAL. `{ supported, label, placeholder, hint,
+ *                 fetch(url, { invoke }) }` — how a MODEL's offered-fabric
+ *                 roster is looked up when the brand publishes one. Absent ⇒
+ *                 the studio hides the affordance rather than pointing a
+ *                 manufacturer at somebody else's website. `fetch` is handed
+ *                 its effect (the function invoker) the same way `materials
+ *                 .parse` is handed its uploader, so this layer imports no
+ *                 network client.
+ *
+ * ── seeds (set level, OPTIONAL) ─────────────────────────────────────────────
+ *   { label, load() → Promise<Array<{ name, model, widthCm, depthCm, svg,
+ *     match }>> } — the brand's own sample pieces, loaded on demand (they carry
+ *   inline SVG plans and must not sit in every bundle). Absent ⇒ there is no
+ *   "import the example pieces" affordance for that brand, which is the honest
+ *   empty state.
  */
 
 /** Extensions → the `<input accept>` string every intake wants. */
@@ -144,13 +193,16 @@ export function defineModuleSet(set) {
   for (const fn of ['accepts', 'parse']) {
     if (typeof set.materials[fn] !== 'function') throw new Error(`module set ${set.id}: materials.${fn} missing`);
   }
-  for (const fn of ['splitSku', 'parsePriceRow']) {
+  for (const fn of ['urlFor', 'codeFor']) {
+    if (typeof set.materials.swatch?.[fn] !== 'function') throw new Error(`module set ${set.id}: materials.swatch.${fn} missing`);
+  }
+  for (const fn of ['splitSku', 'parsePriceRow', 'isGrade', 'fabricKey']) {
     if (typeof set.catalog[fn] !== 'function') throw new Error(`module set ${set.id}: catalog.${fn} missing`);
   }
   return Object.freeze({
     ...set,
     geometry: Object.freeze(set.geometry),
-    materials: Object.freeze(set.materials),
+    materials: Object.freeze({ ...set.materials, swatch: Object.freeze(set.materials.swatch) }),
     catalog: Object.freeze(set.catalog),
   });
 }

@@ -11,8 +11,8 @@
  *
  * Canonical compose format mirrors the price list:
  *
- *   "Grade C — PAMPA"     (alpha grade A..X excluding T/Y/Z)
- *   "Grade U — Tea"       (leather grade is just another letter)
+ *   "Grade C — PAMPA"     (a letter on the BRAND's ladder — see below)
+ *   "Grade U — Tea"       (a leather grade is just another letter)
  *   "COM — buyer supplied"
  *   "Grade C"             (grade alone)
  *   "PAMPA"               (fabric alone, no grade)
@@ -20,7 +20,18 @@
  * Parse is tolerant: anything we don't recognize as a grade is treated as
  * pure fabric, so legacy strings the dealer hand-typed (e.g. "Walnut",
  * "Cuir — Tea") round-trip intact.
+ *
+ * WHAT IS THE APP'S AND WHAT IS THE BRAND'S. The FORMAT above is the app's —
+ * it is how the `subtype` column is written, the same for every manufacturer.
+ * The LADDER is not: which letters are grades at all, which non-letter grades
+ * exist (COM) and which retired spellings must still be recognised on read are
+ * one manufacturer's price list. Ligne Roset's 23-letter A–X ladder used to be
+ * written here as if it were universal; it now lives in its own brand package
+ * and this module reads whatever the ACTIVE BRAND's catalog adapter says
+ * (`brands/runtime.js`). A brand with no ladder still round-trips: its adapter
+ * answers `isGrade` by shape instead of by membership.
  */
+import { activeCatalogModule } from '../brands/runtime.js';
 
 /** Parsed projection of a subtype field — both keys always present. */
 export interface ParsedSubtype {
@@ -28,48 +39,61 @@ export interface ParsedSubtype {
   fabric: string;
 }
 
-/** One row in `GRADE_GROUPS` — a labelled `<optgroup>` worth of grades. */
+/** One row in `gradeGroups()` — a labelled `<optgroup>` worth of grades. */
 export interface GradeGroup {
   label: string;
   grades: readonly string[];
 }
 
 /**
- * The full Ligne Roset grade taxonomy, grouped as the price list lays it
- * out. The picker renders these groups as <optgroup>s so the dealer sees
- * the same structure they read on paper. T, Y, and Z are intentionally
- * absent — the price list skips them.
- *
- *   Telas       A..R   (18 fabric grades)
- *   Microfibras S      (1)
- *   Pieles      U..X   (4 leather grades)
- *
- * Plus one special non-letter grade we accept: COM (customer's own
- * material).
+ * The active brand's grade taxonomy, grouped the way its price list lays it out
+ * — a picker renders these as <optgroup>s so the dealer sees the same structure
+ * they read on paper. `[]` for a brand that doesn't price by grade.
  */
-export const GRADE_GROUPS: readonly GradeGroup[] = [
-  { label: 'Telas',       grades: ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'] },
-  { label: 'Microfibras', grades: ['S'] },
-  { label: 'Pieles',      grades: ['U','V','W','X'] },
-];
+export function gradeGroups(): readonly GradeGroup[] {
+  return (activeCatalogModule().gradeGroups || []) as readonly GradeGroup[];
+}
 
-/** Special non-letter grades that still get a "Grade —"-less render. */
-export const SPECIAL_GRADES: readonly string[] = ['COM'];
+/** Every valid alpha grade the active brand offers, cheapest-first. */
+export function alphaGrades(): readonly string[] {
+  return activeCatalogModule().grades || [];
+}
+
+/** The active brand's special non-letter grades (COM) — rendered without the
+ *  "Grade " prefix. */
+export function specialGrades(): readonly string[] {
+  return activeCatalogModule().specialGrades || [];
+}
 
 /**
- * Legacy values that may exist in older quotes but are no longer offered
- * in the picker. Listed here so the parser still recognises them on read
- * (round-trip safe) and the picker can render them as a hidden option
- * whenever the current value matches — otherwise a native <select> would
- * silently revert to its first option and lose the dealer's data.
+ * Values that may exist in older quotes but are no longer offered in the
+ * picker. Recognised on read so a stored string round-trips, and renderable as
+ * a hidden option whenever the current value matches — otherwise a native
+ * <select> would silently revert to its first option and lose the dealer's data.
  */
-export const LEGACY_NAMED_GRADES: readonly string[] = ['Cuir', 'Leather'];
+export function legacyGrades(): readonly string[] {
+  return activeCatalogModule().legacyGrades || [];
+}
 
-/** Every valid alpha grade across all groups — used by parser + composer. */
-export const ALPHA_GRADES: readonly string[] = GRADE_GROUPS.flatMap((g) => g.grades);
-
-/** Every recognized grade value (alpha + special + legacy). */
-const RECOGNIZED_NAMED: ReadonlySet<string> = new Set([...SPECIAL_GRADES, ...LEGACY_NAMED_GRADES]);
+/**
+ * Every recognized NAMED grade (special + legacy) for the active brand.
+ *
+ * Memoised on the adapter identity: `parseSubtype` runs per line and per
+ * component on every render of a quote, and rebuilding this set (and the
+ * regexes below) each time is work the old module-level constant never did.
+ * A brand switch installs a different adapter object, so the cache turns over
+ * by identity with nothing to invalidate.
+ */
+let namedCacheFor: unknown = null;
+let namedCache: string[] = [];
+function recognizedNamed(): string[] {
+  const adapter = activeCatalogModule();
+  if (namedCacheFor !== adapter) {
+    namedCacheFor = adapter;
+    namedCache = [...(adapter.specialGrades || []), ...(adapter.legacyGrades || [])];
+  }
+  return namedCache;
+}
 
 /**
  * Parse a stored subtype into { grade, fabric }. Always returns both keys
@@ -90,7 +114,7 @@ export function parseSubtype(subtype: string | null | undefined): ParsedSubtype 
   // Named grades: "COM — buyer-supplied", "Cuir — Tea", or the name alone.
   // Case-insensitive match; canonical capitalisation is preserved so the
   // dropdown still highlights it.
-  for (const named of RECOGNIZED_NAMED) {
+  for (const named of recognizedNamed()) {
     const m2 = s.match(new RegExp(`^${named}(?:\\s*[—–-]\\s*(.+))?$`, 'i'));
     if (m2) {
       return { grade: named, fabric: (m2[1] || '').trim() };
@@ -115,9 +139,10 @@ export function composeSubtype(
   if (!g && !f) return '';
   if (!g) return f;
 
-  // Alpha grades get the "Grade " prefix in the rendered string; named
-  // grades (COM, legacy Cuir/Leather, anything custom) are written as-is.
-  const gradeStr = ALPHA_GRADES.includes(g.toUpperCase()) ? `Grade ${g.toUpperCase()}` : g;
+  // A grade ON THE BRAND'S LADDER gets the "Grade " prefix in the rendered
+  // string; named grades (COM, a legacy spelling, anything custom) are written
+  // as-is — which is why the question goes to the adapter and not to a regex.
+  const gradeStr = activeCatalogModule().isGrade(g) ? `Grade ${g.toUpperCase()}` : g;
   return f ? `${gradeStr} — ${f}` : gradeStr;
 }
 

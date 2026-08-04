@@ -46,7 +46,7 @@
  */
 
 import { splitSkuGrade } from '../catalog.js';
-import { normalizeName } from '../lrCatalog.js';
+import { foldName } from '../nameKey.js';
 
 const CM_PER_INCH = 2.54;
 
@@ -92,14 +92,14 @@ const LEXICON = new Map([
 
 /** Split a name into comparable lowercase tokens, camelCase included. */
 export function nameTokens(name) {
-  return normalizeName(name)
+  return foldName(name)
     .replace(/([A-Z])(\d)/g, '$1 $2')
     .replace(/[^A-Z0-9]+/gi, ' ')
     .trim()
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    // «LargeChaiseLeft» arrives as one token from the filename: normalizeName
+    // «LargeChaiseLeft» arrives as one token from the filename: foldName
     // upper-cases it, so the camel boundary is gone. Re-split on the words we
     // know instead of guessing at case that no longer exists.
     .flatMap((t) => splitGlued(t))
@@ -193,7 +193,7 @@ export function shapeFacts(name) {
   // strips the slash that carries the meaning, and "w o arms" reduces to the
   // same letters as a piece that HAS arms. The one negation in the vocabulary
   // must not depend on punctuation surviving.
-  const raw = normalizeName(name);
+  const raw = foldName(name);
   return {
     left: has('left'),
     right: has('right'),

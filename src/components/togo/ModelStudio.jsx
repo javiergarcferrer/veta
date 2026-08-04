@@ -80,7 +80,8 @@ import { prefersReducedMotion } from '../../lib/motion.js';
 import { togoEmbedSnippet, togoShareUrl } from '../../lib/togoEmbed.js';
 import { loadMeshPlan } from '../../lib/togo/meshPlanCache.js';
 import { autoUnitScale } from '../../lib/togo/togoModel.js';
-import { fetchModelFabrics, saveCollectionFabrics, clearCollectionFabrics } from '../../lib/lrModelFabrics.js';
+import { saveCollectionFabrics, clearCollectionFabrics } from '../../lib/modelFabrics.js';
+import { supabase } from '../../db/supabaseClient.js';
 import { proposeCollectionBindings } from '../../lib/togo/autoLink.js';
 import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
 import { canonicalCollection } from '../../lib/togo/collections.js';
@@ -511,16 +512,21 @@ function tokenColor(el, name, fallback) {
  */
 export function ProductBindModal({
   open, onClose, profileId, onPick, onClear,
-  title = 'Vincular a producto Ligne Roset',
+  // The OPEN BRAND's name, for the copy. Null ⇒ the neutral wording: a picker
+  // that names a manufacturer the dealer isn't working in is worse than one
+  // that names none.
+  brandName = null,
+  title = null,
   clearLabel = 'Sin vincular (precio manual)',
   currentRoot = '', currentName = '', presets = [],
 }) {
+  const heading = title || (brandName ? `Vincular a producto ${brandName}` : 'Vincular a producto del catálogo');
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="lg"
-      title={title}
+      title={heading}
       flushBody
       footer={(
         <button type="button" onClick={() => { onClear(); onClose(); }} className="btn-ghost text-sm">
@@ -555,6 +561,9 @@ export function ProductBindModal({
 export default function ModelStudio({
   cards = [], navIds = null, models = [], collections = [], materials = [], families = [], products = null,
   fabricLinks = [], profileId, onNeedCatalog, onAddModel, onImportSeeds,
+  // The OPEN BRAND's own name — what the copy says instead of a manufacturer
+  // this deploy happens to have shipped first. Null ⇒ neutral wording.
+  brandName = null,
   table = null, selectedId = null, onSelect, fidelityRow = null, fidelityResolved = null,
   // The ACTIVE BRAND's import module set (src/brands/modules), resolved by the
   // page. Only the geometry adapter reaches this file: it decides which files
@@ -2477,6 +2486,8 @@ export default function ModelStudio({
                 candidateIndex={candidateIndex}
                 modelCtx={modelCtx}
                 fabricLinks={fabricLinks}
+                fabricLinkModule={modules?.catalog?.fabricLink || null}
+                brandName={brandName}
                 profileId={profileId}
                 groups={groups}
                 draft={draft}
@@ -2546,7 +2557,7 @@ export default function ModelStudio({
         onClear={() => group && setSlot(group.members, 'base')}
       />
 
-      <EmbedModal open={embedOpen} onClose={() => setEmbedOpen(false)} />
+      <EmbedModal open={embedOpen} onClose={() => setEmbedOpen(false)} brandName={brandName} />
     </div>
   );
 }
@@ -2603,9 +2614,9 @@ function StageToolbar({
 }
 
 /** The website embed snippet + a link to the public widget. */
-function EmbedModal({ open, onClose }) {
+function EmbedModal({ open, onClose, brandName = null }) {
   const [copied, setCopied] = useState(false);
-  const snippet = togoEmbedSnippet();
+  const snippet = togoEmbedSnippet(undefined, { brandName });
   const copy = async () => {
     try { await navigator.clipboard.writeText(snippet); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
   };
@@ -2632,7 +2643,8 @@ function EmbedModal({ open, onClose }) {
 // INSPECTOR — the MODEL
 
 function ModelInspector({
-  card, row, collections, cards, families, products, fabricLinks, profileId,
+  card, row, collections, cards, families, products, fabricLinks, fabricLinkModule = null,
+  brandName = null, profileId,
   candidateIndex = null, modelCtx = null,
   groups, draft, finishStateByKey = {}, factoryGroups = null, status, busy, hasMesh = true,
   onNeedCatalog, onRegenPlan, onDelete, onSelectGroup, onHoverGroup,
@@ -2792,7 +2804,7 @@ function ModelInspector({
           className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left text-[11px] transition-colors ${
             boundRoot ? 'border-brand-300 bg-brand-500/10 text-brand-700 hover:bg-brand-500/20' : 'border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
           }`}
-          title="Vincular el producto Ligne Roset que da el precio por grado"
+          title={`Vincular el producto${brandName ? ` ${brandName}` : ''} que da el precio por grado`}
         >
           <Link2 size={12} className="shrink-0" />
           <span className="min-w-0 truncate">
@@ -2829,6 +2841,7 @@ function ModelInspector({
         <ProductBindModal
           open={pickOpen}
           onClose={() => setPickOpen(false)}
+          brandName={brandName}
           profileId={profileId}
           currentRoot={boundRoot}
           currentName={boundFamily?.name || ''}
@@ -2947,12 +2960,19 @@ function ModelInspector({
           products={products}
           onNeedCatalog={onNeedCatalog}
         />
-        <CollectionFabricsLink
-          collection={card.collection}
-          cards={cards.filter((c) => c.collection === card.collection)}
-          links={fabricLinks}
-          profileId={profileId}
-        />
+        {/* The offered-fabric roster is READ FROM THE MANUFACTURER, so the
+            row exists only for a brand whose catalog module declares where to
+            read it. A brand that publishes no roster gets no control at all —
+            never a box pointing it at another manufacturer's website. */}
+        {fabricLinkModule?.supported && (
+          <CollectionFabricsLink
+            collection={card.collection}
+            cards={cards.filter((c) => c.collection === card.collection)}
+            links={fabricLinks}
+            fabricLink={fabricLinkModule}
+            profileId={profileId}
+          />
+        )}
       </section>
 
       <section className="px-3 py-3">
@@ -3340,7 +3360,7 @@ function SkuSelector({
         active={!structure}
         onClick={() => { if (structure) onSlot('base'); }}
         title="Componente — viste tela"
-        hint="Viste tela. Por defecto se cotiza con el SKU del modelo; con SKU propio se cobra aparte (elige el producto Ligne Roset)."
+        hint="Viste tela. Por defecto se cotiza con el SKU del modelo; con SKU propio se cobra aparte (elige el producto del catálogo)."
       >
         <SkuSubOption
           active={!billed && !structure}
@@ -3510,7 +3530,7 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
         type="button"
         onClick={ask}
         className="btn-ghost w-full justify-center text-[10px]"
-        title="Que Claude proponga el SKU del catálogo Ligne Roset que le pone precio a esta pieza"
+        title="Que Claude proponga el SKU del catálogo que le pone precio a esta pieza"
       >
         <Sparkles size={11} /> Sugerir con Claude
       </button>
@@ -4007,7 +4027,7 @@ function AutoLinkRow({ collection, cards, products, onNeedCatalog }) {
           <span className="truncate">{unbound.length} sin SKU</span>
         </span>
         {stage === 'idle' && (
-          <button type="button" onClick={run} className="btn-ghost shrink-0 text-[10px]" title="Analizar los modelos 3D y proponer SKU + nombre desde el catálogo Ligne Roset">
+          <button type="button" onClick={run} className="btn-ghost shrink-0 text-[10px]" title="Analizar los modelos 3D y proponer SKU + nombre desde el catálogo de la marca">
             <Sparkles size={11} /> Proponer SKUs
           </button>
         )}
@@ -4066,13 +4086,19 @@ function AutoLinkRow({ collection, cards, products, onNeedCatalog }) {
 }
 
 /**
- * "Telas Ligne Roset" — ONE materials link per modular collection. The dealer
- * pastes the family's ligne-roset.com product page and the offered fabrics are
+ * "Telas" — ONE materials link per modular collection. The dealer pastes the
+ * family's product page on THE BRAND'S OWN SITE and the offered fabrics are
  * fetched once and persisted under EVERY family root the collection's models
  * bind — the base SKU and the tagged part SKUs — so a single link updates all
  * the models in that family at once.
+ *
+ * `fabricLink` is the ACTIVE BRAND's catalog-module capability: it owns the
+ * reader, the placeholder and the wording, so this component never names a
+ * manufacturer. The caller only mounts it when the brand declares one. The
+ * effect (the Supabase function invoker) is handed to `fetch` rather than
+ * imported by the brand layer — same seam as `materials.parse`'s uploader.
  */
-function CollectionFabricsLink({ collection, cards, links, profileId }) {
+function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId }) {
   // Every family root the collection touches: base bindings + per-part SKUs.
   const roots = useMemo(
     () => [...new Set(cards.flatMap((c) => [c.productRoot, ...Object.values(c.parts?.roots || {})]).filter(Boolean))],
@@ -4095,18 +4121,25 @@ function CollectionFabricsLink({ collection, cards, links, profileId }) {
   const [err, setErr] = useState(null);
   const [done, setDone] = useState(null);   // { fabrics, roots } after a save
 
+  // The brand's own name where the copy needs one — '' rather than a guess, so
+  // a brand that never told us reads as plain "un producto".
+  const brandLabel = fabricLink?.label ? ` (${fabricLink.label})` : '';
+  // The effect the brand layer is HANDED instead of importing: one function, so
+  // `src/brands/**` keeps no Supabase client of its own.
+  const invokeFn = useCallback((name, opts) => supabase.functions.invoke(name, opts), []);
+
   // Fetch the page once, then fan the SAME result out to every root.
   const apply = async (source) => {
     const target = (source || '').trim();
     if (busy || !target || !roots.length) return;
     setBusy(true); setErr(null); setDone(null);
     try {
-      const result = await fetchModelFabrics(target);
+      const result = await fabricLink.fetch(target, { invoke: invokeFn });
       await saveCollectionFabrics(roots, profileId, result);
       setDone({ fabrics: result.patternNames.length, roots: roots.length });
       setUrl(''); setEditing(false);
     } catch (e) {
-      setErr(e?.message || 'No se pudo leer la página de Ligne Roset.');
+      setErr(e?.message || 'No se pudo leer la página del fabricante.');
     } finally {
       setBusy(false);
     }
@@ -4152,7 +4185,7 @@ function CollectionFabricsLink({ collection, cards, links, profileId }) {
               // Never a dead disabled button: without bound SKUs the click
               // explains what to do (a disabled control also swallows its title).
               if (!roots.length) {
-                setErr('Vincula primero los modelos de esta colección a un producto Ligne Roset — sin SKU no hay telas por grado.');
+                setErr(`Vincula primero los modelos de esta colección a un producto${brandLabel} — sin SKU no hay telas por grado.`);
                 return;
               }
               setEditing((v) => !v); setErr(null); setDone(null);
@@ -4181,7 +4214,7 @@ function CollectionFabricsLink({ collection, cards, links, profileId }) {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.ligne-roset.com/…"
+            placeholder={fabricLink.placeholder || 'https://…'}
             onKeyDown={(e) => { if (e.key === 'Enter') apply(url); }}
             autoFocus
           />
@@ -4208,7 +4241,7 @@ function CollectionFabricsLink({ collection, cards, links, profileId }) {
       {(editing || !current) && (
         <p className="text-[10px] leading-tight text-ink-400">
           Un solo enlace aplica a todos los modelos de la colección: el selector de telas se limita a las
-          que Ligne Roset ofrece para esta familia.
+          que el fabricante ofrece para esta familia.{fabricLink.hint ? ` ${fabricLink.hint}.` : ''}
           {unbound > 0 && ` ${unbound} modelo${unbound === 1 ? '' : 's'} sin producto vinculado no restringe${unbound === 1 ? '' : 'n'}.`}
         </p>
       )}

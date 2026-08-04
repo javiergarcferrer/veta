@@ -23,20 +23,20 @@
  * Pure Model: no React, no db.
  */
 
-import { normalizeName } from '../lrCatalog.js';
+import { foldName } from '../nameKey.js';
 
 /** The default every empty collection has always resolved to. */
 export const DEFAULT_COLLECTION = 'Togo';
 
 /**
  * The GROUPING key — what decides whether two rows are the same collection.
- * Case-folded, accent-folded, whitespace-collapsed (that is `normalizeName`),
+ * Case-folded, accent-folded, whitespace-collapsed (that is `foldName`),
  * so «Exclusif», «EXCLUSIF» and « exclusif » are one, while «Prado 2» stays
  * apart from «Prado».
  */
 export function collectionKey(name) {
-  const key = normalizeName(name);
-  return key || normalizeName(DEFAULT_COLLECTION);
+  const key = foldName(name);
+  return key || foldName(DEFAULT_COLLECTION);
 }
 
 /**

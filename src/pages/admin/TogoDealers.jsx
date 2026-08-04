@@ -164,7 +164,7 @@ const DEALER_DEFAULT_COLS = {
 };
 
 export default function TogoDealers() {
-  const { isAdmin, profileId, settings } = useApp();
+  const { isAdmin, profileId, settings, brand } = useApp();
   const confirm = useConfirm();
   const toast = useToast();
 
@@ -292,7 +292,7 @@ export default function TogoDealers() {
         <EmptyState
           icon={Store}
           title="Aún no hay distribuidores"
-          description="Da de alta un distribuidor Ligne Roset para darle su propio enlace del configurador, las colecciones que vende, su moneda y una bandeja privada de solicitudes."
+          description="Da de alta un distribuidor para darle su propio enlace del configurador, las colecciones que vende, su moneda y una bandeja privada de solicitudes."
           action={<button type="button" onClick={() => setSurface('alta')} className="btn-primary text-sm"><Plus size={15} /> Nuevo distribuidor</button>}
         />
       ) : (
@@ -412,6 +412,7 @@ export default function TogoDealers() {
         {detail ? (
           <DealerPanel
             vm={detail}
+            brandName={brand?.name || null}
             busy={busy}
             onEdit={() => setSurface(`edit:${openId}`)}
             onToggleActive={toggleActive}

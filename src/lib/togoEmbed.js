@@ -152,7 +152,14 @@ export function isConfiguratorPathname(pathname) {
   return /^\/(configurador|configurator)\/?$/.test(pathname || '');
 }
 
-export function togoEmbedSnippet(dealerSlug) {
+/**
+ * The paste-into-your-site snippet. `brandName` is the MANUFACTURER whose
+ * configurator this is — it becomes the iframe's accessible title, which is
+ * what a screen reader announces on the host page. It used to be the literal
+ * "Ligne Roset" for every dealer of every brand; unnamed it degrades to the
+ * neutral "Configurador", never to somebody else's name.
+ */
+export function togoEmbedSnippet(dealerSlug, { brandName = null } = {}) {
   const cardUrl = togoEmbedUrl(dealerSlug);   // the launch card (it opens the configurator in a new tab itself)
   // FULL WIDTH of whatever column the dealer drops it in, inset 40px a side.
   // It used to be capped at `max-width:480px`, which on a ~1000px content column
@@ -173,9 +180,10 @@ export function togoEmbedSnippet(dealerSlug) {
   // reports ~563px and the frame shrinks to it immediately. Seeding SHORT is the
   // bad direction: the host page visibly jumps the moment the iframe reports,
   // and a host that never runs the script at all would clip the CTA outright.
-  return `<!-- Togo configurator (Ligne Roset) — self-sizing launch card -->
+  const frameTitle = String(brandName || '').trim() || 'Configurador';
+  return `<!-- Configurator — self-sizing launch card -->
 <div data-togo-embed style="width:100%;margin:0 auto;padding:0 clamp(16px,4vw,40px);box-sizing:border-box">
-  <iframe src="${cardUrl}" title="Ligne Roset" scrolling="no" style="width:100%;border:0;display:block;height:700px;overflow:hidden;color-scheme:light"></iframe>
+  <iframe src="${cardUrl}" title="${frameTitle}" scrolling="no" style="width:100%;border:0;display:block;height:700px;overflow:hidden;color-scheme:light"></iframe>
 </div>
 <script>(function(){var B=document.querySelectorAll('[data-togo-embed]');var box=B[B.length-1];if(!box||box.getAttribute('data-ready'))return;box.setAttribute('data-ready','1');var ifr=box.querySelector('iframe');window.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='togo-embed-height'&&d.height>0&&ifr&&e.source===ifr.contentWindow){ifr.style.height=d.height+'px'}})})();</script>`;
 }

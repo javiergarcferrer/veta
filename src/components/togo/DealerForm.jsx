@@ -230,7 +230,7 @@ export default function DealerForm({ form, setForm, draft, dealer = null }) {
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field className="sm:col-span-2" label="Nombre" hint="Aparece en su bandeja de solicitudes y en el título de la pestaña.">
-            <input className="input" value={form.name} onChange={(e) => setName(e.target.value)} placeholder="p. ej. Ligne Roset Paris Rive Gauche" />
+            <input className="input" value={form.name} onChange={(e) => setName(e.target.value)} placeholder="p. ej. Muebles Paris Rive Gauche" />
           </Field>
           <Field label="Slug (clave del enlace)" hint="Es el «?dealer=» de su enlace y de su embed. Cambiarlo rompe los enlaces ya compartidos.">
             <input className="input font-mono" value={form.slug} onChange={(e) => setField('slug', slugOf(e.target.value))} placeholder="paris-rive-gauche" />
@@ -243,7 +243,7 @@ export default function DealerForm({ form, setForm, draft, dealer = null }) {
               {DEALER_LOCALES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
             </select>
           </Field>
-          <Field label="Logo (URL)" hint="Se muestra sobre el configurador. Vacío ⇒ solo la marca Ligne Roset.">
+          <Field label="Logo (URL)" hint="Se muestra sobre el configurador. Vacío ⇒ solo la marca del fabricante.">
             <input className="input" value={form.logoUrl} onChange={(e) => setField('logoUrl', e.target.value)} placeholder="https://…/logo.png" />
           </Field>
         </div>

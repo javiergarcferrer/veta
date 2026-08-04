@@ -15,7 +15,7 @@
 // the customer builds, wherever they build it.
 import { compoundSubtotal } from '../../../lib/pricing.js';
 import { canonicalCollection, distinctCollections } from '../../../lib/togo/collections.js';
-import { fabricKey } from '../../../lib/lrCatalog.js';
+import { activeCatalogModule } from '../../../brands/runtime.js';
 import { groupFamilies, productForGrade } from '../../../lib/catalog.js';
 import { composeSubtype, composeFabricLabel } from '../../../lib/subtype.js';
 import { planToDxf } from '../../../lib/togo/planToDxf.js';
@@ -1236,17 +1236,19 @@ export function resolveTogoScene(placements) {
 // adds a piece that outranks it, the card follows the catalogue; that's the
 // intent, but it means a rename is a visible change to the shop window.
 
-// The hero fabric, owner-picked (2026-07): Festa Bleu Paon. `fabricKey` folds
-// the "/FR" fire-retardant suffix, so the catalogue's «Festa/FR» matches.
+// The hero fabric, owner-picked (2026-07): Festa Bleu Paon. The brand's own
+// `fabricKey` folds Ligne Roset's "/FR" fire-retardant suffix, so the
+// catalogue's «Festa/FR» matches.
 export const LAUNCH_HERO_FABRIC = { material: 'Festa', color: 'Bleu Paon' };
 
 // The card looks its fabric up BY NAME in the dealer's own Materiales, so the
 // match is deliberately more forgiving than the catalog's identity key: on top
-// of `fabricKey`'s case/accent/space folding it drops separators entirely, so
-// "Bleu Paon", "BLEU-PAON" and "bleu_paon" are one fabric. This is a lookup for
-// one card, never a catalog identity — `fabricKey` stays the canonical matcher
-// everywhere a fabric is actually resolved for pricing.
-const heroKey = (name) => fabricKey(name).replace(/[^A-Z0-9]+/g, '');
+// of the ACTIVE BRAND's `fabricKey` folding (case/accent/space, plus whatever
+// that manufacturer collapses) it drops separators entirely, so "Bleu Paon",
+// "BLEU-PAON" and "bleu_paon" are one fabric. This is a lookup for one card,
+// never a catalog identity — `fabricKey` stays the canonical matcher everywhere
+// a fabric is actually resolved for pricing.
+const heroKey = (name) => activeCatalogModule().fabricKey(name).replace(/[^A-Z0-9]+/g, '');
 
 // Which piece reads as THE piece of the catalogue. Most specific first: a
 // full sofa/settee is what a shop window shows; the fireside chair and the

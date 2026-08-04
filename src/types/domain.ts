@@ -3049,7 +3049,7 @@ export interface TogoRequest {
  * Captured from a Ligne Roset product page (`lr-catalog` single-product mode):
  * `patternNames` are the fabrics that model actually offers, stored normalized
  * (`fabricKey`) so they match `Material.name`. Used to restrict the material
- * picker to in-grade AND offered fabrics. See `src/lib/lrModelFabrics.js`.
+ * picker to in-grade AND offered fabrics. See `src/lib/modelFabrics.js`.
  */
 export interface ModelFabrics {
   id: string;            // the family root (e.g. "15420000")

@@ -142,3 +142,11 @@ export {
   resolveRequestsBoard, resolveRequestDetail, requestStatusMeta, placedFromItems,
   REQUEST_BOARD_TABS,
 } from './views/requestDetail.js';
+// EL PANEL — the admin home screen: the catalog readiness ledger (what blocks a
+// piece from being configurable or quotable, including the SILENT one — a SKU
+// bound to a product row that carries no price), materiales, distribuidores,
+// solicitudes + cotizaciones (money grouped BY CURRENCY, never summed across
+// them) and the active brand's import environment.
+export {
+  resolveAdminDashboard, DASHBOARD_EXAMPLES_MAX, DASHBOARD_RECENT_MAX,
+} from './views/dashboardView.js';

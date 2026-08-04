@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- interactive-widget=resizes-content: on Chrome/Android the soft keyboard
+         RESIZES the viewport (so layout reflows above it) instead of overlaying
+         content. iOS ignores it. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- theme-color stays the dark ink of the app chrome in BOTH themes, so a
+         mobile status/URL bar keeps matching the bar right below it.
+         color-scheme advertises both so the UA themes native controls once
+         `.dark` is set. -->
+    <meta name="theme-color" content="#171612" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Anti-FOUC theme boot. Inline + synchronous in <head> so `.dark` lands on
+         <html> BEFORE first paint — no flash of the wrong theme. This MUST
+         mirror src/lib/theme.js exactly (same key `rs.theme`, same rules, same
+         public-route list): an explicit 'dark'/'light' override wins, otherwise
+         follow the OS, and the public client surfaces (the configurator's clean
+         URLs and the token-gated distributor inbox) are always light — they are
+         a customer's / distributor's device, not the admin app. -->
+    <script>
+      (function () {
+        try {
+          var hash = location.hash || '';
+          var path = location.pathname || '';
+          var isPublic =
+            path === '/configurator' || path === '/configurator/' ||
+            path === '/configurador' || path === '/configurador/' ||
+            hash.indexOf('#/q/') === 0 ||
+            hash.indexOf('#/contrato/') === 0 ||
+            hash.indexOf('#/cuenta/') === 0 ||
+            hash.indexOf('#/tienda') === 0 ||
+            hash.indexOf('#/dealer/') === 0 ||
+            hash.indexOf('#/embed') === 0 ||
+            hash.indexOf('#/eliminar-datos') === 0;
+          var pref = null;
+          try { pref = localStorage.getItem('rs.theme'); } catch (e) {}
+          // Mirrors lib/theme.js resolveIsDark EXACTLY: 'dark' → dark,
+          // 'light' → light, anything else (null / 'system' / a corrupt value,
+          // which theme.js self-heals to 'system') → follow the OS.
+          var dark =
+            !isPublic &&
+            (pref === 'dark' ||
+              (pref !== 'light' &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches));
+          document.documentElement.classList.toggle('dark', dark);
+          // Public surfaces re-enable text selection (src/index.css); the admin
+          // app stays unselectable. Kept in lockstep after boot by the Shell's
+          // route effect.
+          document.documentElement.classList.toggle('is-public', isPublic);
+        } catch (e) {}
+        // Installed-app flag, stamped HERE — before the first style resolution,
+        // like the theme above — because the app SHELL's height depends on it
+        // (src/index.css sizes `html:not(.is-standalone)` at 100dvh and an
+        // installed app at 100%). main.jsx re-affirms this with identical logic;
+        // doing it there ALONE leaves the first paint resolving through the tab
+        // rule. iOS `navigator.standalone` is DEFINITIVE (true only for a
+        // home-screen launch) and must not fall through to matchMedia, which iOS
+        // Safari mis-matches in a normal tab; the query covers Android/desktop
+        // installs, where the flag is undefined.
+        try {
+          var iosFlag = window.navigator.standalone;
+          var standalone = typeof iosFlag === 'boolean'
+            ? iosFlag
+            : window.matchMedia('(display-mode: standalone)').matches;
+          document.documentElement.classList.toggle('is-standalone', standalone);
+        } catch (e) {}
+      })();
+    </script>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- "black" (opaque dark bar), NOT "black-translucent": black-translucent
+         lets content paint under the status bar, but iOS then sizes the
+         standalone viewport one status-bar-height SHORT, so fixed bottom chrome
+         lands above the physical screen edge. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="VETA" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>VETA</title>
+    <meta name="description" content="Catálogo 3D, distribuidores y solicitudes del configurador." />
+    <!-- The admin app is not a shared link: no og card, no crawler surface. -->
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="bg-ink-50 text-ink-900 font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

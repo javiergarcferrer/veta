@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#171612" />
+    <!-- The public configurator is a FORCED-LIGHT surface (see lib/theme.js
+         isPublicRoute), so it advertises light only. -->
+    <meta name="color-scheme" content="light" />
+
+    <!-- Anti-FOUC theme boot — MUST mirror index.html / src/lib/theme.js exactly.
+         The clean configurator URLs are public surfaces, forced light (the path
+         check below is the same one isConfiguratorPathname makes; the inline
+         copy is unavoidable — this runs before any module loads). -->
+    <script>
+      (function () {
+        try {
+          var hash = location.hash || '';
+          var path = location.pathname || '';
+          var isPublic =
+            path === '/configurator' || path === '/configurator/' ||
+            path === '/configurador' || path === '/configurador/' ||
+            hash.indexOf('#/q/') === 0 ||
+            hash.indexOf('#/contrato/') === 0 ||
+            hash.indexOf('#/cuenta/') === 0 ||
+            hash.indexOf('#/tienda') === 0 ||
+            hash.indexOf('#/dealer/') === 0 ||
+            hash.indexOf('#/embed') === 0 ||
+            hash.indexOf('#/eliminar-datos') === 0;
+          var pref = null;
+          try { pref = localStorage.getItem('rs.theme'); } catch (e) {}
+          var dark =
+            !isPublic &&
+            (pref === 'dark' ||
+              (pref !== 'light' &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches));
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.classList.toggle('is-public', isPublic);
+        } catch (e) {}
+        try {
+          var iosFlag = window.navigator.standalone;
+          var standalone = typeof iosFlag === 'boolean'
+            ? iosFlag
+            : window.matchMedia('(display-mode: standalone)').matches;
+          document.documentElement.classList.toggle('is-standalone', standalone);
+        } catch (e) {}
+      })();
+    </script>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Configurador" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Configurador</title>
+    <meta name="description" content="Combine módulos y telas y véalo en vivo." />
+
+    <!-- The PUBLIC document: the same bundle as index.html, mounted straight
+         into the widget. main.jsx keys off the /configurator (or /configurador)
+         pathname — which the host's rewrite must PRESERVE — so no admin chrome,
+         no router and no auth graph ever load here. Deploy contract:
+             /configurator[/]  → /configurator.html
+             /configurador[/]  → /configurator.html
+             everything else   → /index.html
+         (vite.config.js reproduces both rewrites for `npm run dev`.) -->
+  </head>
+  <body class="bg-ink-50 text-ink-900 font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

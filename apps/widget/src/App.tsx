@@ -97,13 +97,11 @@ export default function App() {
   );
   const dispatch = useCallback((action: EditorAction) => rawDispatch(action), []);
 
-  // DEMO MODE: an explicit ?demo=1, or a build with no tenant key at all,
-  // runs on the bundled fixture catalog (vm/demo) — the engine with no API
-  // behind it. A keyed embed can never fall into it by accident: the key wins.
-  const demo = useMemo(() => {
-    const href = globalThis.location?.href ?? '';
-    return /[?&#]demo=1\b/.test(href) || !params.publishableKey;
-  }, [params.publishableKey]);
+  // DEMO MODE: ONLY the explicit ?demo=1 runs the bundled fixture catalog
+  // (vm/demo). A missing key must read as the misconfiguration it is — the
+  // "not available" screen — never as invented furniture wearing the brand's
+  // page ("where is Ligne Roset": a real owner, genuinely lost).
+  const demo = useMemo(() => /[?&#]demo=1\b/.test(globalThis.location?.href ?? ''), []);
 
   // ── the catalog: ONE bootstrap read (or the demo fixture, no network) ─────
   useEffect(() => {

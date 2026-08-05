@@ -7,7 +7,7 @@ import { cacheKey, getCached, setCached, purgeTable, purgeAll } from './queryCac
 import {
   tableScopeFor, brandStampFor, catalogBrandScope, getBrandScope, type TableScope,
 } from './brandScope.js';
-import type { Brand, BrandMember } from './brands.js';
+import type { Brand, BrandMember, BrandMaterialSource, BrandMaterialOverride } from './brands.js';
 import type {
   Profile,
   Settings,
@@ -84,6 +84,11 @@ const TABLES = {
   // this list is allowed to be — see the brand-membership migration. A user
   // reads its own rows; only a whole-install user may write them.
   brandMembers:  { db: 'brand_members', pk: 'profileId' },
+  // LA ARISTA ENTRE DOS MARCAS. Una casa de materiales publica su biblioteca;
+  // un fabricante suscribe las casas que ofrece y mantiene su propia capa
+  // encima (seleccion, renombre, fotos). Ver brands/materialHouses.js.
+  brandMaterialSources:   { db: 'brand_material_sources',   pk: 'brandId' },
+  brandMaterialOverrides: { db: 'brand_material_overrides', pk: 'brandId' },
   togoModels:    { db: 'togo_models',   pk: 'id' },
   materials:     { db: 'materials',     pk: 'id' },
   modelFabrics:  { db: 'model_fabrics', pk: 'id' },
@@ -113,6 +118,8 @@ export interface TableRowMap {
   images: ImageRecord;
   brands: Brand;
   brandMembers: BrandMember;
+  brandMaterialSources: BrandMaterialSource;
+  brandMaterialOverrides: BrandMaterialOverride;
   togoModels: TogoModel;
   materials: Material;
   modelFabrics: ModelFabrics;

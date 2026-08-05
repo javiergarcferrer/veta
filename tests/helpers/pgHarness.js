@@ -73,18 +73,24 @@ export async function withMigratedDatabase(fn) {
 
     // PostgREST connects as a privileged role and SETs the request role per
     // request; `authenticated` needs the same table reach that gives it, with
-    // RLS — not policy grants — doing the actual filtering.
+    // RLS — not table grants — doing the actual filtering.
     await client.query(`grant usage on schema public, auth to authenticated, anon`);
+
+    // DEFAULT PRIVILEGES, not a blanket grant afterwards — because the
+    // difference is load-bearing. Supabase grants the API roles access to
+    // objects AS THEY ARE CREATED; a migration that then REVOKES something
+    // (taking a trigger function off the REST surface, say) must be the last
+    // word. Granting after the fact instead would silently undo exactly those
+    // revokes and the test guarding them would fail for a reason that exists
+    // nowhere but here. Set before the migrations run, so it applies to
+    // everything they create.
+    await client.query(`alter default privileges in schema public grant select, insert, update, delete on tables to authenticated`);
+    await client.query(`alter default privileges in schema public grant execute on functions to anon, authenticated`);
 
     const apply = async () => {
       for (const f of migrationFiles()) {
         await client.query(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
       }
-      // Table-level grants for anything the migrations just created. Without
-      // them `authenticated` is refused before RLS is ever consulted, and every
-      // isolation test would "pass" for entirely the wrong reason.
-      await client.query(`grant select, insert, update, delete on all tables in schema public to authenticated`);
-      await client.query(`grant execute on all functions in schema public to authenticated`);
     };
     await apply();
 

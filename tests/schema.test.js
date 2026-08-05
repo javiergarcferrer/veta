@@ -130,6 +130,47 @@ if (!PG_URL) {
     });
   });
 
+  test('every SECURITY DEFINER function pins its search_path', async () => {
+    await withMigratedDatabase(async ({ client, apply }) => {
+      await apply();
+      // A definer function runs with its OWNER's authority. If it resolves an
+      // unqualified name, the CALLER's `search_path` decides where that name
+      // comes from — so the caller chooses which code runs as the owner. Every
+      // one of ours guards something (the money freeze, the privilege guard,
+      // the visible-brand set), which makes this the difference between a
+      // boundary and a suggestion.
+      const loose = (await client.query(`
+        select p.proname from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public' and p.prosecdef
+           and not exists (
+             select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\\_path=%')
+         order by p.proname`)).rows.map((r) => r.proname);
+      assert.deepEqual(loose, [],
+        `SECURITY DEFINER without a pinned search_path — the caller picks which code runs as the owner: ${loose.join(', ')}`);
+    });
+  });
+
+  test('no trigger function is reachable over the REST API', async () => {
+    await withMigratedDatabase(async ({ client, apply }) => {
+      await apply();
+      // PostgREST publishes everything in `public` at /rest/v1/rpc/…. A trigger
+      // body is written for its trigger, never for arbitrary callers; triggers
+      // fire as the table owner and ignore EXECUTE grants, so revoking costs
+      // nothing and removes a surface nobody meant to expose.
+      const exposed = (await client.query(`
+        select p.proname from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public'
+           and p.prorettype = 'trigger'::regtype
+           and (has_function_privilege('anon', p.oid, 'execute')
+             or has_function_privilege('authenticated', p.oid, 'execute'))
+         order by p.proname`)).rows.map((r) => r.proname);
+      assert.deepEqual(exposed, [],
+        `trigger functions callable over the REST API: ${exposed.join(', ')}`);
+    });
+  });
+
   test('RLS is enabled on every table — a table without it is served raw to anon', async () => {
     await withMigratedDatabase(async ({ client, apply }) => {
       await apply();

@@ -1,21 +1,59 @@
+# The gate. It had never once run: `pnpm/action-setup` was pinned to no version,
+# so all twenty runs on record died at step two — before install, before
+# typecheck, before tests, before the build. A permanently red check is worse
+# than no check, because it teaches everyone to scroll past the red X.
+#
+# This project installs with npm (`.npmrc` carries an npm-only setting and the
+# lockfile is package-lock.json), so CI uses npm and `npm ci`, which installs
+# the lockfile EXACTLY — the same resolution the deploy gets, not "whatever
+# satisfies the ranges today".
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
+
+# A second push to the same branch makes the first run's answer worthless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    services:
+      # tests/schema.test.js builds the whole database from supabase/migrations
+      # and compares it against what the data layer claims — the check that
+      # catches "the repo cannot rebuild its own schema" and "db.X names a table
+      # that does not exist". It needs a real Postgres, and refuses to skip here.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run typecheck
-      - run: pnpm run test
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
         env:
-          VETA_TEST_PG: required
-      - run: pnpm run build
+          VETA_TEST_PG: postgres://postgres:postgres@localhost:5432/postgres
+
+      - run: npm run build

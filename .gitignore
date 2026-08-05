@@ -1,4 +1,10 @@
 dist
 node_modules
+
+# Local secrets. `.env.example` documents the two PUBLIC variables; anything a
+# developer keeps here is theirs. Never commit a service-role key: vite.config.js
+# forwards build-time variables into the bundle, so a secret named in a .env
+# reaches the browser.
+.env
 .env.local
-package-lock.json
+.env.*.local

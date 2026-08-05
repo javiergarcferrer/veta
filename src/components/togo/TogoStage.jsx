@@ -68,6 +68,12 @@ const ringRadiusFor = (pointerType) => (pointerType === 'touch' ? RING_R_TOUCH :
  */
 export const DRESSABLE_ROLE = 'dressable';
 
+/** The selection outline's gold — the stroke below, exported because the
+ *  componentes rail lights its chips in it. A chip and the line it lights are
+ *  ONE selection seen twice (rail says which part, stage draws it on the
+ *  mesh); two colours for that read as two selections. */
+export const OUTLINE_GOLD = '#f5c000';
+
 /**
  * WHICH of a piece's meshes the highlight covers — the pure core of
  * `focusMeshesFor`, and the only place the three focus modes are decided.
@@ -2384,7 +2390,7 @@ export default function TogoStage({
         aria-hidden
       >
         <path ref={outlineCasingRef} stroke="rgb(35 32 26 / 0.8)" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" />
-        <path ref={outlineGoldRef} stroke="#f5c000" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round" />
+        <path ref={outlineGoldRef} stroke={OUTLINE_GOLD} strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round" />
       </svg>
       {/* On-plan dimension brackets. Same recipe as the outline above — always
           mounted so there is a node to write into, geometry set imperatively by

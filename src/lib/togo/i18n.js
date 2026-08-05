@@ -66,6 +66,9 @@ const DICTS = {
     'fabric.remove': 'Quitar tela',
     'fabric.generic': 'Tela',
     'fabric.choose': 'Elegir tela',
+    // Dressed the OTHER way: no whole-piece cloth, every componente picked.
+    // The row must not keep asking for a fabric the build already has.
+    'fabric.byComponents': 'Por componentes',
     'fabric.noOptions': 'Sin opciones',
     'fabric.pickerTitle': 'Elegir material',
     'fabric.paneSearch': 'Buscar tela o color…',
@@ -110,6 +113,12 @@ const DICTS = {
     // one tela dresses the whole piece and bills as ONE elemento; a part in a
     // different tela bills base + componentes, which is dearer.
     'parts.wholePiece': 'Tela de toda la pieza',
+    // LOS DOS MODOS — la pieza se vende como su propio SKU, o como sus
+    // componentes. Nunca los dos: por eso el control muestra ambos precios.
+    'mode.whole': 'Pieza completa',
+    'mode.parts': 'Por componentes',
+    'mode.switchHint': 'Se cotiza de una forma o de la otra, nunca las dos.',
+    'mode.pending': 'Elige todos',
     'parts.customize': 'Personalizar por partes',
     // The two sub-headings inside that level. Cloth parts are COMPONENTES and
     // metal is ESTRUCTURA — the panel names both kinds so neither row is read
@@ -286,6 +295,7 @@ const DICTS = {
     'fabric.remove': 'Remove fabric',
     'fabric.generic': 'Fabric',
     'fabric.choose': 'Choose fabric',
+    'fabric.byComponents': 'By component',
     'fabric.noOptions': 'No options',
     'fabric.pickerTitle': 'Choose material',
     'fabric.paneSearch': 'Search fabric or color…',
@@ -314,6 +324,10 @@ const DICTS = {
     'part.finish': 'Finish',
     'part.structure': 'Structure',
     'parts.wholePiece': 'Fabric for the whole piece',
+    'mode.whole': 'Whole piece',
+    'mode.parts': 'By component',
+    'mode.switchHint': 'Quoted one way or the other, never both.',
+    'mode.pending': 'Choose them all',
     'parts.customize': 'Customize by part',
     'parts.components': 'Components',
     'parts.samePiece': 'Same as the piece',
@@ -467,6 +481,7 @@ const DICTS = {
     'fabric.remove': 'Retirer le tissu',
     'fabric.generic': 'Tissu',
     'fabric.choose': 'Choisir un tissu',
+    'fabric.byComponents': 'Par composant',
     'fabric.noOptions': 'Aucune option',
     'fabric.pickerTitle': 'Choisir le matériau',
     'fabric.paneSearch': 'Chercher tissu ou couleur…',
@@ -495,6 +510,10 @@ const DICTS = {
     'part.finish': 'Finition',
     'part.structure': 'Structure',
     'parts.wholePiece': 'Tissu de toute la pièce',
+    'mode.whole': 'Pièce entière',
+    'mode.parts': 'Par composant',
+    'mode.switchHint': 'Chiffrée d’une façon ou de l’autre, jamais les deux.',
+    'mode.pending': 'Choisis-les tous',
     'parts.customize': 'Personnaliser par composant',
     'parts.components': 'Composants',
     'parts.samePiece': 'Comme la pièce',
@@ -648,6 +667,7 @@ const DICTS = {
     'fabric.remove': 'Stoff entfernen',
     'fabric.generic': 'Stoff',
     'fabric.choose': 'Stoff wählen',
+    'fabric.byComponents': 'Nach Komponenten',
     'fabric.noOptions': 'Keine Optionen',
     'fabric.pickerTitle': 'Material wählen',
     'fabric.paneSearch': 'Stoff oder Farbe suchen…',
@@ -676,6 +696,10 @@ const DICTS = {
     'part.finish': 'Ausführung',
     'part.structure': 'Gestell',
     'parts.wholePiece': 'Stoff für das ganze Teil',
+    'mode.whole': 'Ganzes Möbel',
+    'mode.parts': 'Nach Komponenten',
+    'mode.switchHint': 'Wird so oder so berechnet, nie beides.',
+    'mode.pending': 'Alle auswählen',
     'parts.customize': 'Komponenten anpassen',
     'parts.components': 'Komponenten',
     'parts.samePiece': 'Wie das Teil',

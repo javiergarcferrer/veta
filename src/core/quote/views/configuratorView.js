@@ -480,10 +480,71 @@ export function historyRedo(hist, present) {
 export const canUndo = (hist) => (hist?.past || []).length > 0;
 export const canRedo = (hist) => (hist?.future || []).length > 0;
 
-/** The first placed piece still missing a fabric pick (its uid), or null — the
- *  target the "N sin tela" warning jumps to. */
-export function firstWithoutFabric(placed) {
-  const hit = (placed || []).find((p) => !p.material);
+/**
+ * The COMPONENTES a model offers cloth for — exactly the roles the picker will
+ * open (`openPartMaterial`'s own two tests): a billed role with a bound part
+ * family, or a materialization zone that exists on the mesh. `base` is the
+ * piece's own cloth, not a componente, and an ESTRUCTURA wears a FINISH, never
+ * cloth (UNPRICED_ROLES) — asking either for a fabric pick asks for something
+ * that surface never offers.
+ */
+export function dressableRoles(r) {
+  return PART_ROLES.filter((role) => {
+    if (role === 'base' || role === 'structure') return false;
+    return MATERIALIZATION_ROLES.includes(role)
+      ? !!partMeshCount(r?.parts, role)
+      : !!r?.partFamilies?.[role];
+  });
+}
+
+/**
+ * Is this placement's cloth choice FINISHED? Two ways to dress a piece, and
+ * both are complete states:
+ *
+ *   • «TELA DE TODA LA PIEZA» (`p.material`) — one cloth over everything.
+ *   • POR COMPONENTES — every dressable componente carrying its own pick.
+ *
+ * The second one used not to count, and on a fully-tagged model that made the
+ * build unquotable: the EXCLUSIF gd canapé tags EVERY mesh group (bolster,
+ * cojín, estructura), so there is no body left to dress on its own — the
+ * componentes ARE the piece. Dressing all three still left `p.material` null,
+ * so the piece read «Elegir tela», counted as «sin tela», and entered the TOTAL
+ * ESTIMADO as ZERO while its own row printed «Desde $20,185». Nothing was
+ * mispriced — `placementTotalUsd` had the right number all along, and the
+ * server half (`priceInboxItems`: no pick ⇒ the base bills its cheapest grade,
+ * componentes on top) has always agreed — the widget simply refused to count it.
+ *
+ * Money rule (owner, 2026-08): «cuando se eligen componentes el precio es la
+ * suma de todos los componentes una vez elegidos todos». ALL of them: a piece
+ * with one componente still pending is NOT dressed, so a half-finished build
+ * can never state a total as though it were finished. And a model with no
+ * componentes at all is never vacuously dressed — a bare piece still has to be
+ * given a cloth, which is what `roles.length` guards.
+ */
+export function placementDressed(p, resolvedById) {
+  // MODO COMPONENTES asks its own question, and only its own: the piece's own
+  // cloth is not what is being bought, so it cannot answer for it. Every
+  // componente picked, or the piece is not dressed.
+  if (placementMode(p) === 'parts') {
+    const roles = componentRoles(resolvePlacement(p, resolvedById));
+    return roles.length > 0 && roles.every((role) => !!p?.partMaterials?.[role]);
+  }
+  if (p?.material) return true;
+  // No catalog to ask ⇒ no componentes are KNOWN, so the only finished state
+  // left is the whole-piece cloth above. Total by construction: this runs on
+  // every render of every row, and a caller that hasn't resolved its models yet
+  // must get "not dressed", never a throw that takes the panel down with it.
+  if (!resolvedById) return false;
+  const roles = dressableRoles(resolvePlacement(p, resolvedById));
+  return roles.length > 0 && roles.every((role) => !!p?.partMaterials?.[role]);
+}
+
+/** The first placed piece whose cloth choice is still unfinished (its uid), or
+ *  null — the target the "N sin tela" warning jumps to. Reads through
+ *  `placementDressed`, so the warning names the same pieces the estimate is
+ *  waiting on and the two can never disagree about who is pending. */
+export function firstWithoutFabric(placed, resolvedById) {
+  const hit = (placed || []).find((p) => !placementDressed(p, resolvedById));
   return hit ? hit.uid : null;
 }
 
@@ -657,12 +718,15 @@ export function resolveCompleteSku(r, p) {
   // complete ladder would be a second answer to a question nobody asked.
   const billed = Object.keys(r?.partFamilies || {}).filter((role) => partCount(r?.parts, role) > 0);
   if (!billed.length) return null;
-  const baseCode = String(p?.material?.code || '').trim();
-  for (const role of billed) {
-    const code = String(p?.partMaterials?.[role]?.code || '').trim();
-    if (!code) continue;                 // no pick of its own ⇒ rides the base fabric
-    if (code !== baseCode) return null;  // mixed materialization ⇒ price by parts
-  }
+  // MODO COMPONENTES does not sell this SKU at all — that is the whole of the
+  // owner's rule — so the elemento completo simply does not exist there.
+  if (placementMode(p) === 'parts') return null;
+  // …and in MODO PIEZA it ALWAYS does, whatever the componentes are wearing.
+  // The mixed check that used to live here («telas distintas ⇒ se cotiza por
+  // partes») is what made base+componentes reachable, and on the live catalogue
+  // that sum bills the body twice — the EXCLUSIF canapé's «Base» componente is
+  // itself an EXCLUSIF SOFA. A divergent pick in this mode is «Incluido», and
+  // wanting it charged is what the OTHER mode is for (the pick switches modes).
   const grade = p?.material?.grade || (fam.graded ? fam.grades[0] : '');
   const prod = productForGrade(fam, grade);
   if (!prod || prod.priceUsd == null) return null;
@@ -762,6 +826,93 @@ export function unresolvedWholePiece(r, p) {
   return !familyPricesGrade(fam, grade);
 }
 
+/**
+ * ── LOS DOS MODOS ──────────────────────────────────────────────────────────
+ *
+ * Owner, 2026-08: «si usamos componentes no necesitamos el SKU base; si usamos
+ * el SKU base no necesitamos componentes. Dos modos.»
+ *
+ * Ligne Roset sells a modular piece BOTH ways, and they are alternatives, never
+ * a sum:
+ *
+ *   • MODO PIEZA (`complete`, the default) — the model's OWN SKU, one cloth
+ *     over everything. The componentes are listed and INCLUDED; that one SKU
+ *     already bought them.
+ *   • MODO COMPONENTES (`parts`) — each componente on its own SKU at its own
+ *     cloth. The model's own SKU does NOT bill.
+ *
+ * Why the sum was wrong, measured on the live catalogue (2026-08): the EXCLUSIF
+ * gd canapé binds its «Base» componente to root 10003026 — which is itself an
+ * EXCLUSIF SOFA at $7,885 — while the model's own root 10002966 is an EXCLUSIF
+ * SOFA at $9,560. Adding them billed the SOFA TWICE. Same shape on Noka's
+ * loveseat (component cushion 12000110 = $10,700 against a $10,700 base) and on
+ * all four Ottomans. The middle state — base PLUS parts — is gone.
+ *
+ * THE MODE IS A CHOICE, carried on the placement (`partsMode`), never inferred:
+ * on a model whose componentes are genuinely cushions rather than the body
+ * (the Prados) the parts price is the cushions alone, and that is exactly why
+ * the surfaces show BOTH prices on the switch instead of picking for anybody.
+ * Absent ⇒ `complete`, so every placement stored before this existed reads the
+ * way it always did.
+ */
+export function placementMode(p) {
+  return p?.partsMode ? 'parts' : 'complete';
+}
+
+/**
+ * The componentes that BILL in modo componentes: a role with a bound family and
+ * a real count. Materialization ZONES are deliberately absent — a zone is a
+ * materialization OF THE BASE SKU (it re-grades it, it never bills), so it can
+ * never be one of the componentes that REPLACE that SKU.
+ */
+export function componentRoles(r) {
+  return Object.keys(r?.partFamilies || {})
+    .filter((role) => r.partFamilies[role] && partCount(r?.parts, role) > 0)
+    .sort((a, b) => PART_ROLES.indexOf(a) - PART_ROLES.indexOf(b));
+}
+
+/**
+ * Modo componentes' price: every componente at ITS picked grade, nothing else.
+ *
+ * NULL UNTIL EVERY ONE IS CHOSEN (owner: «solo se calcula el precio en modo
+ * componente cuando se seleccionan todos los componentes, no se puede quedar un
+ * componente vacío»). A partial build has no price to state — not a smaller
+ * one — which is the same no-vanish rule every money path here already keeps.
+ * Null too when a pick names a grade its own ladder never sold.
+ */
+export function partsModeTotalUsd(r, p) {
+  const roles = componentRoles(r);
+  if (!roles.length) return null;
+  const prices = partPricesFor(r, p?.partMaterials) || {};
+  let total = 0;
+  for (const role of roles) {
+    if (!p?.partMaterials?.[role]) return null;   // un componente vacío ⇒ sin precio
+    const unit = prices[role];
+    if (unit == null) return null;                // grado fuera de su propia escalera
+    total += unit * partCount(r?.parts, role);
+  }
+  return Math.round(total * 100) / 100;
+}
+
+/**
+ * Switching INTO modo componentes seeds every componente from the piece's own
+ * cloth (owner: «se aplica el material base a los otros componentes excepto el
+ * que cambie»), so the mode is never entered half-empty and the piece looks
+ * IDENTICAL the instant it flips — only its price changes, which is the one
+ * thing the switch is for. An existing pick is never overwritten.
+ *
+ * Pure: returns the next placement, the caller commits it.
+ */
+export function planModeSwitch(p, r, mode) {
+  if (mode === 'complete') return { ...p, partsMode: false };
+  const seed = p?.material
+    ? { grade: p.material.grade, fabric: p.material.fabric, code: p.material.code || '' }
+    : null;
+  const next = { ...(p?.partMaterials || {}) };
+  if (seed) for (const role of componentRoles(r)) if (!next[role]) next[role] = { ...seed };
+  return { ...p, partsMode: true, partMaterials: Object.keys(next).length ? next : undefined };
+}
+
 /** One placement's full unit price: the elemento completo when the build is
  *  monocolor and the model has that ladder, else base (grade-resolved,
  *  zone-regraded) + its tagged parts at their own grades. The single number
@@ -770,7 +921,16 @@ export function unresolvedWholePiece(r, p) {
  *  number: a piece nobody can price must not read as a cheaper piece. */
 export function placementTotalUsd(p, resolvedById) {
   const r = resolvePlacement(p, resolvedById);
+  // MODO COMPONENTES: the componentes ARE the price — the model's own SKU is
+  // not part of it (see placementMode). Its own gates live in the helper, so
+  // the whole-piece ones below never run against a piece nobody is billing as
+  // a whole piece.
+  if (placementMode(p) === 'parts') return partsModeTotalUsd(r, p);
   if (unresolvedWholePiece(r, p) || unresolvedPartRoles(r, p).length) return null;
+  // MODO PIEZA: the model's own SKU. `resolveCompleteSku` now answers for every
+  // placement in this mode, so the old base-PLUS-componentes path is only ever
+  // reached by a piece that HAS no billed componentes — where it is the same
+  // number anyway.
   const complete = resolveCompleteSku(r, p);
   if (complete) return complete.unitUsd;
   return piecePartsTotal(materializedBase(r, p.partMaterials).unitUsd, r.parts, partPricesFor(r, p.partMaterials));
@@ -800,6 +960,11 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
   // fabric nobody chose. The line stays (the customer picked that cloth and
   // must see it named) with no money on it.
   const badBase = unresolvedWholePiece(r, p);
+  // MODO COMPONENTES: the model's own SKU is not being sold. Its line STAYS —
+  // the customer must still read which piece this is — carrying no money and
+  // flagged `byParts`, so the View says «se cotiza por componentes» instead of
+  // printing a price nobody is being charged. The componentes below carry it.
+  const byParts = placementMode(p) === 'parts';
   const mb = materializedBase(r, p.partMaterials);
   const lines = [{
     role: 'base',
@@ -809,12 +974,12 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
     // never reaches that ladder: `resolveCompleteSku` already answered null.)
     label: complete ? 'Elemento completo' : (labels.base || 'Cuerpo'),
     qty: 1,
-    unitUsd: badBase ? null : (complete ? complete.unitUsd : mb.unitUsd),
-    totalUsd: badBase ? null : (complete ? complete.unitUsd : mb.unitUsd),
-    fabric: p.material?.fabric || '',
-    code: p.material?.code || '',
-    defaultGrade: !p.material,
-    ...(complete ? { complete: true } : (badBase ? { unresolved: true } : {})),
+    unitUsd: (badBase || byParts) ? null : (complete ? complete.unitUsd : mb.unitUsd),
+    totalUsd: (badBase || byParts) ? null : (complete ? complete.unitUsd : mb.unitUsd),
+    fabric: byParts ? '' : (p.material?.fabric || ''),
+    code: byParts ? '' : (p.material?.code || ''),
+    defaultGrade: !byParts && !p.material,
+    ...(byParts ? { byParts: true } : (complete ? { complete: true } : (badBase ? { unresolved: true } : {}))),
   }];
   // Materialization ZONES (ottoman exterior/interior) never bill — the base
   // SKU covers the complete materialization — but they must be VISIBLE: the
@@ -858,9 +1023,14 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
       // what the piece is made of) but not charged — the one line above already
       // bought it. Unpriceable: listed, flagged, and charged nothing either —
       // but as a gap to close, not as something already bought.
-      unitUsd: (complete || bad) ? null : unit,
-      totalUsd: (complete || bad) ? null : Math.round(unit * qty * 100) / 100,
-      ...(complete ? { included: true } : (bad ? { unresolved: true } : {})),
+      unitUsd: (!byParts && complete) || bad ? null : unit,
+      totalUsd: (!byParts && complete) || bad ? null : Math.round(unit * qty * 100) / 100,
+      // A componente with no pick of its own in MODO COMPONENTES is a gap, not
+      // something already bought: the mode has no price until every one is
+      // chosen, so it says so rather than borrowing the reassuring word.
+      ...(!byParts && complete ? { included: true }
+        : (bad ? { unresolved: true }
+          : (byParts && !pick ? { pending: true } : {}))),
       fabric: pick?.fabric || '',
       code: pick?.code || '',
       defaultGrade: !pick,
@@ -906,6 +1076,11 @@ export function buildTogoComponents(placed, resolvedById, newId) {
     // the componentes add no lines at all — the same "never a phantom line"
     // rule the zones follow, applied to the ladder the factory will invoice.
     const complete = resolveCompleteSku(r, p);
+    // MODO COMPONENTES: the model's own SKU is not being sold, so its line
+    // carries ZERO — but it STAYS, because it is what carries the `plan` (the
+    // geometry, the tagging, the picks, the mode) and a promoted quote replays
+    // the build from it. Same shape an unpriceable base already had.
+    const byParts = placementMode(p) === 'parts';
     // The piece's own cloth at a grade its own ladder never sold: the module
     // still ships and the customer still chose that fabric, so the line stays —
     // at 0, its subtype naming the grade ("Grade E — TONA · Écru"), exactly the
@@ -923,7 +1098,7 @@ export function buildTogoComponents(placed, resolvedById, newId) {
       subtype: finishes ? [r.subtype || '', finishes].filter(Boolean).join(' · ') : (r.subtype || ''),
       dimensions: r.dimensions || (wCm && dCm ? `${wCm}×${dCm} cm` : ''),
       qty: 1,
-      unitPrice: badBase ? 0 : (Number(complete ? complete.unitUsd : mb.unitUsd) || 0),
+      unitPrice: (badBase || byParts) ? 0 : (Number(complete ? complete.unitUsd : mb.unitUsd) || 0),
       swatchImageId: r.swatchImageId ?? null,
       moduleGroup,
       moduleName: r.label || r.name || 'Togo',
@@ -938,6 +1113,9 @@ export function buildTogoComponents(placed, resolvedById, newId) {
         ...(r.parts ? { parts: r.parts } : {}),
         ...(p.partMaterials ? { partMaterials: p.partMaterials } : {}),
         ...(p.partFinishes ? { partFinishes: p.partFinishes } : {}),
+        // WHICH MODE this was quoted in. Omitted in modo pieza so every plan
+        // written before the modes existed round-trips byte-identical.
+        ...(byParts ? { partsMode: true } : {}),
         ...(r.mount === 'seat' ? { mount: 'seat', mountHeightCm: mountOf(r).heightCm } : {}),
       },
     };
@@ -953,7 +1131,7 @@ export function buildTogoComponents(placed, resolvedById, newId) {
     // price yet. Dropping it is what made a by-parts build quote cheaper than the
     // monocolor one; the worker's `unresolved` gate keeps that seed off WhatsApp.
     const prices = partPricesFor(r, p.partMaterials) || {};
-    const extras = complete ? [] : Object.keys(r.partFamilies || {}).flatMap((role) => {
+    const extras = (complete && !byParts) ? [] : Object.keys(r.partFamilies || {}).flatMap((role) => {
       const fam = r.partFamilies[role];
       const unit = prices[role];
       const qty = partCount(r.parts, role);

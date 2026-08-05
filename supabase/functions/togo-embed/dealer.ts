@@ -827,16 +827,19 @@ export function buildPriceIndex(
 export function isCompleteElement(entry: PriceEntry | null | undefined, it: Row): boolean {
   const billed = entry?.billedRoles || [];
   if (!billed.length) return false;
-  const picks = (it.partMaterials && typeof it.partMaterials === 'object' ? it.partMaterials : {}) as Row;
-  const material = (it.material && typeof it.material === 'object' ? it.material : null) as Row | null;
-  const baseCode = String(material?.code || '').trim();
-  for (const role of billed) {
-    const pick = (picks[role] && typeof picks[role] === 'object' ? picks[role] : null) as Row | null;
-    const code = String(pick?.code || '').trim();
-    if (!code) continue;                 // no pick of its own ⇒ rides the piece's cloth
-    if (code !== baseCode) return false; // mixed materialization ⇒ price by parts
-  }
-  return true;
+  // MODO COMPONENTES does not sell the model's own SKU, so there is no elemento
+  // completo in it; MODO PIEZA always is one, whatever the componentes wear.
+  // The mixed-material check that used to live here is gone with its two twins
+  // (the VM's resolveCompleteSku and the worker's): on the live catalogue
+  // base+componentes bills the body twice — the EXCLUSIF canapé's «Base»
+  // componente is itself an EXCLUSIF SOFA at $7,885 against a $9,560 base.
+  return placementMode(it) === 'complete';
+}
+
+/** Mirror of the VM's `placementMode`. Absent ⇒ modo pieza, so every lead
+    captured before the modes existed prices exactly as it always did. */
+export function placementMode(it: Row | null | undefined): 'complete' | 'parts' {
+  return it?.partsMode === true ? 'parts' : 'complete';
 }
 
 // A stored item's chosen grade letter (uppercased to match byGrade keys), or ''
@@ -911,7 +914,11 @@ export function priceInboxItems(
       // groupFamilies applies client-side, so a lone/ungraded SKU keeps pricing
       // any pick exactly as it does there (and as it does here today).
       const laddered = Object.keys(entry.byGrade).length >= 2;
-      if (grade && entry.byGrade[grade] != null) base = entry.byGrade[grade];
+      // MODO COMPONENTES starts at ZERO — the model's own SKU is not sold — and
+      // the componentes below are the whole price. Modo pieza resolves that SKU
+      // exactly as it always has.
+      if (placementMode(it) === 'parts') base = 0;
+      else if (grade && entry.byGrade[grade] != null) base = entry.byGrade[grade];
       else if (grade && laddered) unpriceable = true;
       else if (entry.baseUsd != null) base = entry.baseUsd;
       // THE FOLD. Monocolor ⇒ that whole-piece price is the WHOLE price: no
@@ -943,8 +950,11 @@ export function priceInboxItems(
           for (const [role, part] of Object.entries(entry.parts)) {
             const pick = (picks[role] && typeof picks[role] === 'object' ? picks[role] : null) as Row | null;
             const g = pick?.grade ? String(pick.grade).trim().toUpperCase() : '';
+            // MODO COMPONENTES has NO price until every componente is chosen —
+            // «no se puede quedar un componente vacío» — so an unpicked one is
+            // a gap, never a fallback to the cheapest grade.
+            if (!pick && placementMode(it) === 'parts') { unpriceable = true; continue; }
             if (g && part.byGrade[g] == null) { unpriceable = true; continue; }
-            // unpicked-part grade in mixed builds: pending owner decision 2026-08
             const unit = g ? part.byGrade[g] : part.baseUsd;
             if (unit != null) base += unit * part.count;
           }

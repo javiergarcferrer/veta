@@ -7,6 +7,7 @@ import { productForGrade } from '../../lib/catalog.js';
 import { locateColor } from '../../lib/swatchMatch.js';
 import { composeSubtype, composeFabricLabel } from '../../lib/subtype.js';
 import { placeSwatchPreview } from '../../lib/togo/swatchPreview.js';
+import SwatchPreviewCard from './SwatchPreviewCard.jsx';
 import { t } from '../../lib/togo/i18n.js';
 
 /**
@@ -60,7 +61,8 @@ import { t } from '../../lib/togo/i18n.js';
  * cell's top-right corner: a control you had to SEE, then AIM AT, to answer
  * "what does this actually look like" — the one question the whole pane exists
  * for. Hovering already means "this one"; nothing else had to be true.
- * `PreviewCard` paints it, `placeSwatchPreview` (lib/togo) decides where.
+ * `SwatchPreviewCard` (shared with the 3D stage) paints it, `placeSwatchPreview`
+ * (lib/togo) decides where.
  *
  * `swatchSrc(color, cssPx)` takes the whole COLOUR and the size the tile
  * actually paints at, not just a code: the host resolves it to the smallest
@@ -404,61 +406,9 @@ export default function MaterialsCatalog({
       {/* Portaled: the rail clips its own overflow (and is 320 px wide), so a
           card rendered inside it could neither escape nor be large. */}
       {preview && createPortal(
-        <PreviewCard innerRef={cardRef} preview={preview} width={PREVIEW_PX} />,
+        <SwatchPreviewCard innerRef={cardRef} preview={preview} width={PREVIEW_PX} />,
         document.body,
       )}
-    </div>
-  );
-}
-
-/** The hover card: the cloth, big, with what it is underneath.
- *
- *  TWO LAYERS, one image. The tile's own small swatch is already decoded and in
- *  cache, so it paints INSTANTLY, scaled up and slightly soft; the
- *  high-resolution one fades in over it the moment it arrives. A single <img>
- *  had to choose between showing nothing for ~100 ms (a blank card is what a
- *  slow pane looks like) and keeping the PREVIOUS colour on screen while the
- *  new one loads — and in a colour picker, a card showing the wrong colour is
- *  the one failure that actually misleads. Keyed on the url so each new swatch
- *  starts transparent again.
- *
- *  `pointer-events-none` throughout: it appears where the pointer is going, and
- *  a card that could swallow a move would fight the wall it is describing. It
- *  is also `aria-hidden` — every word on it is already the tile's own label. */
-function PreviewCard({ innerRef, preview, width }) {
-  return (
-    <div
-      ref={innerRef}
-      role="presentation"
-      aria-hidden="true"
-      style={{ left: 0, top: 0, width }}
-      className="fixed z-[95] pointer-events-none hud-panel p-2 animate-in fade-in zoom-in-95 duration-150"
-    >
-      <span className="relative block aspect-square w-full overflow-hidden rounded-lg bg-ink-50">
-        {preview.base && (
-          <img src={preview.base} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
-        )}
-        <img
-          key={preview.src || preview.fallback || ''}
-          src={preview.src || preview.fallback || undefined}
-          alt=""
-          draggable={false}
-          decoding="async"
-          fetchpriority="high"
-          onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
-          onError={(e) => {
-            // The LR photo 404'd — the colour's own scan is the only thing left
-            // that is still THIS cloth (see lib/swatchImage swatchTextureUrl).
-            const el = e.currentTarget;
-            if (preview.fallback && el.src !== preview.fallback) el.src = preview.fallback;
-          }}
-          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-200"
-        />
-      </span>
-      <div className="px-0.5 pt-1.5 pb-0.5">
-        <div className="truncate text-xs font-semibold leading-tight text-ink-800">{preview.title}</div>
-        {preview.meta && <div className="mt-px truncate text-[10px] leading-snug text-ink-400">{preview.meta}</div>}
-      </div>
     </div>
   );
 }

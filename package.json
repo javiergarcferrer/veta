@@ -8,9 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.js"
+    "test": "node --import tsx --test tests/*.test.js",
+    "pcon:sync": "node --import tsx scripts/pconSync.mjs"
   },
   "dependencies": {
+    "@easterngraphics/wcf": "^10.3.0",
     "@fontsource/inter": "^5.1.0",
     "@google/model-viewer": "^4.3.1",
     "@supabase/supabase-js": "^2.45.4",
@@ -28,6 +30,7 @@
     "@types/react": "^18.3.29",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.2",
+    "@xmldom/xmldom": "^0.9.10",
     "autoprefixer": "^10.4.20",
     "pg": "^8.22.0",
     "postcss": "^8.4.47",

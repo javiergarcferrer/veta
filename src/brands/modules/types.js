@@ -125,6 +125,25 @@
  *                 its effect (the function invoker) the same way `materials
  *                 .parse` is handed its uploader, so this layer imports no
  *                 network client.
+ *   source        OPTIONAL. WHERE THE PRICED CATALOG COMES FROM WHEN IT IS NOT
+ *                 A FILE. Every set shipped so far reads a CSV the dealer was
+ *                 handed, and `parsePriceRow` is that reader. A manufacturer on
+ *                 a trade data platform (pCon/OFML) hands over no file at all —
+ *                 the catalog is a service you authenticate against and sweep.
+ *
+ *                 `{ supported, label, hint, kind, fetchRows(ctx) }` where
+ *                 `fetchRows` resolves to THE SAME ROWS `parsePriceRow` returns
+ *                 — `{ reference, root, grade, name, priceUsd, currency }` —
+ *                 so nothing downstream (productForGrade, the quote builder,
+ *                 the freeze) can tell a swept catalog from an imported one.
+ *                 That identity is the whole point: a new SOURCE must not
+ *                 become a new PRODUCT SHAPE.
+ *
+ *                 `ctx` carries the effects, never the clients: `{ credentials,
+ *                 onProgress?, signal? }`. A module with a `source` still ships
+ *                 `parsePriceRow` — a manufacturer who also emails a CSV is
+ *                 normal, and losing that reader to gain a sweep would be a
+ *                 downgrade. Absent ⇒ the brand admin offers file import only.
  *
  * ── seeds (set level, OPTIONAL) ─────────────────────────────────────────────
  *   { label, load() → Promise<Array<{ name, model, widthCm, depthCm, svg,
@@ -198,6 +217,13 @@ export function defineModuleSet(set) {
   }
   for (const fn of ['splitSku', 'parsePriceRow', 'isGrade', 'fabricKey']) {
     if (typeof set.catalog[fn] !== 'function') throw new Error(`module set ${set.id}: catalog.${fn} missing`);
+  }
+  // `source` is optional, but a HALF-WRITTEN one is worse than none: the brand
+  // admin would offer a "sync catalog" button that resolves to undefined at the
+  // one moment somebody is waiting on a price list. Checked here, at definition
+  // time, exactly like the required adapters.
+  if (set.catalog.source && typeof set.catalog.source.fetchRows !== 'function') {
+    throw new Error(`module set ${set.id}: catalog.source.fetchRows missing`);
   }
   return Object.freeze({
     ...set,

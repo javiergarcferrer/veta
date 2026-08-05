@@ -101,6 +101,68 @@ Two settings live in the Supabase dashboard rather than in this repo, and both
 are worth turning on: **leaked-password protection** (Auth → Policies) and
 moving `pg_trgm` out of the `public` schema.
 
+## A catalog that is a service, not a drop
+
+Every module set above reads files somebody handed the dealer. A manufacturer on
+**pCon** (EasternGraphics' OFML platform — de Sede and ~750 others) hands over
+nothing to drop: the catalog lives behind an OAuth login and you read it by
+opening a session and sweeping it. The `pcon` module set is that path.
+
+```sh
+npm run pcon:sync -- --login          # once, at a keyboard → a refresh token
+npm run pcon:sync -- --manufacturers  # what this account can actually see
+npm run pcon:sync -- --limit 20 --out catalog.json
+```
+
+**It prints; it does not write.** A sweep that silently replaced a live price
+list on its first run would be indistinguishable from one that worked. Read the
+JSON, check a dozen prices against the manufacturer's own list, then wire the
+writer.
+
+Three things are worth knowing before you spend time on it:
+
+- **`PCON_CLIENT_ID` cannot be self-registered.** pCon.login has no registration
+  endpoint; EasternGraphics issues the id by email. Every other variable in
+  `.env.example` is inert until they answer.
+- **Prices are a separate licence.** EAIWS gates features individually, and a
+  missing one is silent — it returns empty, not an error. A sweep where every
+  row comes back unpriced is an EAIWS without `egr.eai.server.ofml.prices`, not
+  an empty catalog, and `stats.looksUnlicensed` says so rather than letting you
+  import a catalog of free furniture. Each geometry export format
+  (`export.gltf`, `export.fbx`, …) is its own feature too.
+- **A subscription licenses data for use IN pCon applications.** Sweeping it
+  into this database and serving it from this configurator is redistribution,
+  and it needs the manufacturer's own written agreement. The module set is the
+  plumbing for a brand that has one; it ships pointing at nobody.
+
+How the pieces divide, and why:
+
+| file | what it owns |
+| --- | --- |
+| `src/lib/pcon/oauth.ts` | PKCE authorization-code flow. Produces one string — the token EAIWS wants. |
+| `src/lib/pcon/eaiws.ts` | the SOAP client: catalog walk, article data, geometry export |
+| `src/lib/pcon/articleMap.ts` | `ArticleData` → **the same rows a CSV decodes to** |
+| `src/lib/pcon/sync.ts` | the sweep loop |
+| `scripts/pconSync.mjs` | the Node runner |
+
+`articleMap` is the load-bearing one and the only part testable without a
+licence, so it carries the rules: **the grade is configured, never guessed**
+(pCon has no grade field — it has properties, and which one is the price tier is
+one manufacturer's data modelling), **prices are carried, not converted** (the
+number goes in `priceUsd`, the ISO code in `currency`, exactly as the CSV path
+has always done — an FX guess buried in an importer is a systematic pricing
+error), and **every pCon URL is ephemeral** (they die with the session; the
+sweep re-hosts before it writes, and `materials.swatch.urlFor` answers null so
+nothing links one).
+
+Two mechanical notes. wcf decodes SOAP with `DOMParser`, which Deno Deploy does
+not have — so this is a Node script and **not** a fourth Edge Function, which is
+also the right home for a back-office batch job. And wcf reaches the app only
+through a dynamic `import()` inside `eaiws.ts`: `tests/pconModuleSet.test.js`
+fails if anything in `src/brands/modules` imports it statically, because the
+configurator a customer loads on their phone has no business shipping an OFML
+client.
+
 ## Following upstream
 
 VETA's engines were extracted from **RosetSoft**, which keeps evolving in

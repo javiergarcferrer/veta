@@ -271,6 +271,26 @@ create policy veta_quotes_scoped_read on public.veta_quotes
 --
 --   RLS      decides WHICH ROW you may touch.
 --   trigger  decides WHICH COLUMNS of it you may change.
+-- TWO SELF-WRITES ARE LEGITIMATE, and a guard that forgets them locks people
+-- out of the product on their first sign-in. `ensureDefaultProfile` runs both
+-- AS THE USER, before that user is anybody:
+--
+--   1. INVITATION ACCEPTANCE. The invite Edge Function creates the row
+--      inactive; the invitee flips themselves active when they first click the
+--      magic link. (Upstream shipped a guard without this carve-out and broke
+--      exactly that flow — the app still carries the comment about the «No
+--      puedes cambiar tu propio estado activo» error it caused.)
+--
+--   2. BOOTSTRAP ADMIN. `settings.admin_emails` is the allowlist that decides
+--      who administers the install; a user whose email is on it promotes
+--      themselves on sign-in. It is what stops the owner from ever locking
+--      themselves out, and it must keep working before any admin exists at all.
+--
+-- Encoding them HERE rather than trusting the browser makes both strictly
+-- safer than what they replace: today any signed-in user can make themselves an
+-- admin, because nothing checks. After this, only an address the install itself
+-- names can — and the check reads `settings.admin_emails` in the database
+-- instead of taking the client's word for what it said.
 create or replace function public.profiles_guard_privileges()
 returns trigger
 language plpgsql
@@ -279,25 +299,70 @@ set search_path = public
 as $$
 declare
   caller text := (select auth.uid())::text;
-  is_admin boolean;
+  allowlisted boolean;
 begin
   -- No caller at all ⇒ the service role (the Edge Functions, the invite flow,
   -- this migration's own backfill). It is trusted and unaffected.
   if caller is null then return new; end if;
 
-  is_admin := public.veta_is_admin();
-  if coalesce(is_admin, false) then return new; end if;
+  -- An admin administers; that is the job.
+  if coalesce(public.veta_is_admin(), false) then return new; end if;
 
-  -- Everyone else may edit their own name and sign-in stamps, and nothing that
-  -- decides what they are allowed to see.
-  if new.role is distinct from old.role
-     or new.active is distinct from old.active
-     or new.brand_access is distinct from old.brand_access then
+  -- Somebody else's row: no privilege change, ever. (RLS already refuses the
+  -- row itself — this is the second lock on the same door.)
+  if new.id is distinct from caller then
+    if new.role is distinct from old.role
+       or new.active is distinct from old.active
+       or new.brand_access is distinct from old.brand_access then
+      raise exception
+        'Solo un administrador puede cambiar el rol, el estado o el alcance de marcas de otro perfil.'
+        using errcode = 'insufficient_privilege';
+    end if;
+    return new;
+  end if;
+
+  -- OWN ROW. Which brands you may see is never self-serviceable, allowlist or
+  -- not — it is the key everything in this migration turns on.
+  if new.brand_access is distinct from old.brand_access then
     raise exception
-      'Solo un administrador puede cambiar el rol, el estado o el alcance de marcas de un perfil.'
+      'Solo un administrador puede cambiar el alcance de marcas de un perfil.'
       using errcode = 'insufficient_privilege';
   end if;
-  return new;
+
+  if new.role is not distinct from old.role
+     and new.active is not distinct from old.active then
+    return new;   -- name, sign-in stamps, password stamp — nothing privileged
+  end if;
+
+  -- CARVE-OUT 1 — first acceptance. Activating a row that has NEVER signed in,
+  -- without touching its role. Available exactly once: after this the stamp is
+  -- set and the branch can never be taken again.
+  if new.active and not coalesce(old.active, false)
+     and old.last_sign_in_at is null
+     and new.role is not distinct from old.role then
+    return new;
+  end if;
+
+  -- CARVE-OUT 2 — the install's own admin allowlist.
+  select exists (
+    select 1
+      from public.settings s,
+           lateral jsonb_array_elements_text(
+             case when jsonb_typeof(s.admin_emails) = 'array'
+                  then s.admin_emails else '[]'::jsonb end) e
+     where s.profile_id = 'team'
+       and lower(btrim(e)) = lower(btrim(coalesce(new.email, old.email, '')))
+       and coalesce(new.email, old.email, '') <> ''
+  ) into allowlisted;
+
+  if coalesce(allowlisted, false)
+     and new.role = 'admin' and new.active then
+    return new;
+  end if;
+
+  raise exception
+    'Solo un administrador puede cambiar el rol o el estado de un perfil.'
+    using errcode = 'insufficient_privilege';
 end;
 $$;
 
@@ -319,15 +384,23 @@ drop policy if exists profiles_admin_write on public.profiles;
 create policy profiles_read on public.profiles
   for select to authenticated using (true);
 
--- First sign-in creates the caller's own row. Only their own.
+-- First sign-in creates the caller's own row — and the shared 'team' row, which
+-- `ensureDefaultProfile` upserts on EVERY boot as whoever is signed in.
+--
+-- 'team' is not a user: it is where company-wide settings hang, the same class
+-- of shared row as `settings` (which stays install-wide for the same reason).
+-- Nothing reads privilege off it — `veta_has_all_brands()` and `veta_is_admin()`
+-- both match on `auth.uid()`, and no session's uid is ever the literal 'team' —
+-- so writing it grants nobody anything. Excluding it would only make the app's
+-- first statement after sign-in fail silently on every boot.
 create policy profiles_self_insert on public.profiles
   for insert to authenticated
-  with check (id = (select auth.uid())::text);
+  with check (id = (select auth.uid())::text or id = 'team');
 
 create policy profiles_self_write on public.profiles
   for update to authenticated
-  using (id = (select auth.uid())::text)
-  with check (id = (select auth.uid())::text);
+  using (id = (select auth.uid())::text or id = 'team')
+  with check (id = (select auth.uid())::text or id = 'team');
 
 create policy profiles_admin_write on public.profiles
   for all to authenticated

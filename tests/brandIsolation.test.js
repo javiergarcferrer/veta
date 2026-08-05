@@ -214,6 +214,83 @@ if (!PG_URL) {
     });
   });
 
+  /* ── the sign-in flows the guard must NOT break ──────────────────────────
+   * `ensureDefaultProfile` runs these AS THE USER, before that user is anybody.
+   * A privilege guard that forgets them does not merely inconvenience: it locks
+   * every new person out of the product at their first sign-in, and the owner
+   * out of their own install. Upstream shipped exactly that bug once. */
+
+  test('INVITATION ACCEPTANCE: an invitee activates itself on first sign-in', async () => {
+    await withMigratedDatabase(async ({ client, asUser, asService }) => {
+      await asService(); await seed(client);
+      // What the invite Edge Function leaves behind: inactive, never signed in.
+      const INVITEE = '00000000-0000-4000-8000-00000000000e';
+      await client.query(
+        `insert into public.profiles (id, name, email, active, last_sign_in_at) values ($1,'Invitee','new@x.com',false,null)`,
+        [INVITEE]);
+
+      await asUser(INVITEE);
+      const r = await client.query(
+        `update public.profiles set active = true, last_sign_in_at = now() where id = $1`, [INVITEE]);
+      assert.equal(r.rowCount, 1, 'an invitee could not accept their invitation');
+
+      // …and the carve-out closes behind them. Staged as the service role,
+      // because deactivating oneself is itself a privilege change the guard
+      // refuses — only an admin (or the invite function) ever suspends anybody.
+      await asService();
+      await client.query(`update public.profiles set active = false where id = $1`, [INVITEE]);
+
+      await asUser(INVITEE);
+      await assert.rejects(
+        client.query(`update public.profiles set active = true where id = $1`, [INVITEE]),
+        /administrador/i,
+        'the first-acceptance carve-out stayed open after the first sign-in — it must be usable exactly once',
+      );
+    });
+  });
+
+  test('BOOTSTRAP ADMIN: an allowlisted email promotes itself; anyone else cannot', async () => {
+    await withMigratedDatabase(async ({ client, asUser, asService }) => {
+      await asService(); await seed(client);
+      // The install names who administers it. The check reads THIS row, not
+      // whatever the browser claims it said.
+      await client.query(
+        `insert into public.settings (profile_id, admin_emails) values ('team', '["owner@x.com"]'::jsonb)`);
+      const OWNER = '00000000-0000-4000-8000-00000000000f';
+      await client.query(
+        `insert into public.profiles (id, name, email, active, role) values ($1,'Owner','owner@x.com',false,'employee')`,
+        [OWNER]);
+
+      await asUser(OWNER);
+      const r = await client.query(
+        `update public.profiles set role = 'admin', active = true where id = $1`, [OWNER]);
+      assert.equal(r.rowCount, 1, 'the allowlisted owner could not bootstrap themselves');
+
+      // The same statement from somebody NOT on the list is the escalation.
+      await asUser(TENANT_A);
+      await assert.rejects(
+        client.query(`update public.profiles set role = 'admin', active = true where id = $1`, [TENANT_A]),
+        /administrador/i,
+        'a non-allowlisted user promoted itself to admin',
+      );
+    });
+  });
+
+  test('the shared «team» row stays writable — the app upserts it on every boot', async () => {
+    await withMigratedDatabase(async ({ client, asUser, asService }) => {
+      await asService(); await seed(client);
+      await asUser(TENANT_A);
+      // ensureDefaultProfile's very first statement after sign-in. 'team' is
+      // not a user and grants nobody anything, but it must not fail.
+      const r = await client.query(
+        `insert into public.profiles (id, name, role, active) values ('team','Team','team',true)
+         on conflict (id) do update set name = excluded.name`);
+      assert.equal(r.rowCount, 1, 'the shared team row became unwritable');
+      // And it is still not a way in: the tenant's view is unchanged.
+      assert.deepEqual(await idsIn(client, 'togo_models'), ['m-a']);
+    });
+  });
+
   test('an ADMIN can still run the team — the guard blocks escalation, not administration', async () => {
     await withMigratedDatabase(async ({ client, asUser, asService }) => {
       await asService(); await seed(client);

@@ -3045,6 +3045,56 @@ export interface TogoRequest {
 }
 
 /**
+ * ONE FROZEN QUOTE — a configurator build turned into a priced document.
+ *
+ * Read-only from the browser, and the type says so: every field is `readonly`
+ * because there is no write path here to use them with. RLS grants
+ * `authenticated` a SELECT and no write at all, and the `veta_quotes_frozen`
+ * trigger refuses any change but a state advance even to the service role. The
+ * document is created by the `togo-embed` Edge Function, from the catalog as it
+ * stood at that instant, and a later price-list edit, markup change or FX move
+ * must never restate something a customer has already been sent.
+ *
+ * So: `lines`, `totals` and `currency` are the money AS FROZEN, already
+ * factored into the quote's own currency — nothing downstream re-converts them.
+ * A wrong quote is superseded by a new one, never edited into another.
+ */
+export interface VetaQuote {
+  readonly id: string;
+  readonly profileId: string;
+  /** Per-profile document number (1001, 1002, …). */
+  readonly number: number;
+  /** The configurator lead it was made from; survives the lead's removal. */
+  readonly requestId?: string | null;
+  readonly dealerId?: string | null;
+  /** FROZEN identity: renaming a dealer must not restate a document sent under
+   *  the old name. */
+  readonly brandName: string;
+  readonly status: 'draft' | 'sent' | 'accepted' | 'declined';
+  readonly currency: string;
+  readonly customer: { name?: string; phone?: string; email?: string };
+  readonly note?: string | null;
+  /** The frozen priced pieces, exactly as quoted. */
+  readonly lines: unknown[];
+  /** { total, pieces, priced, unpriced, currency } — frozen with the lines. */
+  readonly totals: Record<string, unknown>;
+  /** The composition render the visitor built (`images.id`). */
+  readonly snapshotImageId?: string | null;
+  /** The login-less customer link (#/q/<token>); `shareEnabled` is the revoke
+   *  gate — off kills the link without dropping the token, so re-enabling
+   *  restores the SAME URL. */
+  readonly shareToken?: string | null;
+  readonly shareEnabled: boolean;
+  readonly viewCount: number;
+  readonly firstViewedAt?: number | null;
+  readonly sentAt?: number | null;
+  readonly acceptedAt?: number | null;
+  readonly declinedAt?: number | null;
+  readonly createdAt?: number;
+  readonly updatedAt?: number;
+}
+
+/**
  * Per-model fabric availability, keyed by the family root (`splitSkuGrade`).
  * Captured from a Ligne Roset product page (`lr-catalog` single-product mode):
  * `patternNames` are the fabrics that model actually offers, stored normalized

@@ -11,86 +11,14 @@ import type { Brand } from './brands.js';
 import type {
   Profile,
   Settings,
-  Customer,
-  Professional,
-  Order,
-  OrderEmailThread,
-  Quote,
-  QuoteLine,
-  Container,
   ImageRecord,
   Material,
   ModelFabrics,
-  QuoteGroup,
   Product,
   Dealer,
   TogoModel,
   TogoRequest,
-  LsgStockCommitment,
-  Account,
-  JournalEntry,
-  JournalLine,
-  Supplier,
-  Expense,
-  SalePosting,
-  InventoryItem,
-  InventoryMovement,
-  StockCountSessionRow,
-  Purchase,
-  ImportLiquidation,
-  ImportExpediente,
-  PriceListEdition,
-  PriceListEntry,
-  FixedAsset,
-  AssetDepreciation,
-  PrepaidExpense,
-  PrepaidAmortization,
-  Ir2Worksheet,
-  ECFSequence,
-  EcfReceived,
-  EcfCommercialApproval,
-  Payment,
-  PaymentPlan,
-  FiscalPeriod,
-  PettyCashFund,
-  PettyCashVoucher,
-  BankRule,
-  BankAccount,
-  BankStatement,
-  CollectionReminder,
-  Budget,
-  RecurringTemplate,
-  AuditLogEntry,
-  Activity,
-  PurchaseOrder,
-  SavedReport,
-  Employee,
-  PayrollRun,
-  WaMessage,
-  GmailMessage,
-  WaCampaign,
-  EmailCampaign,
-  WaConversationState,
-  WaGroup,
-  WaGroupParticipant,
-  WaOptOut,
-  ClaudeMessage,
-  AgentAction,
-  AgentNote,
-  ScheduledPost,
-  GeneratedImage,
-  IgEvent,
-  IgMessage,
-  IgAccount,
-  IgRepost,
-  MetaReceipt,
-  VendorReceipt,
-  DevTodo,
-  WaTemplateRejection,
-  WaWebhookEvent,
-  PibBriefing,
-  RateHistory,
-  PushSubscriptionRow,
+  VetaQuote,
 } from '../types/domain.ts';
 
 /**
@@ -123,91 +51,49 @@ interface TableDef {
  * Map of JS-side table names → their Postgres relation + PK metadata.
  * The shape of `TABLES` is the source of truth for `TableName` and the
  * `db` typed object below.
+ *
+ * THIS LIST IS EXHAUSTIVE, AND THAT IS THE POINT. Every entry here is a table
+ * that EXISTS in this product's database (supabase/migrations builds all of
+ * them). It used to carry ~83 — the whole ERP catalog of the app this one was
+ * extracted from: quotes, customers, accounts, journal lines, payroll, the
+ * WhatsApp and Instagram tables. None of those relations were ever created
+ * here, so each was a `db.X` that compiled, autocompleted, read as supported,
+ * and failed with a PostgREST 404 the moment anything reached it. Four were
+ * reached: `db.quotes` on every single boot (a cold-quote sweep that belongs to
+ * the ERP's quote lifecycle), `db.customers`/`db.professionals` from a lead
+ * linker nothing imported, and `db.quoteLines` from the image-deletion guard —
+ * which, failing closed, silently made image deletion a permanent no-op and
+ * leaked every replaced swatch into storage forever.
+ *
+ * A data layer that advertises tables the database does not have is not a
+ * harmless leftover: it is a landmine per entry, and it hides the honest
+ * question — what does this product actually store? — behind a list nobody can
+ * trust. So the rule from here on: an entry appears here only once a migration
+ * creates the relation, and `tests/schema.test.js` fails the build if this list
+ * and the migrations ever disagree.
  */
 const TABLES = {
+  // ── Identity + company-wide configuration ──────────────────────────────
   profiles:      { db: 'profiles',      pk: 'id' },
-  brands:        { db: 'brands',        pk: 'id' },
   settings:      { db: 'settings',      pk: 'profileId' },
   images:        { db: 'images',        pk: 'id' },
-  customers:     { db: 'customers',     pk: 'id' },
-  professionals: { db: 'professionals', pk: 'id' },
-  orders:        { db: 'orders',        pk: 'id' },
-  quotes:        { db: 'quotes',        pk: 'id' },
-  quoteLines:    { db: 'quote_lines',   pk: 'id' },
-  quoteGroups:   { db: 'quote_groups',  pk: 'id' },
-  containers:    { db: 'containers',    pk: 'id' },
-  orderEmailThreads: { db: 'order_email_threads', pk: 'id' },
-  materials:     { db: 'materials',     pk: 'id' },
-  products:      { db: 'products',      pk: 'id' },
-  dealers:       { db: 'dealers',       pk: 'id' },
+
+  // ── The brand microenvironments, and the five tables they partition ────
+  brands:        { db: 'brands',        pk: 'id' },
   togoModels:    { db: 'togo_models',   pk: 'id' },
-  togoRequests:  { db: 'togo_requests', pk: 'id' },
-  lsgStockCommitments: { db: 'lsg_stock_commitments', pk: 'id' },
+  materials:     { db: 'materials',     pk: 'id' },
   modelFabrics:  { db: 'model_fabrics', pk: 'id' },
-  accounts:      { db: 'accounts',        pk: 'code' },
-  journalEntries:{ db: 'journal_entries', pk: 'id' },
-  journalLines:  { db: 'journal_lines',   pk: 'id' },
-  suppliers:     { db: 'suppliers',       pk: 'id' },
-  expenses:      { db: 'expenses',        pk: 'id' },
-  salesPostings: { db: 'sales_postings',  pk: 'id' },
-  inventoryItems:     { db: 'inventory_items',     pk: 'id' },
-  inventoryMovements: { db: 'inventory_movements', pk: 'id' },
-  stockCountSessions: { db: 'stock_count_sessions', pk: 'id' },
-  purchases:          { db: 'purchases',           pk: 'id' },
-  importLiquidations: { db: 'import_liquidations', pk: 'id' },
-  importExpedientes: { db: 'import_expedientes', pk: 'id' },
-  priceListEditions: { db: 'price_list_editions', pk: 'id' },
-  priceListEntries:  { db: 'price_list_entries',  pk: 'id' },
-  fixedAssets:        { db: 'fixed_assets',        pk: 'id' },
-  assetDepreciations: { db: 'asset_depreciations', pk: 'id' },
-  prepaidExpenses:      { db: 'prepaid_expenses',      pk: 'id' },
-  prepaidAmortizations: { db: 'prepaid_amortizations', pk: 'id' },
-  ir2Worksheets:        { db: 'ir2_worksheets',        pk: 'id' },
-  ecfSequences:       { db: 'ecf_sequences',       pk: 'id' },
-  ecfReceived:            { db: 'ecf_received',             pk: 'id' },
-  ecfCommercialApprovals: { db: 'ecf_commercial_approvals', pk: 'id' },
-  payments:           { db: 'payments',            pk: 'id' },
-  paymentPlans:       { db: 'payment_plans',       pk: 'id' },
-  fiscalPeriods:      { db: 'fiscal_periods',      pk: 'id' },
-  pettyCashFunds:     { db: 'petty_cash_funds',    pk: 'id' },
-  pettyCashVouchers:  { db: 'petty_cash_vouchers', pk: 'id' },
-  bankRules:          { db: 'bank_rules',          pk: 'id' },
-  bankAccounts:       { db: 'bank_accounts',       pk: 'id' },
-  bankStatements:     { db: 'bank_statements',     pk: 'id' },
-  collectionReminders:{ db: 'collection_reminders', pk: 'id' },
-  budgets:            { db: 'budgets',             pk: 'id' },
-  recurringTemplates: { db: 'recurring_templates', pk: 'id' },
-  auditLog:           { db: 'audit_log',           pk: 'id' },
-  purchaseOrders:     { db: 'purchase_orders',     pk: 'id' },
-  savedReports:       { db: 'saved_reports',       pk: 'id' },
-  employees:          { db: 'employees',           pk: 'id' },
-  payrollRuns:        { db: 'payroll_runs',        pk: 'id' },
-  waMessages:         { db: 'wa_messages',         pk: 'id' },
-  gmailMessages:      { db: 'gmail_messages',      pk: 'id' },
-  waCampaigns:        { db: 'wa_campaigns',        pk: 'id' },
-  waConversationState:{ db: 'wa_conversation_state', pk: 'id' },
-  waGroups:           { db: 'wa_groups',           pk: 'id' },
-  waGroupParticipants:{ db: 'wa_group_participants', pk: 'id' },
-  claudeMessages:     { db: 'claude_messages',     pk: 'id' },
-  agentActions:       { db: 'agent_actions',       pk: 'id' },
-  agentNotes:         { db: 'agent_notes',         pk: 'id' },
-  scheduledPosts:     { db: 'scheduled_posts',     pk: 'id' },
-  generatedImages:    { db: 'generated_images',    pk: 'id' },
-  igEvents:           { db: 'ig_events',           pk: 'id' },
-  igMessages:         { db: 'ig_messages',         pk: 'id' },
-  igAccounts:         { db: 'ig_accounts',         pk: 'id' },
-  igReposts:          { db: 'ig_reposts',          pk: 'id' },
-  metaReceipts:       { db: 'meta_receipts',       pk: 'id' },
-  vendorReceipts:     { db: 'vendor_receipts',     pk: 'id' },
-  devTodos:           { db: 'dev_todos',           pk: 'id' },
-  activities:         { db: 'activities',          pk: 'id' },
-  waTemplateRejections: { db: 'wa_template_rejections', pk: 'id' },
-  waWebhookEvents:    { db: 'wa_webhook_events',    pk: 'id' },
-  waOptouts:          { db: 'wa_optouts',           pk: 'id' },
-  emailCampaigns:     { db: 'email_campaigns',      pk: 'id' },
-  pibBriefings:       { db: 'pib_briefings',        pk: 'id' },
-  rateHistory:        { db: 'rate_history',         pk: 'rateDate' },
-  pushSubscriptions:  { db: 'push_subscriptions',   pk: 'id' },
+  dealers:       { db: 'dealers',       pk: 'id' },
+  togoRequests:  { db: 'togo_requests', pk: 'id' },
+
+  // ── The price list (partitioned by its own `brand` discriminator) ──────
+  products:      { db: 'products',      pk: 'id' },
+
+  // ── The frozen quote documents ─────────────────────────────────────────
+  // READ-ONLY from the browser BY DESIGN: RLS grants `authenticated` a select
+  // and no write at all, and the freeze trigger refuses everything but a state
+  // advance even to the service role. Writes go through the Edge Function.
+  vetaQuotes:    { db: 'veta_quotes',   pk: 'id' },
 } as const satisfies Record<string, TableDef>;
 
 export type TableName = keyof typeof TABLES;
@@ -219,88 +105,16 @@ export type TableName = keyof typeof TABLES;
  */
 export interface TableRowMap {
   profiles: Profile;
-  brands: Brand;
   settings: Settings;
   images: ImageRecord;
-  customers: Customer;
-  professionals: Professional;
-  orders: Order;
-  quotes: Quote;
-  quoteLines: QuoteLine;
-  quoteGroups: QuoteGroup;
-  containers: Container;
-  orderEmailThreads: OrderEmailThread;
-  materials: Material;
-  products: Product;
-  dealers: Dealer;
+  brands: Brand;
   togoModels: TogoModel;
-  togoRequests: TogoRequest;
-  lsgStockCommitments: LsgStockCommitment;
+  materials: Material;
   modelFabrics: ModelFabrics;
-  accounts: Account;
-  journalEntries: JournalEntry;
-  journalLines: JournalLine;
-  suppliers: Supplier;
-  expenses: Expense;
-  salesPostings: SalePosting;
-  inventoryItems: InventoryItem;
-  inventoryMovements: InventoryMovement;
-  stockCountSessions: StockCountSessionRow;
-  purchases: Purchase;
-  importLiquidations: ImportLiquidation;
-  importExpedientes: ImportExpediente;
-  priceListEditions: PriceListEdition;
-  priceListEntries: PriceListEntry;
-  fixedAssets: FixedAsset;
-  assetDepreciations: AssetDepreciation;
-  prepaidExpenses: PrepaidExpense;
-  prepaidAmortizations: PrepaidAmortization;
-  ir2Worksheets: Ir2Worksheet;
-  ecfSequences: ECFSequence;
-  ecfReceived: EcfReceived;
-  ecfCommercialApprovals: EcfCommercialApproval;
-  payments: Payment;
-  paymentPlans: PaymentPlan;
-  fiscalPeriods: FiscalPeriod;
-  pettyCashFunds: PettyCashFund;
-  pettyCashVouchers: PettyCashVoucher;
-  bankRules: BankRule;
-  bankAccounts: BankAccount;
-  bankStatements: BankStatement;
-  collectionReminders: CollectionReminder;
-  budgets: Budget;
-  recurringTemplates: RecurringTemplate;
-  auditLog: AuditLogEntry;
-  purchaseOrders: PurchaseOrder;
-  savedReports: SavedReport;
-  employees: Employee;
-  payrollRuns: PayrollRun;
-  waMessages: WaMessage;
-  gmailMessages: GmailMessage;
-  waCampaigns: WaCampaign;
-  waConversationState: WaConversationState;
-  waGroups: WaGroup;
-  waGroupParticipants: WaGroupParticipant;
-  claudeMessages: ClaudeMessage;
-  agentActions: AgentAction;
-  agentNotes: AgentNote;
-  scheduledPosts: ScheduledPost;
-  generatedImages: GeneratedImage;
-  igEvents: IgEvent;
-  igMessages: IgMessage;
-  igAccounts: IgAccount;
-  igReposts: IgRepost;
-  metaReceipts: MetaReceipt;
-  vendorReceipts: VendorReceipt;
-  devTodos: DevTodo;
-  activities: Activity;
-  waTemplateRejections: WaTemplateRejection;
-  waWebhookEvents: WaWebhookEvent;
-  waOptouts: WaOptOut;
-  emailCampaigns: EmailCampaign;
-  pibBriefings: PibBriefing;
-  rateHistory: RateHistory;
-  pushSubscriptions: PushSubscriptionRow;
+  dealers: Dealer;
+  togoRequests: TogoRequest;
+  products: Product;
+  vetaQuotes: VetaQuote;
 }
 
 // Row mapping (snake_case ↔ camelCase + *At timestamp coercion) is in
@@ -1356,105 +1170,6 @@ export async function assignSequenceNumber<T>({
   throw lastErr;
 }
 
-/* ---------------------------------------------------------------------- */
-/*  Shared party numbering (customers ⇄ professionals)                     */
-/* ---------------------------------------------------------------------- */
-
-/** The two tables that share one number space. A number issued to one is
- *  never reused for the other — the directory is a single dichotomous list. */
-const PARTY_TABLES = ['customers', 'professionals'] as const;
-
-/**
- * Pure core of the shared party sequence: the next number is one past the
- * higher of the two directories' current maxima. Nulls (an empty table) drop
- * out; strings coerce (PostgREST can hand bigints back as strings). With both
- * null it starts at `start`.
- *
- *   computeNextPartyNumber(null, null, 1)   === 1
- *   computeNextPartyNumber(95,   40,   1)   === 96   // pros lead
- *   computeNextPartyNumber(40,  '112', 1)   === 113  // customers lead, coerced
- */
-export function computeNextPartyNumber(
-  customerMax: number | string | null | undefined,
-  professionalMax: number | string | null | undefined,
-  start = 1,
-): number {
-  const nums = [customerMax, professionalMax]
-    .filter((v) => v != null)
-    .map((v) => Number(v));
-  if (nums.length === 0) return start;
-  return Math.max(...nums) + 1;
-}
-
-/**
- * Next number in the shared party sequence for a profile — max(number) across
- * BOTH customers and professionals, plus one. This is what keeps client and
- * professional numbers from ever colliding: they draw from the same pool.
- */
-export async function nextPartyNumber(profileId: string, start = 1): Promise<number> {
-  const tops = await Promise.all(
-    PARTY_TABLES.map(async (t) => {
-      const { data, error } = await supabase
-        .from(TABLES[t].db)
-        .select('number')
-        .eq('profile_id', profileId)
-        .not('number', 'is', null)
-        .order('number', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      const rows = data as Array<{ number?: number | string | null }> | null;
-      return rows?.[0]?.number ?? null;
-    }),
-  );
-  return computeNextPartyNumber(tops[0], tops[1], start);
-}
-
-/** Arguments to `assignPartyNumber`. `table` is the destination directory;
- *  `build(number)` returns the full row to insert with the allocated number. */
-export interface AssignPartyNumberArgs<T> {
-  table: 'customers' | 'professionals';
-  profileId: string;
-  build: (number: number) => T;
-  start?: number;
-  maxAttempts?: number;
-}
-
-/**
- * Race-safe assign-and-insert against the SHARED party sequence: compute the
- * next number across both directories, build the row, insert into `table`.
- * On a unique-violation (another tab took the slot) it recomputes and retries.
- * Mirrors `assignSequenceNumber` but reads the max across customers AND
- * professionals so the two lists stay one dichotomy.
- */
-export async function assignPartyNumber<T>({
-  table, profileId, build, start = 1, maxAttempts = 5,
-}: AssignPartyNumberArgs<T>): Promise<T> {
-  const tbl = db[table as TableName] as unknown as Table<T> | undefined;
-  if (!tbl) throw new Error(`assignPartyNumber: unknown table '${table}'`);
-  if (typeof profileId !== 'string' || !profileId) {
-    throw new Error('assignPartyNumber: profileId must be a non-empty string');
-  }
-  if (typeof build !== 'function') {
-    throw new Error('assignPartyNumber: build must be a function');
-  }
-  let lastErr: unknown = null;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const number = await nextPartyNumber(profileId, start);
-    const record = build(number);
-    if (!record || typeof record !== 'object') {
-      throw new Error('assignPartyNumber: build() must return a record object');
-    }
-    try {
-      await tbl.put(record);
-      return record;
-    } catch (err) {
-      lastErr = err;
-      if ((err as { code?: string } | null)?.code !== '23505') throw err;
-    }
-  }
-  throw lastErr;
-}
-
 /**
  * Pure-function core of nextSequenceNumber, extracted so the rule can be
  * unit-tested without a Supabase round-trip.
@@ -1611,15 +1326,24 @@ export async function deleteImage(id: string | null | undefined): Promise<void> 
   await db.images.delete(id);
 }
 
-/** deleteImage, UNLESS a quote line still references the row. The Inventario
- *  picker seeds a piece's photo id straight onto the quote line (a SHARED
- *  row — quote flows never delete image rows), so replacing/retaking the
- *  piece's photo must not blank the picture on an already-sent quote. When a
- *  reference exists the row is simply left behind — an orphan is the cheap,
- *  correct outcome; deletion proceeds normally when nothing references it. */
+/** deleteImage, UNLESS a QUOTE ALREADY SENT still shows the picture. A quote is
+ *  a frozen document: the composition render the visitor built is stamped onto
+ *  it (`veta_quotes.snapshotImageId`) and stays part of what the customer was
+ *  sent, so re-taking a piece's photo must never blank an image inside a
+ *  document somebody is already looking at. When a reference exists the row is
+ *  simply left behind — an orphan is the cheap, correct outcome.
+ *
+ *  Fails CLOSED, deliberately: a check that errors reads as "referenced" and
+ *  the image survives. That is the safe direction for a document nobody may
+ *  edit, but it is only safe if the check can actually SUCCEED — this used to
+ *  query the extracted app's `quote_lines`, a relation that does not exist
+ *  here, so the read failed every time, every deletion was refused, and every
+ *  replaced swatch and re-baked thumbnail leaked into storage permanently. It
+ *  now asks this product's own document table, which does exist and which
+ *  `authenticated` may read. */
 export async function deleteImageUnlessQuoteLinked(id: string | null | undefined): Promise<void> {
   if (!id) return;
-  const refs = await db.quoteLines.where('imageId').equals(id).toArray().catch(() => null);
+  const refs = await db.vetaQuotes.where('snapshotImageId').equals(id).toArray().catch(() => null);
   // A failed check reads as "referenced" — never delete on uncertainty.
   if (!refs || refs.length > 0) return;
   await deleteImage(id);

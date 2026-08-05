@@ -4,7 +4,6 @@ import { setBrandScope } from '../db/brandScope.js';
 import { supabase } from '../db/supabaseClient.js';
 import { shouldPullSessionRate } from '../lib/exchangeRate.js';
 import { EXCHANGE_RATE_PULL_ENABLED } from '../lib/constants.js';
-import { quotesToAutoArchive } from '../lib/quoteStages.js';
 import { moduleSetFor, setActiveModules } from '../brands/index.js';
 import useLocalPref from '../components/primitives/useLocalPref.js';
 import { useAuth } from './AuthContext.jsx';
@@ -43,27 +42,6 @@ export function pickActiveBrand(brands, preferredId) {
   const preferred = list.find((b) => b.id === preferredId);
   if (preferred && preferred.active !== false) return preferred;
   return list.find((b) => b.active !== false) || list[0];
-}
-
-/**
- * Auto-archive COLD quotes — sent to a client and untouched since, for
- * QUOTE_AUTO_ARCHIVE_DAYS. "Cold" is the Model's call (quotesToAutoArchive):
- * the clock is the last sign of life, so a client still opening the link or
- * changing their picks keeps the quote out of the sweep. Runs on app load (the
- * same no-cron idiom as the daily rate pull): whoever opens the app sweeps.
- * Stamps exactly like the manual stepper (status + archivedAt) so "Volver"
- * un-archives it the same way, PLUS `autoArchivedAt` — the marker the list row
- * reads to label it "Archivada automáticamente" instead of passing a background
- * write off as the team's decision. Idempotent (only ever touches still-'sent'
- * rows) and best-effort — it must never block boot.
- */
-async function archiveStaleQuotes() {
-  const sent = await db.quotes.where('status').equals('sent').toArray();
-  const now = Date.now();
-  const stale = quotesToAutoArchive(sent, now);
-  await Promise.all(stale.map((q) => db.quotes.update(q.id, {
-    status: 'archived', archivedAt: now, autoArchivedAt: now,
-  })));
 }
 
 /**
@@ -184,9 +162,13 @@ export function AppProvider({ children }) {
             .catch(() => {});
         }
 
-        // Sweep cold quotes (sent, unaccepted past the window) to archived on
-        // load — same no-cron, no-manual-step idiom as the rate pull above.
-        archiveStaleQuotes().catch(() => {});
+        // (A cold-quote sweep used to run here, inherited from the app this one
+        // was extracted from. It read `db.quotes` — the ERP's quote table, which
+        // does not exist in this database — so every boot fired a request that
+        // 404'd into a swallowed catch. It could never have worked here anyway:
+        // a veta quote is a FROZEN document, RLS grants the browser no write on
+        // it at all, and its lifecycle is the Edge Function's. Removed rather
+        // than repointed — there is no archive state to sweep it into.)
 
         const list = await refreshProfiles();
         if (cancelled) return;

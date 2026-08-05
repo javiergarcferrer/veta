@@ -137,19 +137,33 @@ export const QUOTE_STATUS_ARCHIVED: QuoteStatus = 'archived';
  * `products.brand` discriminator — which BRAND catalog a product row belongs
  * to. Each brand imports in its own manner; the admin Catálogos section has
  * one page per brand:
- *   • ligne-roset      — the supplier price-list CSV upload.
- *   • lifestylegarden  — pulled from the team's Shopify store
- *     (www.lifestylegarden.do) by the shopify-sync Edge Function's
- *     importCatalog mode (the Deno side duplicates the literal on purpose —
- *     code never crosses the wall).
+ *   • ligne-roset — the supplier price-list CSV upload.
+ *
+ * LIFESTYLEGARDEN WAS RETIRED (migration 20261207000000). Its 109 products and
+ * 830 catalog photos were removed — they had no `brands` row pointing at them,
+ * so nothing could reach them, and `brandScope` had been filtering them out
+ * long before the brand boundary made that structural.
+ *
+ * It is gone from THIS list on purpose: `ALL_BRANDS` is what a brand switcher
+ * iterates, so leaving it here would keep offering a tab that opens on nothing.
+ * Its name stays in `BRAND_NAMES` for the opposite reason — that map is how an
+ * id is RENDERED, and a document written while the catalog existed must still
+ * print «LifestyleGarden» rather than the raw slug.
+ *
+ * The per-brand money rules (`LSG_COMMISSION_PCT` in lib/commissions, the
+ * weighted-discount average in core/quote/totals) are deliberately untouched.
+ * With no LSG rows left those branches never execute, and they encode a stated
+ * commission rule — removing them would change how an old mixed quote
+ * recalculates, which is a decision about history, not about this cleanup.
  */
 export const BRAND_LIGNE_ROSET = 'ligne-roset';
 export const BRAND_LIFESTYLEGARDEN = 'lifestylegarden';
 
 /** Every brand catalog, in display order — what a brand switcher iterates. */
-export const ALL_BRANDS: string[] = [BRAND_LIGNE_ROSET, BRAND_LIFESTYLEGARDEN];
+export const ALL_BRANDS: string[] = [BRAND_LIGNE_ROSET];
 
-/** brand id → human name (chips, tabs, page titles). */
+/** brand id → human name (chips, tabs, page titles). Retired brands stay here:
+ *  this map renders ids that already exist in old documents. */
 export const BRAND_NAMES: Record<string, string> = {
   [BRAND_LIGNE_ROSET]: 'Ligne Roset',
   [BRAND_LIFESTYLEGARDEN]: 'LifestyleGarden',

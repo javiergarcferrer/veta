@@ -39,7 +39,19 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- Trigram search over the price list (`products_search_text_idx`).
-create extension if not exists pg_trgm;
+--
+-- INTO `extensions`, NOT `public`. `public` is what PostgREST publishes, so an
+-- extension there hands its whole surface to the API and collides with anything
+-- the app later wants to name. A fresh database therefore never puts it in
+-- `public` at all; the live project, which did, is relocated by
+-- 20261206000000_pg_trgm_out_of_public.sql (that migration is for the legacy
+-- placement only and no-ops here).
+--
+-- `if not exists` ignores the schema clause when the extension is already
+-- installed — which is exactly the live project's case, and why the relocation
+-- needs its own migration rather than riding this line.
+create schema if not exists extensions;
+create extension if not exists pg_trgm with schema extensions;
 
 -- ── profiles — one row per signed-in user, plus the shared 'team' row ────────
 -- `id` is the Supabase auth user id (text, not uuid: the shared 'team' row is
@@ -158,8 +170,12 @@ as $function$
     '[^a-z0-9]+', ' ', 'g'));
 $function$;
 
+-- The operator class is SCHEMA-QUALIFIED, and it has to be: once pg_trgm lives
+-- in `extensions`, an unqualified `gin_trgm_ops` no longer resolves from this
+-- migration's search_path, and re-running the set — the property everything
+-- here depends on — would fail on this one line.
 create index if not exists products_search_text_idx
-  on public.products using gin (search_text gin_trgm_ops);
+  on public.products using gin (search_text extensions.gin_trgm_ops);
 
 -- ── materials — the fabric/leather library ───────────────────────────────────
 -- `grade` is what binds a material to a price ladder in `products`;

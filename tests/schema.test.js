@@ -139,15 +139,37 @@ if (!PG_URL) {
       // one of ours guards something (the money freeze, the privilege guard,
       // the visible-brand set), which makes this the difference between a
       // boundary and a suggestion.
+      // BOTH schemas: the policy helpers live in `veta` precisely so PostgREST
+      // cannot reach them, and a check that only swept `public` would have
+      // stopped watching the four functions the whole boundary turns on the
+      // moment they moved. A test must follow the code it guards.
       const loose = (await client.query(`
+        select n.nspname || '.' || p.proname as fn from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname in ('public', 'veta') and p.prosecdef
+           and not exists (
+             select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\\_path=%')
+         order by 1`)).rows.map((r) => r.fn);
+      assert.deepEqual(loose, [],
+        `SECURITY DEFINER without a pinned search_path — the caller picks which code runs as the owner: ${loose.join(', ')}`);
+    });
+  });
+
+  test('no policy helper is reachable over the REST API', async () => {
+    await withMigratedDatabase(async ({ client, apply }) => {
+      await apply();
+      // PostgREST exposes `public`. The SECURITY DEFINER helpers every RLS
+      // policy resolves through must therefore NOT be there — they belong in
+      // `veta`, which is not in the exposed-schema list. This is the check that
+      // stops one of them drifting back into `public` on a later edit.
+      const inPublic = (await client.query(`
         select p.proname from pg_proc p
           join pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public' and p.prosecdef
-           and not exists (
-             select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\\_path=%')
+           and p.prorettype <> 'trigger'::regtype
          order by p.proname`)).rows.map((r) => r.proname);
-      assert.deepEqual(loose, [],
-        `SECURITY DEFINER without a pinned search_path — the caller picks which code runs as the owner: ${loose.join(', ')}`);
+      assert.deepEqual(inPublic, [],
+        `SECURITY DEFINER helpers sitting in the API's own schema: ${inPublic.join(', ')}`);
     });
   });
 
@@ -168,6 +190,23 @@ if (!PG_URL) {
          order by p.proname`)).rows.map((r) => r.proname);
       assert.deepEqual(exposed, [],
         `trigger functions callable over the REST API: ${exposed.join(', ')}`);
+    });
+  });
+
+  test('no extension sits in `public` — the schema the API publishes', async () => {
+    await withMigratedDatabase(async ({ client, apply }) => {
+      await apply();
+      // An extension in `public` puts its whole surface inside the API's
+      // namespace and collides with anything the app later wants to name.
+      // pg_trgm is the one that matters here: it owns the operator class behind
+      // the product-search index, so it is load-bearing, not decoration.
+      const inPublic = (await client.query(`
+        select e.extname from pg_extension e
+          join pg_namespace n on n.oid = e.extnamespace
+         where n.nspname = 'public' and e.extname <> 'plpgsql'
+         order by e.extname`)).rows.map((r) => r.extname);
+      assert.deepEqual(inPublic, [],
+        `extensions installed in the API's own schema: ${inPublic.join(', ')}`);
     });
   });
 

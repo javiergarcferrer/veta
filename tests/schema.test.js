@@ -29,21 +29,11 @@
 // there, a missing connection string is a failure.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(HERE, '..', 'supabase', 'migrations');
-
-const PG_URL = process.env.VETA_TEST_PG || '';
-const IN_CI = !!process.env.CI;
-
-/** The migration files, in the order Supabase applies them (lexical = temporal,
- *  which is the whole point of the timestamp prefix). */
-function migrationFiles() {
-  return readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort();
-}
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  PG_URL, IN_CI, MIGRATIONS_DIR, REPO_ROOT, migrationFiles, withMigratedDatabase,
+} from './helpers/pgHarness.js';
 
 /**
  * The relation names `src/db/database.ts` claims exist, read out of the source
@@ -52,7 +42,7 @@ function migrationFiles() {
  * togoDealer.test.js uses on the Edge Function's index.ts.)
  */
 function declaredRelations() {
-  const src = readFileSync(join(HERE, '..', 'src', 'db', 'database.ts'), 'utf8');
+  const src = readFileSync(join(REPO_ROOT, 'src', 'db', 'database.ts'), 'utf8');
   const start = src.indexOf('const TABLES = {');
   const end = src.indexOf('} as const satisfies Record<string, TableDef>;');
   assert.ok(start > 0 && end > start, 'could not find the TABLES literal in database.ts');
@@ -92,40 +82,6 @@ if (!PG_URL) {
     assert.fail('CI must set VETA_TEST_PG to a Postgres connection string');
   });
 } else {
-  const { default: pg } = await import('pg');
-
-  /** A throwaway database, built from the migrations, handed to `fn`, dropped. */
-  async function withMigratedDatabase(fn) {
-    const name = `veta_schema_test_${process.pid}_${Number(process.hrtime.bigint() % 100000n)}`;
-    const admin = new pg.Client({ connectionString: PG_URL });
-    await admin.connect();
-    await admin.query(`drop database if exists ${name}`);
-    await admin.query(`create database ${name}`);
-    const target = new URL(PG_URL);
-    target.pathname = `/${name}`;
-    const client = new pg.Client({ connectionString: target.toString() });
-    try {
-      await client.connect();
-      // The two Supabase API roles the RLS policies grant to. On a hosted
-      // project they already exist; on a bare Postgres they must be made, or
-      // `create policy … to authenticated` fails on an unknown role.
-      await client.query(`do $$ begin
-        if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
-        if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
-      end $$`);
-      const apply = async () => {
-        for (const f of migrationFiles()) {
-          await client.query(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-        }
-      };
-      return await fn({ client, apply });
-    } finally {
-      await client.end().catch(() => {});
-      await admin.query(`drop database if exists ${name}`).catch(() => {});
-      await admin.end().catch(() => {});
-    }
-  }
-
   const relationsIn = async (client) => new Set(
     (await client.query(
       `select tablename from pg_tables where schemaname = 'public'`,

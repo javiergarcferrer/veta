@@ -7,7 +7,7 @@ import { cacheKey, getCached, setCached, purgeTable, purgeAll } from './queryCac
 import {
   tableScopeFor, brandStampFor, catalogBrandScope, getBrandScope, type TableScope,
 } from './brandScope.js';
-import type { Brand } from './brands.js';
+import type { Brand, BrandMember } from './brands.js';
 import type {
   Profile,
   Settings,
@@ -80,6 +80,10 @@ const TABLES = {
 
   // ── The brand microenvironments, and the five tables they partition ────
   brands:        { db: 'brands',        pk: 'id' },
+  // WHO may open which brand. RLS reads this to decide what every other row in
+  // this list is allowed to be — see the brand-membership migration. A user
+  // reads its own rows; only a whole-install user may write them.
+  brandMembers:  { db: 'brand_members', pk: 'profileId' },
   togoModels:    { db: 'togo_models',   pk: 'id' },
   materials:     { db: 'materials',     pk: 'id' },
   modelFabrics:  { db: 'model_fabrics', pk: 'id' },
@@ -108,6 +112,7 @@ export interface TableRowMap {
   settings: Settings;
   images: ImageRecord;
   brands: Brand;
+  brandMembers: BrandMember;
   togoModels: TogoModel;
   materials: Material;
   modelFabrics: ModelFabrics;

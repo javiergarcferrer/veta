@@ -113,11 +113,15 @@ const DICTS = {
     // one tela dresses the whole piece and bills as ONE elemento; a part in a
     // different tela bills base + componentes, which is dearer.
     'parts.wholePiece': 'Tela de toda la pieza',
+    // El mismo objetivo, nombrado para el rail de componentes: 4.5rem no dan
+    // para la frase entera, y truncarla («Tela de to…») no dice nada. El
+    // nombre largo sigue vivo como title del chip.
+    'parts.wholePieceShort': 'Pieza',
     // LOS DOS MODOS — la pieza se vende como su propio SKU, o como sus
-    // componentes. Nunca los dos: por eso el control muestra ambos precios.
+    // componentes. Nunca los dos. El toggle los nombra con dos iconos (O /
+    // I|I) y estas cadenas son su etiqueta accesible y su tooltip.
     'mode.whole': 'Pieza completa',
     'mode.parts': 'Por componentes',
-    'mode.switchHint': 'Se cotiza de una forma o de la otra, nunca las dos.',
     'mode.pending': 'Elige todos',
     'parts.customize': 'Personalizar por partes',
     // The two sub-headings inside that level. Cloth parts are COMPONENTES and
@@ -324,9 +328,9 @@ const DICTS = {
     'part.finish': 'Finish',
     'part.structure': 'Structure',
     'parts.wholePiece': 'Fabric for the whole piece',
+    'parts.wholePieceShort': 'Piece',
     'mode.whole': 'Whole piece',
     'mode.parts': 'By component',
-    'mode.switchHint': 'Quoted one way or the other, never both.',
     'mode.pending': 'Choose them all',
     'parts.customize': 'Customize by part',
     'parts.components': 'Components',
@@ -510,9 +514,9 @@ const DICTS = {
     'part.finish': 'Finition',
     'part.structure': 'Structure',
     'parts.wholePiece': 'Tissu de toute la pièce',
+    'parts.wholePieceShort': 'Pièce',
     'mode.whole': 'Pièce entière',
     'mode.parts': 'Par composant',
-    'mode.switchHint': 'Chiffrée d’une façon ou de l’autre, jamais les deux.',
     'mode.pending': 'Choisis-les tous',
     'parts.customize': 'Personnaliser par composant',
     'parts.components': 'Composants',
@@ -696,9 +700,9 @@ const DICTS = {
     'part.finish': 'Ausführung',
     'part.structure': 'Gestell',
     'parts.wholePiece': 'Stoff für das ganze Teil',
+    'parts.wholePieceShort': 'Teil',
     'mode.whole': 'Ganzes Möbel',
     'mode.parts': 'Nach Komponenten',
-    'mode.switchHint': 'Wird so oder so berechnet, nie beides.',
     'mode.pending': 'Alle auswählen',
     'parts.customize': 'Komponenten anpassen',
     'parts.components': 'Komponenten',

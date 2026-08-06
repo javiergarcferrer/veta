@@ -13,6 +13,10 @@
 // (y-down), embedding each model's original plan `<svg>` markup via an SVG
 // transform rather than re-parsing it to points. No React, no DOM, no mutation.
 
+// SECURITY (L6): catalog model .svg is dealer-authored DB content — neutralize
+// active content before its markup is embedded/rendered via innerHTML.
+import { sanitizeSvg } from '../sanitizeSvg.js';
+
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 
 // Match planToDxf's angle handling: round to 0.1° against float noise, wrap 0–360.
@@ -129,7 +133,7 @@ export function composePlanPreview(models, items, opts = {}) {
   const stroke = Math.max(Math.max(vw, vh) / 440, 0.2);
 
   const groups = placed.map(({ model, geom }) => {
-    const inner = innerSvg(model.svg);
+    const inner = innerSvg(sanitizeSvg(model.svg));
     const sx = geom.vbW ? geom.W / geom.vbW : 1;
     const sy = geom.vbH ? geom.H / geom.vbH : 1;
     if (inner && geom.vbW > 0 && geom.vbH > 0) {

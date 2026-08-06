@@ -30,7 +30,7 @@ import {
   placementsFromPlaced, placementsFromComponents, resolveTogoDxf, lineHasTogoPlan,
   createHistory, historyPush, historyUndo, historyRedo, canUndo, canRedo,
   firstWithoutFabric, placementDressed, dressableRoles, duplicatePlacement, cyclePieceUid, EDGE_SNAP_CM, PLAN_MARGIN_CM, linkOverlap,
-  placementMode, componentRoles, planModeSwitch,
+  placementMode, componentRoles, planModeSwitch, componentViewOf, sellsByComponentsOnly, effectivePartMaterials,
   placementTotalUsd, placementBreakdown, scenePlacementsFromPlaced, scenePlacementsFromComponents,
   resolveLaunchHero, resolveCollectionMenu, planHeroPin, unresolvedPartRoles, unresolvedWholePiece,
 } from '../src/core/quote/views/configuratorView.js';
@@ -2413,4 +2413,301 @@ test('MODO PIEZA is the model\'s SKU alone — the base-PLUS-componentes path is
     'still missing the bolster ⇒ no price at all');
   const all = { ...picked, partsMode: true, partMaterials: { cushion: { grade: 'B', fabric: 'Divina', code: 'X1' }, bolster: { grade: 'A', fabric: 'Tona', code: 'X2' } } };
   assert.equal(placementTotalUsd(all, resolvedById), 150 + 50);
+});
+
+// ══ COHERENCIA: una acción, TODAS las superficies ═══════════════════════════
+//
+// Owner, 2026-08: «quiero que cuando hagas cualquier acción cada componente
+// relacionado reaccione de la manera adecuada».
+//
+// The professional name for what this pins is SINGLE SOURCE OF TRUTH with
+// DERIVED state: one fact has one owner, and every surface RE-DERIVES from it
+// instead of keeping a copy that has to be kept in step. The surfaces are React
+// and can't be asserted here — but they all read the SAME resolvers, so pinning
+// the resolvers after each action pins the surfaces that render them:
+//
+//   money            placementTotalUsd        (row price, estimate, CTA gate)
+//   «vestida»        placementDressed         (row label, «N sin tela», Resumen)
+//   componentes rail pieceSwatchEntries       ← its own file (a View helper)
+//   itemization      placementBreakdown       (Resumen rows)
+//   the quote        buildTogoComponents      (what the dealer receives)
+//
+// Every case below is one gesture, then EVERY one of those read back together.
+const COH_PRODUCTS = [
+  { reference: '50000000A', name: 'Sofa', priceUsd: 4000 },
+  { reference: '50000000C', name: 'Sofa', priceUsd: 5200 },
+  { reference: '51000000A', name: 'Cojines', priceUsd: 900 },
+  { reference: '51000000C', name: 'Cojines', priceUsd: 1150 },
+  { reference: '52000000A', name: 'Rulo', priceUsd: 300 },
+  { reference: '52000000C', name: 'Rulo', priceUsd: 380 },
+];
+const COH_MODELS = [{
+  id: 'sofa', name: 'Loveseat', widthCm: 180, depthCm: 100, svg: '<svg/>', active: true,
+  productRoot: '50000000', collection: 'Prado',
+  parts: {
+    mats: { body: 'base', cush: 'cushion', roll: 'bolster', legs: 'structure' },
+    roots: { cushion: '51000000', bolster: '52000000' },
+  },
+}];
+const CLOTH = (g, code) => ({ grade: g, fabric: `Tela ${code}`, code });
+
+/** Everything the surfaces read, for one placement, in one object. */
+function surfaces(p, resolvedById) {
+  const bd = placementBreakdown(p, resolvedById);
+  const comps = buildTogoComponents([p], resolvedById, ids());
+  return {
+    mode: placementMode(p),
+    dressed: placementDressed(p, resolvedById),
+    total: placementTotalUsd(p, resolvedById),
+    pending: firstWithoutFabric([p], resolvedById),
+    breakdownTotal: bd.totalUsd,
+    baseLine: bd.lines.find((l) => l.role === 'base'),
+    partLines: bd.lines.filter((l) => l.role !== 'base'),
+    seedTotal: comps.reduce((s, c) => s + c.unitPrice * (c.qty || 1), 0),
+    seedBaseUsd: comps[0].unitPrice,
+    seedCount: comps.length,
+  };
+}
+
+test('COHERENCIA · vestir la pieza entera: money, «vestida», resumen y semilla se mueven juntos', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const bare = { uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0 };
+
+  // NADA elegido — ninguna superficie inventa un precio.
+  const a = surfaces(bare, resolvedById);
+  assert.equal(a.mode, 'complete');
+  assert.equal(a.dressed, false);
+  assert.equal(a.pending, 'u1', 'la advertencia «sin tela» apunta a esta pieza');
+
+  // La tela de la pieza, en grado C.
+  const dressed = { ...bare, material: CLOTH('C', 'X1') };
+  const b = surfaces(dressed, resolvedById);
+  assert.equal(b.dressed, true);
+  assert.equal(b.pending, null, '…y la advertencia se apaga en el mismo gesto');
+  assert.equal(b.total, 5200, 'el SKU de la pieza a su grado');
+  assert.equal(b.breakdownTotal, b.total, 'el resumen cuadra con la fila');
+  assert.equal(b.seedTotal, b.total, 'y la cotización con las dos');
+  assert.equal(b.seedCount, 1, 'una sola tela ⇒ un solo componente en la línea');
+  assert.equal(b.baseLine.complete, true);
+  assert.ok(b.partLines.every((l) => l.included), 'los componentes van «Incluido», nunca cobrados');
+});
+
+test('COHERENCIA · vestir UN componente entra al modo y arrastra a todas las superficies', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  // El gesto real de la UI: la pieza vestida, y el visitante cambia un cojín.
+  // `planModeSwitch` es lo que corre antes del pick (onPickPartMaterial).
+  const start = { uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('A', 'X1') };
+  const seeded = planModeSwitch(start, r, 'parts');
+  const after = { ...seeded, partMaterials: { ...seeded.partMaterials, cushion: CLOTH('C', 'X9') } };
+
+  const s = surfaces(after, resolvedById);
+  assert.equal(s.mode, 'parts');
+  assert.equal(s.dressed, true, 'sembrado ⇒ ningún componente queda vacío');
+  // 1150 (cojines a C, el que cambió) + 300 (rulo, sembrado de la pieza a A).
+  assert.equal(s.total, 1150 + 300, 'los componentes SOLOS — el SKU de la pieza no se vende aquí');
+  assert.equal(s.breakdownTotal, s.total);
+  assert.equal(s.seedTotal, s.total);
+  assert.equal(s.baseLine.byParts, true, 'el resumen marca que la pieza no se cobra…');
+  assert.equal(s.baseLine.totalUsd, null);
+  assert.equal(s.seedBaseUsd, 0, '…y la línea de cotización la lleva a cero, cargando el plan');
+  // Solo el que tocó diverge; el resto lleva la tela de la pieza.
+  assert.equal(after.partMaterials.bolster.code, 'X1');
+});
+
+test('COHERENCIA · vaciar un componente apaga el precio en TODAS partes, nunca lo encoge', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const full = planModeSwitch({ uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('A', 'X1') }, r, 'parts');
+  assert.equal(surfaces(full, resolvedById).total, 900 + 300);
+
+  // «Volver a la tela de la pieza» sobre un componente (clearPartMaterial).
+  const { cushion, ...rest } = full.partMaterials;   // eslint-disable-line no-unused-vars
+  const gapped = { ...full, partMaterials: rest };
+  const s = surfaces(gapped, resolvedById);
+  assert.equal(s.dressed, false, 'un componente vacío ⇒ la pieza vuelve a estar pendiente');
+  assert.equal(s.pending, 'u1', 'y la advertencia la nombra otra vez');
+  assert.equal(s.total, null, 'SIN precio — jamás uno más pequeño');
+  assert.equal(s.breakdownTotal, null, 'el resumen dice lo mismo…');
+  assert.equal(s.partLines.find((l) => l.role === 'cushion').pending, true,
+    '…señalando el hueco, nunca «Incluido»');
+});
+
+test('COHERENCIA · volver a pieza entera devuelve TODAS las superficies, sin perder las elecciones', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const parts = planModeSwitch({ uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('C', 'X1') }, r, 'parts');
+  const back = planModeSwitch(parts, r, 'complete');
+  const s = surfaces(back, resolvedById);
+  assert.equal(s.mode, 'complete');
+  assert.equal(s.total, 5200, 'el SKU de la pieza, otra vez');
+  assert.equal(s.seedCount, 1);
+  assert.deepEqual(back.partMaterials, parts.partMaterials, 'las elecciones siguen ahí para volver');
+  assert.equal(placementTotalUsd(planModeSwitch(back, r, 'parts'), resolvedById), 1150 + 380,
+    'y volver a componentes las recupera intactas');
+});
+
+test('COHERENCIA · «una sola tela para todas» alcanza TAMBIÉN a una pieza en modo componentes', () => {
+  // EL HUECO QUE ESTO CIERRA: la acción escribía `material` y dejaba el modo
+  // quieto, así que una pieza vendida por componentes seguía renderizando y
+  // cotizando desde sus propias telas — la pieza a la que acababas de decir
+  // «cámbiate» no cambiaba. Una sola tela en todo ES el elemento completo en
+  // todo: es la misma frase.
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const byParts = planModeSwitch({ uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('A', 'X1') }, r, 'parts');
+  assert.equal(placementMode(byParts), 'parts');
+
+  // El reductor que corre dentro de applyFabricToAll, por pieza.
+  const all = { ...planModeSwitch(byParts, r, 'complete'), material: CLOTH('C', 'Z9') };
+  const s = surfaces(all, resolvedById);
+  assert.equal(s.mode, 'complete', 'la pieza ENTERA lleva la tela, no sus componentes');
+  assert.equal(s.total, 5200);
+  assert.equal(s.seedCount, 1, 'un elemento completo, una línea');
+});
+
+test('COHERENCIA · duplicar una pieza clona su MODO, no solo sus telas', () => {
+  // Un duplicado que perdiera el modo cotizaría distinto que el original que
+  // tiene al lado, con la misma tela y el mismo nombre.
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const src = planModeSwitch({ uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('C', 'X1') }, r, 'parts');
+  const { placed } = duplicatePlacement([src], 'u1', resolvedById, 'u2');
+  const copy = placed.find((p) => p.uid === 'u2');
+  assert.equal(placementMode(copy), 'parts');
+  assert.equal(placementTotalUsd(copy, resolvedById), placementTotalUsd(src, resolvedById));
+  assert.notEqual(copy.partMaterials, src.partMaterials, 'clonado, no compartido');
+});
+
+test('COHERENCIA · la ESTRUCTURA es invisible al dinero en los DOS modos', () => {
+  // Se elige, no se cobra — en cualquiera de los dos modos, o el toggle movería
+  // el precio por una razón que no es una tela.
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const base = { uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('C', 'X1') };
+  for (const p of [base, planModeSwitch(base, r, 'parts')]) {
+    const withFinish = { ...p, partFinishes: { legs: 'acero-negro' } };
+    assert.equal(
+      placementTotalUsd(withFinish, resolvedById),
+      placementTotalUsd(p, resolvedById),
+      `un acabado no mueve el precio (${placementMode(p)})`,
+    );
+  }
+});
+
+// ── LA VISTA DE COMPONENTES: una pregunta, un dueño ─────────────────────────
+// Owner, 2026-08-05, señalando la «O» del rail: «when this O mode is selected
+// it should only show the base SKU and structure selections». El MODO es la
+// única verdad, y toda superficie que parte base/componentes (chips del rail,
+// mitades del panel, filas de PartsSection) pregunta ESTO en vez de rederivar
+// modo + objetivo por su cuenta.
+//
+// Esto SUSTITUYE la regla anterior («un componente recién apuntado abre la
+// vista», owner 2026-08): apuntar un cojín ya no re-viste el rail detrás del
+// puntero. Aterrizar el pick sigue ENTRANDO en modo componentes
+// (onPickPartMaterial → planModeSwitch), así que los chips aparecen cuando el
+// build de verdad se vende así.
+test('componentViewOf: SOLO el modo — apuntar un componente ya no abre la vista', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const base = { uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('A', 'X1') };
+
+  // Modo pieza ⇒ vista base (SKU base + estructura), se apunte lo que se apunte.
+  assert.equal(componentViewOf(base), false);
+  assert.equal(componentViewOf(base, r, 'cushion'), false, 'apuntar un cojín NO abre los componentes');
+  assert.equal(componentViewOf(base, r, 'bolster'), false);
+  assert.equal(componentViewOf(base, r, 'structure'), false);
+  // Modo componentes ⇒ vista componentes, siempre.
+  const parts = planModeSwitch(base, r, 'parts');
+  assert.equal(componentViewOf(parts), true);
+  assert.equal(componentViewOf(parts, r, 'structure'), true);
+});
+
+// ── CUERPO VACÍO: derecho a componentes ─────────────────────────────────────
+// Owner, 2026-08-05: «if it's an empty body we can go straight into
+// components». Un modelo sin SKU propio no cotiza en modo pieza, así que nacer
+// ahí es nacer «sin precio» con el interruptor como único camino.
+test('sellsByComponentsOnly: sin SKU propio pero con componentes que facturan', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+
+  // El modelo normal TIENE cuerpo: se vende de una pieza, no se fuerza el modo.
+  assert.equal(sellsByComponentsOnly(r), false);
+  // Sin familia base ni elemento completo, pero con componentes ⇒ componentes.
+  assert.equal(sellsByComponentsOnly({ ...r, baseFamily: null, completeFamily: null }), true);
+  // …y con un elemento completo atado sigue habiendo cuerpo que vender.
+  assert.equal(sellsByComponentsOnly({ ...r, baseFamily: null, completeFamily: r.baseFamily }), false);
+  // LOS DOS LADOS: sin componentes que facturar, modo componentes tampoco
+  // cotiza — mandarla allí solo cambiaría un callejón sin salida por otro.
+  assert.equal(sellsByComponentsOnly({ ...r, baseFamily: null, completeFamily: null, partFamilies: {} }), false);
+  assert.equal(sellsByComponentsOnly(null), false);
+});
+
+// ── PICKS DORMIDOS: en modo pieza, callados en TODAS partes ─────────────────
+// El bug del dueño: «I can't change the material on my base sku piece». Volver
+// a modo pieza CONSERVA partMaterials (para restaurar al volver), pero el 3D,
+// los chips y la itemización leían el mapa CRUDO, ciegos al modo — cambiabas
+// la tela de la pieza y solo se repintaba el casco, porque cada componente
+// seguía vistiendo su pick dormido.
+test('effectivePartMaterials: dormidos en modo pieza, vivos en componentes, zonas siempre', () => {
+  const pm = {
+    cushion: { grade: 'C', fabric: 'Steelcut', code: 'S2' },
+    exterior: { grade: 'B', fabric: 'Divina', code: 'D1' },
+  };
+  const parts = { uid: 'u1', partsMode: true, partMaterials: pm };
+  assert.deepEqual(effectivePartMaterials(parts), pm, 'modo componentes: hablan todos');
+  const pieza = { uid: 'u1', partMaterials: pm };
+  assert.deepEqual(
+    effectivePartMaterials(pieza),
+    { exterior: pm.exterior },
+    'modo pieza: el cojín calla; la ZONA sigue viva (el bicolor es parte de la pieza)',
+  );
+  assert.equal(effectivePartMaterials({ uid: 'u1' }), null);
+  assert.equal(effectivePartMaterials({ uid: 'u1', partMaterials: { cushion: pm.cushion } }), null,
+    'solo picks de componente en modo pieza ⇒ nada vivo');
+});
+
+test('COHERENCIA · tras ida y vuelta por el toggle, cambiar la tela base repinta TODO', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  // Ida: entrar a componentes (siembra), divergir el cojín. Vuelta: modo pieza.
+  const parts = planModeSwitch({ uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('A', 'X1') }, r, 'parts');
+  const diverged = { ...parts, partMaterials: { ...parts.partMaterials, cushion: CLOTH('C', 'Z9') } };
+  const back = planModeSwitch(diverged, r, 'complete');
+  assert.ok(back.partMaterials?.cushion, 'los picks siguen guardados para restaurar');
+
+  // …y el visitante cambia la tela de la pieza.
+  const redressed = { ...back, material: CLOTH('C', 'NEW') };
+
+  // LA ESCENA: ningún componente viste el pick dormido — todos van con la pieza.
+  const [scene] = scenePlacementsFromPlaced([redressed], resolvedById);
+  assert.equal(scene.fabricCode, 'NEW');
+  assert.equal(scene.partMaterials, null, 'nada dormido llega al render');
+
+  // EL RESUMEN: las líneas «Incluido» no nombran la tela dormida.
+  const { lines, totalUsd } = placementBreakdown(redressed, resolvedById);
+  const cush = lines.find((l) => l.role === 'cushion');
+  assert.equal(cush.included, true);
+  assert.equal(cush.fabric, '', 'sin nombre de tela dormida');
+  assert.equal(cush.defaultGrade, true, 'la vista susurra «tela base»');
+  assert.equal(totalUsd, 5200, 'el SKU de la pieza al grado nuevo');
+
+  // …y volver a componentes revive los picks tal cual quedaron.
+  const again = planModeSwitch(redressed, r, 'parts');
+  const [sceneParts] = scenePlacementsFromPlaced([again], resolvedById);
+  assert.equal(sceneParts.partMaterials.cushion.code, 'Z9', 'la vuelta restaura la divergencia');
+});
+
+test('COHERENCIA · el plan de una cotización replay-ea con el MISMO modo', () => {
+  const { resolvedById } = resolveTogoModels(COH_MODELS, COH_PRODUCTS);
+  const r = resolvedById.sofa;
+  const parts = planModeSwitch({ uid: 'u1', pieceId: 'sofa', x: 0, y: 0, rot: 0, material: CLOTH('A', 'X1') }, r, 'parts');
+  const comps = buildTogoComponents([parts], resolvedById, ids());
+  // El plan guarda crudo + modo; el replay pregunta el modo igual que el widget.
+  const [scene] = scenePlacementsFromComponents(comps);
+  assert.deepEqual(scene.partMaterials, parts.partMaterials, 'modo componentes: el replay viste los picks');
+  // El mismo plan sin partsMode (una cotización anterior a los modos): dormidos.
+  const legacy = comps.map((c) => (c.plan ? { ...c, plan: { ...c.plan, partsMode: undefined } } : c));
+  const [legacyScene] = scenePlacementsFromComponents(legacy);
+  assert.equal(legacyScene.partMaterials, null, 'un plan pre-modos replay-ea como modo pieza');
 });

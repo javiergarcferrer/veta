@@ -13,6 +13,7 @@ import { safeDynamicImport } from '../../lib/dynamicImport.js';
 import { autoUnitScale } from '../../lib/togo/togoModel.js';
 import { detectUpAxis, clusterFootprints, clusterName } from '../../lib/togo/sceneSplit.js';
 import { splitSolids } from '../../lib/togo/solidSplit.js';
+import { readTdsMaterialGroups, reorderIndexForGroups } from '../../lib/togo/tdsMaterialGroups.js';
 import { loaderFor, normalizeLoaded, extOf, CREASE_ANGLE, ALCOVER_MESH_V } from './togoModelLoader.js';
 
 // Pieces whose footprint tops out under this are exporter debris (labels,
@@ -214,6 +215,42 @@ function bakeBundledMaps(THREE, object, sourceOf) {
 }
 
 /**
+ * Put a .3ds import's materials back on the geometry they belong to, in place.
+ *
+ * TDSLoader assigns each material a consecutive slice of the index buffer while
+ * the file assigns materials by explicit face LISTS (see lib/togo/tdsMaterialGroups
+ * for the measured damage). Reordering each mesh's faces into group order makes
+ * the loader's own groups describe the geometry exactly — no group rewriting, no
+ * material remapping, and the draw-call count stays one per material.
+ *
+ * Meshes pair with parsed objects BY ORDER (TDSLoader walks the same chunks in
+ * the same order) and every pairing is checked against the face count before
+ * anything is touched. Any mismatch, any unreadable buffer, any ambiguous face
+ * list → that mesh is left exactly as it loaded.
+ *
+ * @returns the number of meshes repaired.
+ */
+function repairTdsMaterialGroups(THREE, object, buffer) {
+  const parsed = readTdsMaterialGroups(buffer);
+  if (!parsed.length) return 0;
+  const meshes = [];
+  object.traverse((o) => { if (o.isMesh && o.geometry?.index) meshes.push(o); });
+  if (meshes.length !== parsed.length) return 0;   // can't pair — repair nothing
+  let fixed = 0;
+  for (const [i, mesh] of meshes.entries()) {
+    const entry = parsed[i];
+    const index = mesh.geometry.index;
+    if (!entry || index.count !== entry.faceCount * 3) continue;
+    if (entry.groups.length < 2) continue;         // one material — order is moot
+    const reordered = reorderIndexForGroups(index.array, entry.groups, entry.faceCount);
+    if (!reordered) continue;
+    mesh.geometry.setIndex(new THREE.BufferAttribute(reordered, 1));
+    fixed += 1;
+  }
+  return fixed;
+}
+
+/**
  * Load a local scene file (from a file input / drop) into an Object3D.
  *
  * `opts.textures` are the SIBLING bitmaps of the same product folder — pass them
@@ -233,6 +270,12 @@ export async function loadSceneFile(file, { textures } = {}) {
   try {
     const res = await loader.loadAsync(url);
     const object = normalizeLoaded(ext, res);
+    // A .3ds arrives with its materials on the wrong faces — repair before
+    // anything reads them (the split carries the assignment across, and the
+    // part key IS the material name).
+    if (ext === '3ds' && object) {
+      try { repairTdsMaterialGroups(THREE, object, await file.arrayBuffer()); } catch { /* leave it as it loaded */ }
+    }
     if (bundle) {
       await bundle.settled(TEXTURE_TIMEOUT_MS);
       await Promise.all(texturesOf(object).map((t) => imageSettled(t.image, TEXTURE_TIMEOUT_MS)));
@@ -581,17 +624,58 @@ function pinnedMaterial(material, nodeIndex) {
   return clone;
 }
 
+/**
+ * Triangle → material index, read off a geometry's DRAW GROUPS. `-1` marks a
+ * triangle no group covers, which must stay uncovered: with a material array
+ * three draws only what a group names, so inventing a group for it would make
+ * geometry appear that the source never drew. Null when the geometry has no
+ * groups at all (a single material — nothing to carry).
+ */
+function triangleMaterials(geometry, triCount) {
+  const groups = geometry?.groups || [];
+  if (!groups.length) return null;
+  const out = new Int32Array(triCount).fill(-1);
+  for (const g of groups) {
+    const from = Math.max(0, Math.floor(g.start / 3));
+    const to = Math.min(triCount, Math.floor((g.start + g.count) / 3));
+    for (let t = from; t < to; t += 1) out[t] = Number(g.materialIndex) || 0;
+  }
+  return out;
+}
+
 /** One geometry holding only `triangles`, with its own compacted vertices.
  *  Compacting is the point: sharing the parent's attribute buffers would write
  *  the WHOLE vertex array into every primitive and multiply the file by the
  *  number of masses. Attribute types and the `normalized` flag are preserved, so
- *  a quantized geometry stays quantized. */
-function subGeometry(THREE, geometry, triangles, indexAt) {
+ *  a quantized geometry stays quantized.
+ *
+ *  `matOfTri` carries the parent's MATERIAL ASSIGNMENT across the split. The
+ *  solid's triangles are emitted material by material so each run is one
+ *  contiguous draw group, and the group keeps the PARENT's `materialIndex` —
+ *  the caller hands every sub-mesh the same material array, so an index that
+ *  was right before the split is still right after it, with no remapping to get
+ *  wrong. Triangle order inside a primitive is not observable (the classifier
+ *  already sorts), so grouping them costs nothing. */
+function subGeometry(THREE, geometry, triangles, indexAt, matOfTri = null) {
   const remap = new Map();
   const order = [];
   const index = new Uint32Array(triangles.length * 3);
   let at = 0;
-  for (const t of triangles) {
+  // Uncovered triangles (-1) sort LAST and emit no group, exactly as they drew
+  // before. Ordinal is the tie-break, so the output stays deterministic.
+  const rank = (t) => (matOfTri[t] < 0 ? Number.MAX_SAFE_INTEGER : matOfTri[t]);
+  const ordered = matOfTri
+    ? [...triangles].sort((a, b) => (rank(a) - rank(b)) || (a - b))
+    : triangles;
+  const groups = [];
+  let runMat = -1;
+  let runStart = 0;
+  for (const t of ordered) {
+    const mat = matOfTri ? matOfTri[t] : -1;
+    if (matOfTri && mat !== runMat) {
+      if (runMat >= 0) groups.push([runStart, at - runStart, runMat]);
+      runMat = mat; runStart = at;
+    }
     for (let k = 0; k < 3; k += 1) {
       const v = indexAt(t * 3 + k);
       let n = remap.get(v);
@@ -599,6 +683,7 @@ function subGeometry(THREE, geometry, triangles, indexAt) {
       index[at] = n; at += 1;
     }
   }
+  if (runMat >= 0) groups.push([runStart, at - runStart, runMat]);
   const out = new THREE.BufferGeometry();
   for (const [name, attr] of Object.entries(geometry.attributes || {})) {
     const size = attr.itemSize;
@@ -610,6 +695,7 @@ function subGeometry(THREE, geometry, triangles, indexAt) {
     out.setAttribute(name, new THREE.BufferAttribute(arr, size, attr.normalized));
   }
   out.setIndex(new THREE.BufferAttribute(index, 1));
+  for (const [start, count, materialIndex] of groups) out.addGroup(start, count, materialIndex);
   return out;
 }
 
@@ -624,13 +710,24 @@ function subGeometry(THREE, geometry, triangles, indexAt) {
  * its weld grid off the model's own bounding diagonal, so integers segment
  * exactly like floats.
  *
- * Bails (exporting the mesh whole) on multi-material groups and morph targets,
- * where a per-mass index would lose the material assignment or the morph.
+ * MULTI-MATERIAL MESHES SPLIT TOO, and that is the whole point of this pass
+ * existing for the dealer's catalogue. This used to bail on any geometry with
+ * more than one draw group — and the Ligne Roset 3DS library ships EVERY
+ * product as ONE authored mesh carrying several materials, so the topological
+ * classifier never ran on a single one of them. Parts fell back to MATERIAL
+ * GROUPS, which are an authoring artifact and not bodies: on the EXCLUSIF
+ * lounge chair, `Ligne_Roset_Excl` spans the frame AND the seat cushion (two
+ * separate closed bodies fused into one part), `Ligne_Roset_E4` spans all four
+ * legs, and `Ligne_Roset_E3` is a 2-triangle ground-shadow quad that became a
+ * "part" of its own. The material assignment now rides ACROSS the split
+ * (`triangleMaterials` → per-solid draw groups), so nothing is lost by
+ * splitting and a body is a body whatever it is painted with.
+ *
+ * Still bails on morph targets, where a per-mass index would lose the morph.
  */
-async function splitGeometryBySolid(THREE, geometry) {
+export async function splitGeometryBySolid(THREE, geometry) {
   const pos = geometry?.attributes?.position;
   if (!pos?.array) return [geometry];
-  if ((geometry.groups?.length || 0) > 1) return [geometry];
   if (Object.keys(geometry.morphAttributes || {}).length) return [geometry];
   let solids;
   try {
@@ -639,7 +736,9 @@ async function splitGeometryBySolid(THREE, geometry) {
   if (solids.length < 2 || solids.length > MAX_SOLIDS_PER_MESH) return [geometry];
   const index = geometry.index?.array || null;
   const indexAt = index ? (i) => index[i] : (i) => i;
-  return solids.map((s) => subGeometry(THREE, geometry, s.triangles, indexAt));
+  const triCount = Math.floor((index ? index.length : pos.count) / 3);
+  const matOfTri = triangleMaterials(geometry, triCount);
+  return solids.map((s) => subGeometry(THREE, geometry, s.triangles, indexAt, matOfTri));
 }
 
 // ── The classifier runs OFF THE MAIN THREAD. It is the heaviest pure-math step

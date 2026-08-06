@@ -97,6 +97,21 @@ export default function KvadratImport() {
       setState({ stage: 'idle', done: 0, total: 0, current: '' });
       return;
     }
+    // UNA COLECCIÓN SIN UNA SOLA IMAGEN NO ES UNA IMPORTACIÓN BUENA. Entró el
+    // código, el tono y el tamaño de cada color —el ZIP se leyó entero— pero si
+    // ninguna textura llegó a guardarse, la pared de materiales sale en blanco.
+    // Es exactamente lo que pasó importando Asator contra un proyecto sin
+    // buckets de Storage, y se informó como éxito. Se para aquí, con el motivo.
+    const stored = colors.filter((c) => c.textureUrl).length;
+    if (!stored) {
+      setError(
+        `Se leyeron ${colors.length} colores pero no se pudo guardar ninguna imagen`
+        + `${colors.uploadError ? ` (${colors.uploadError})` : ''}. `
+        + 'Revisa el bucket «togo-textures» en Storage; sin él las telas entran sin foto.',
+      );
+      setState({ stage: 'idle', done: 0, total: 0, current: '' });
+      return;
+    }
 
     setState((s) => ({ ...s, stage: 'writing' }));
     const uploaded = colors.map((c) => c.textureUrl).filter(Boolean);
@@ -107,7 +122,9 @@ export default function KvadratImport() {
         fallbackName: productName || 'Kvadrat',
       });
       if (plan.rows.length) await db.materials.bulkPut(plan.rows);
-      setResult({ ...plan.summary, productName });
+      // `stored` viaja al resumen: una importación parcial (algunas telas sin
+      // foto) se dice, en vez de descubrirse en la pared.
+      setResult({ ...plan.summary, productName, stored, read: colors.length });
       toast?.(`${plan.summary.colors} colores importados`);
     } catch (e) {
       // Las texturas ya están pagadas y nada apuntaría a ellas si falla el write.
@@ -219,6 +236,9 @@ export default function KvadratImport() {
             {result.productName ? <><strong>{result.productName}</strong> · </> : null}
             {result.materials} material{result.materials === 1 ? '' : 'es'} · {result.newColors} colores nuevos
             {result.updatedColors > 0 && <> · {result.updatedColors} actualizados</>}
+            {result.stored < result.read && (
+              <> · <strong>{result.read - result.stored} sin imagen</strong></>
+            )}
           </div>
         )}
       </div>

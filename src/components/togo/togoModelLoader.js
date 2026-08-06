@@ -66,8 +66,18 @@ export const CREASE_ANGLE = Math.PI / 3;
  * into the body it hugs. Measured on the dealer's EXCLUSIF lounge chair: eight
  * closed bodies (frame, seat cushion, back pillow, backrest pad, four legs)
  * where the material fallback offered five wrong ones.
+ *
+ * v8 = v7 con la segmentación hecha sobre las coordenadas EXACTAS. Hasta v7 el
+ * clasificador leía las posiciones ya cuantizadas a Int16, y esa rejilla —0.157
+ * mm en el EXCLUSIF Lounge NoArm, que está lejos del origen— pega entre sí las
+ * superficies que SE TOCAN: el asiento y los cojines de respaldo caían en los
+ * mismos puntos y se soldaban en un solo cuerpo (2 sólidos sobre los flotantes,
+ * 1 sobre los enteros), así que la pieza se exportaba como una única primitiva
+ * de 58 958 triángulos. Ahora el split lee los flotantes previos a la
+ * cuantización y el GLB sigue guardando los enteros. Un archivo v7 se vuelve a
+ * exportar por el paso automático.
  */
-export const ALCOVER_MESH_V = 7;
+export const ALCOVER_MESH_V = 8;
 
 /** The pipeline version a PARSED glTF declares — 0 for anything we didn't
  *  write (every pCon export, every catalogue GLB predating the pipeline). */

@@ -594,12 +594,32 @@ function bakeGeometry(THREE, utils, source) {
   } catch {
     return { geometry: source, fit: null, creased: false };
   }
+  // THE POSITIONS THE SPLIT MUST SEE — snapshotted here, between the weld and
+  // the quantization, because those two steps want opposite precisions.
+  //
+  // Quantizing to Int16 snorm lays every vertex on a grid sized by the mesh's
+  // own extent, and TWO BODIES IN CONTACT then land on the SAME grid points:
+  // measured on EXCLUSIF Lounge NoArm, whose M1 sits far enough off-origin that
+  // the step is 0.157 mm — the seat pad and the back cushions rest on each
+  // other, so the snap welded them into ONE component. splitSolids answered 2
+  // solids on the exact coordinates and 1 on the quantized ones, `splitGeometry
+  // BySolid` bailed at `< 2`, and the piece exported as a single 58 958-triangle
+  // primitive that no tagging could ever take apart.
+  //
+  // Segmentation is a property of the GEOMETRY; quantization is a property of
+  // the FILE. Running the classifier on lossy coordinates destroys exactly the
+  // separation it exists to find, so the split reads these floats and the GLB
+  // still stores the integers. The index buffer is untouched by quantization, so
+  // a partition found here applies verbatim to the quantized geometry.
+  const splitPositions = geometry.attributes?.position?.array
+    ? Float32Array.from(geometry.attributes.position.array)
+    : null;
   // A pure uniform scale — no rotation, no translation. That is the whole point
   // of anchoring at the origin (see quantizeGeometry): the node scales the
   // normalized positions back up and nothing else moves.
   const scale = quantizeGeometry(THREE, geometry);
   const fit = scale ? new THREE.Matrix4().makeScale(scale, scale, scale) : null;
-  return { geometry, fit, creased: true };
+  return { geometry, fit, creased: true, splitPositions };
 }
 
 /** Above this many masses a mesh is confetti (scan noise, exploded seams), and
@@ -706,9 +726,11 @@ function subGeometry(THREE, geometry, triangles, indexAt, matOfTri = null) {
  * making one mesh BE one mass is the whole integration: nothing else changes.
  *
  * Runs AFTER crease/weld/quantize so all masses share the node's dequantization
- * fit, and reads the quantized integer positions directly — `splitSolids` sizes
- * its weld grid off the model's own bounding diagonal, so integers segment
- * exactly like floats.
+ * fit. It reads the EXACT positions the caller snapshotted before quantization
+ * (`bakeGeometry.splitPositions`), never the stored integers: the old claim that
+ * "integers segment exactly like floats" is false wherever two bodies TOUCH —
+ * the Int16 grid snaps both contact surfaces onto the same points and welds them
+ * into one component. That is what fused a seat pad to its back cushions.
  *
  * MULTI-MATERIAL MESHES SPLIT TOO, and that is the whole point of this pass
  * existing for the dealer's catalogue. This used to bail on any geometry with
@@ -725,13 +747,17 @@ function subGeometry(THREE, geometry, triangles, indexAt, matOfTri = null) {
  *
  * Still bails on morph targets, where a per-mass index would lose the morph.
  */
-export async function splitGeometryBySolid(THREE, geometry) {
+export async function splitGeometryBySolid(THREE, geometry, positions = null) {
   const pos = geometry?.attributes?.position;
   if (!pos?.array) return [geometry];
   if (Object.keys(geometry.morphAttributes || {}).length) return [geometry];
+  // `positions` are the EXACT (pre-quantization) coordinates when the caller
+  // kept them — see bakeGeometry. Falling back to the stored array keeps every
+  // other caller working, at the old precision.
+  const forSplit = positions && positions.length === pos.array.length ? positions : pos.array;
   let solids;
   try {
-    ({ solids } = await splitSolidsOffThread(pos.array, geometry.index?.array || null));
+    ({ solids } = await splitSolidsOffThread(forSplit, geometry.index?.array || null));
   } catch { return [geometry]; }
   if (solids.length < 2 || solids.length > MAX_SOLIDS_PER_MESH) return [geometry];
   const index = geometry.index?.array || null;
@@ -950,7 +976,7 @@ export async function exportPieceGlb(THREE, meshes) {
     // one cushion geometry across nodes, and caching the settled value only
     // would let the second node kick off a duplicate split before the first
     // resolves.
-    if (!entry.pieces) entry.pieces = splitGeometryBySolid(THREE, entry.geometry);
+    if (!entry.pieces) entry.pieces = splitGeometryBySolid(THREE, entry.geometry, entry.splitPositions);
     for (const geometry of await entry.pieces) {
       const c = new THREE.Mesh(geometry, material);
       c.matrixAutoUpdate = false;

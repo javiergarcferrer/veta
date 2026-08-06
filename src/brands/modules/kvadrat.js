@@ -484,10 +484,23 @@ export async function parseKvadratExport(file, ctx = {}) {
     tileCm: resolved.tileCm, tileCmY: resolved.tileCmY,
     dispCm: firstPos(info?.displacementCm),
   };
-  const put = (blob, suffix, ext) =>
-    (blob && typeof upload === 'function'
-      ? Promise.resolve(upload(blob, `${resolved.code}-${suffix}.${ext}`)).catch(() => null)
-      : Promise.resolve(null));
+  // UNA SUBIDA QUE FALLA NO PUEDE PASAR POR IMPORTACIÓN BUENA. El primer error
+  // se guarda y sale con el color: `importKvadratCollection` lo cuenta y el
+  // panel lo dice. Se aprendió importando Asator contra un proyecto sin buckets
+  // — los 25 colores entraron con su tono y su tamaño, sin una sola imagen, y el
+  // importador informó éxito. Un `catch(() => null)` que se traga el motivo
+  // convierte «no hay dónde guardar» en «tela sin foto», que es indistinguible
+  // de un escaneo que no traía difuso.
+  let uploadError = null;
+  const put = async (blob, suffix, ext) => {
+    if (!blob || typeof upload !== 'function') return null;
+    try {
+      return await upload(blob, `${resolved.code}-${suffix}.${ext}`);
+    } catch (e) {
+      uploadError = uploadError || (e?.message || String(e));
+      return null;
+    }
+  };
 
   let rgb = null;
   let textureUrl = null;
@@ -505,8 +518,12 @@ export async function parseKvadratExport(file, ctx = {}) {
     if (d) {
       rgb = d.rgb || null;
       if (d.blob && typeof upload === 'function') {
-        const ext = d.blob.type === 'image/webp' ? '.webp' : '.jpg';
-        textureUrl = await Promise.resolve(upload(d.blob, `${resolved.code}.${ext.slice(1)}`)).catch(() => null);
+        const ext = d.blob.type === 'image/webp' ? 'webp' : 'jpg';
+        try {
+          textureUrl = await upload(d.blob, `${resolved.code}.${ext}`);
+        } catch (e) {
+          uploadError = uploadError || (e?.message || String(e));
+        }
       }
     }
   }
@@ -557,6 +574,9 @@ export async function parseKvadratExport(file, ctx = {}) {
     anisotropyUrl,
     pbr: hasPbr ? pbr : null,
     material: resolved.collection ? { name: resolved.collection, grade: null, category } : null,
+    // Presente SÓLO cuando algo no se pudo guardar — quien importa decide si eso
+    // es un aviso o un fallo, pero nunca lo descubre por una pared en blanco.
+    ...(uploadError ? { uploadError } : null),
   };
 }
 
@@ -616,6 +636,7 @@ async function toArrayBuffer(z) {
 export async function importKvadratCollection({ colours = [], fetchZip, upload, maxEdge, onProgress } = {}) {
   if (typeof fetchZip !== 'function') throw new Error('importKvadratCollection necesita un efecto fetchZip.');
   const out = [];
+  out.uploadError = null;   // el primer motivo por el que una imagen no se pudo guardar
   const total = colours.length;
   let done = 0;
   for (const c of colours) {
@@ -625,7 +646,10 @@ export async function importKvadratCollection({ colours = [], fetchZip, upload, 
       if (buf) {
         const file = { name: `${c.code || 'kvadrat'}.zip`, relPath: `${c.code || 'kvadrat'}.zip`, arrayBuffer: async () => buf };
         const color = await parseKvadratExport(file, { upload, maxEdge });
-        if (color) out.push(color);
+        if (color) {
+          if (color.uploadError && !out.uploadError) out.uploadError = color.uploadError;
+          out.push(color);
+        }
       }
     } catch { /* one colour never kills the batch */ }
     done += 1;

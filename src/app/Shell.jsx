@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText, LayoutDashboard } from 'lucide-react';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText, LayoutDashboard, Layers } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
@@ -19,6 +19,7 @@ import BrandLogo from '../components/BrandLogo.jsx';
 const Dashboard = lazyPage(() => import('../pages/Dashboard.jsx'));
 const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
 const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
+const KvadratImport = lazyPage(() => import('../pages/admin/KvadratImport.jsx'));
 const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
 const TogoRequests = lazyPage(() => import('../pages/TogoRequests.jsx'));
 const DealerInbox = lazyPage(() => import('../pages/DealerInbox.jsx'));
@@ -55,6 +56,7 @@ const NAV = [
   { to: '/solicitudes', label: 'Solicitudes', icon: Inbox },
   { to: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
   { to: '/marcas', label: 'Marcas', icon: Tags },
+  { to: '/kvadrat', label: 'Kvadrat', icon: Layers },
 ];
 
 function Loading({ label = 'Cargando…' }) {
@@ -261,6 +263,7 @@ function AdminApp() {
             <Route path="cotizaciones" element={<Quotes />} />
             <Route path="cotizaciones/:id" element={<QuoteDetail />} />
             <Route path="marcas" element={<Brands />} />
+            <Route path="kvadrat" element={<KvadratImport />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

@@ -573,6 +573,18 @@ export async function parseKvadratExport(file, ctx = {}) {
     displacementUrl,
     anisotropyUrl,
     pbr: hasPbr ? pbr : null,
+    // SU FOTO ES SU PROPIO ESCANEO. Una tela Kvadrat vive en el libro de un
+    // FABRICANTE (se importa al brand del fabricante), así que la pared le
+    // preguntaría por ella al CDN de ESE fabricante — que no la publica: Ligne
+    // Roset no vende Asator. Y el código `1044-0364` no es un código suyo, de
+    // modo que cada casilla disparaba un proxy, un HEAD y un PUT al espejo y un
+    // 404 contra el CDN ajeno, para acabar en blanco (medido en los logs de
+    // Storage: doce HEAD 400 seguidos sobre `c_1044-0364.jpg`).
+    //
+    // La casilla no puede saber que ese código es ajeno hasta que el CDN falla.
+    // Quien SÍ lo sabe es el importador, aquí, así que lo dice el color y nadie
+    // tiene que adivinarlo por la forma del código.
+    swatchOwn: true,
     material: resolved.collection ? { name: resolved.collection, grade: null, category } : null,
     // Presente SÓLO cuando algo no se pudo guardar — quien importa decide si eso
     // es un aviso o un fallo, pero nunca lo descubre por una pared en blanco.

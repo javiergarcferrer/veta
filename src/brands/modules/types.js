@@ -75,6 +75,13 @@
  *     displacementUrl string|null — small-scale height, paired with `pbr.dispCm`
  *     anisotropyUrl  string|null — the packed anisotropy map (RG direction, B
  *                 strength) — what makes a velvet read as velvet
+ *     swatchOwn   boolean|undefined — TRUE when this colour's swatch is its own
+ *                 stored scan and no brand CDN publishes it. Set by an importer
+ *                 that knows the provenance (a materials HOUSE whose cloth is
+ *                 imported into a MANUFACTURER's book: the manufacturer's CDN
+ *                 has never heard of the code). The tile reads it instead of
+ *                 guessing from the code's shape, and skips a proxy hop, a
+ *                 mirror write and a 404 per cell — see lib/swatchImage.ts
  *     pbr         object|null — { dif, rough, spec, tileCm, tileCmY, dispCm },
  *                 the shading port when the archive carries one
  *     material    { name, category, grade }|null — which MATERIAL this colour

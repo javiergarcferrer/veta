@@ -220,11 +220,29 @@ export function sizedSwatchUrl(code: string | null | undefined, cssPx: number): 
  * wall has the whole colour, a part chip only ever carries its code.
  */
 export function swatchTileUrl(
-  color: { code?: string | null; textureUrl?: string | null } | string | null | undefined,
+  color: { code?: string | null; textureUrl?: string | null; swatchOwn?: boolean | null }
+    | string | null | undefined,
   cssPx: number,
 ): string | null {
-  const c = typeof color === 'string' ? { code: color, textureUrl: null } : (color || {});
-  return sizedSwatchUrl(c.code, cssPx)
+  const c = typeof color === 'string'
+    ? { code: color, textureUrl: null, swatchOwn: false }
+    : (color || {});
+  // ── UNA TELA DE OTRA CASA NO SE LE PIDE AL CDN DEL FABRICANTE ──────────────
+  // `swatchOwn` lo pone el importador que sabe la procedencia (hoy, el de
+  // Kvadrat): esta tela vive en el libro de un fabricante pero su foto es el
+  // escaneo que subimos, porque ese fabricante no la publica. Sin esta rama la
+  // pared pedía `c_1044-0364.jpg` al CDN de Ligne Roset —que no lo tiene— y
+  // cada casilla costaba un proxy, un HEAD y un PUT al espejo y un 404, para
+  // acabar en blanco. Con ella va directa al escaneo: sale la tela, y se acaba
+  // el tráfico (y las transformaciones de imagen) que no llevaba a ninguna foto.
+  //
+  // Sólo cuando HAY escaneo: sin él, preguntar al CDN sigue siendo mejor que no
+  // enseñar nada, y el `onError` de la casilla ya cubre el 404.
+  const own = c.swatchOwn && c.textureUrl
+    ? sizedStorageImageUrl(c.textureUrl, cssPx)
+    : null;
+  return own
+    ?? sizedSwatchUrl(c.code, cssPx)
     ?? swatchUrl(c.code)
     ?? sizedStorageImageUrl(c.textureUrl, cssPx);
 }

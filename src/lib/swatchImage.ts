@@ -132,16 +132,27 @@ function proxyUrl(query: string): string | null {
  * SILVERTEX has 58 colours; one scroll of the configurator's swatch wall was
  * multiple MB.
  *
- * Two routes to the SAME pixels small, both ending at Supabase Storage's image
- * render endpoint (measured 2026-08: 26.8 KB at width 96 vs 245.9 KB — ~9× per
- * tile):
- *   • `swatch-proxy?code=…&w=…`, which mirrors the brand original into the
- *     `swatch-mirror` bucket once and 302s to the render endpoint. Only for a
- *     `proxied` swatch source (see `sizedSwatchUrl`).
- *   • the colour's own `textureUrl` — the scanned weave sitting in the public
- *     `togo-textures` bucket, where the material intake put it. The browser
- *     hits `render/image/public/…` directly, with no hop through us. This is
- *     the ONLY route for a brand that publishes no swatches of its own.
+ * Two routes to the SAME pixels small, both ending at a BAKED derivative in the
+ * public `swatch-mirror` bucket (measured 2026-08: 26.8 KB at width 96 vs
+ * 245.9 KB — ~9× per tile):
+ *   • `swatch-proxy?code=…&w=…`, for a brand that publishes its own swatches
+ *     (see `sizedSwatchUrl`);
+ *   • `swatch-proxy?object=…&w=…`, for the colour's own `textureUrl` — the
+ *     scanned weave sitting in the public `togo-textures` bucket, where the
+ *     material intake put it. The ONLY route for a brand with no CDN of its own.
+ *
+ * BOTH GO THROUGH THE FUNCTION, and neither one asks Storage to resize
+ * anything. They used to: the second route in particular built
+ * `render/image/public/togo-textures/…` right here in the browser. That
+ * endpoint is metered per DISTINCT ORIGIN IMAGE — 100 a month on Pro,
+ * "regardless of how many transformations each image undergoes" — and this
+ * catalog is 772 colours, so one visitor scrolling the whole materials wall
+ * spent ~7.7× the monthly allowance and the width ladder below could not help:
+ * it already collapses five urls onto one origin image, and one per colour is
+ * still 772. A per-distinct-image quota simply cannot serve a fabric library.
+ * The function now bakes each (image, width) once into an ordinary object, and
+ * the tiles cost ordinary egress — 250 GB on Pro against ~27 KB a tile. See
+ * supabase/functions/swatch-proxy/allow.ts for the full note.
  *
  * THE BRAND'S OWN PHOTO WINS WHEREVER THERE IS ONE (owner, 2026-08: every
  * thumbnail in the configurator is the image pulled from ligne-roset.com). The
@@ -157,10 +168,13 @@ function proxyUrl(query: string): string | null {
  * purpose: they are the print/PDF path, and print wants every pixel.
  */
 
-/** The snapped width ladder, shared with the proxy's `RENDER_WIDTHS`
+/** The snapped width ladder, shared with the proxy's `TILE_WIDTHS`
  *  (supabase/functions/swatch-proxy/allow.ts). Snapped rather than free
- *  integers so the mirror, the render CDN and the browser cache all hit on a
- *  handful of urls instead of one per element size × device pixel ratio. */
+ *  integers so the mirror, the CDN and the browser cache all hit on a handful
+ *  of urls instead of one per element size × device pixel ratio — and, now that
+ *  each rung is a stored object rather than a query param, so the bucket holds
+ *  a handful of files per colour instead of one per element it ever appeared
+ *  in. */
 export const SWATCH_TILE_WIDTHS = [48, 96, 192, 384, 768];
 
 /** The pixel width to REQUEST for something painted `cssPx` wide: device pixel
@@ -175,12 +189,16 @@ export function swatchRenderWidth(cssPx: number): number {
 }
 
 const PUBLIC_OBJECT = '/storage/v1/object/public/';
-const PUBLIC_RENDER = '/storage/v1/render/image/public/';
 
 /**
- * A public Supabase Storage object URL, re-pointed at the image RENDER
- * endpoint at a tile width. Null for anything that isn't one (a foreign CDN
- * wouldn't understand the params) — the caller's cue to take another route.
+ * A public Supabase Storage object URL, re-pointed at the swatch gateway at a
+ * tile width. Null for anything that isn't one (a foreign CDN has no object key
+ * to name) — the caller's cue to take another route.
+ *
+ * Degrades to the ORIGINAL url, not to null, when there's no Supabase
+ * configured to route through (the Node PDF harness): the picture is right
+ * either way and only its weight is wrong, and a caller reading this as "no
+ * route" would drop a tile that has a perfectly good one.
  */
 export function sizedStorageImageUrl(
   url: string | null | undefined,
@@ -189,11 +207,10 @@ export function sizedStorageImageUrl(
   const u = String(url ?? '').trim();
   const at = u.indexOf(PUBLIC_OBJECT);
   if (!u || at < 0) return null;
-  const w = swatchRenderWidth(cssPx);
-  // Drop any query the stored url carries — the render endpoint owns this one.
-  const path = u.slice(at + PUBLIC_OBJECT.length).split('?')[0];
-  if (!path) return null;
-  return `${u.slice(0, at)}${PUBLIC_RENDER}${path}?width=${w}&height=${w}&resize=cover`;
+  // Drop any query the stored url carries — the gateway owns this one.
+  const key = u.slice(at + PUBLIC_OBJECT.length).split('?')[0];
+  if (!key) return null;
+  return proxyUrl(`object=${encodeURIComponent(key)}&w=${swatchRenderWidth(cssPx)}`) ?? u;
 }
 
 /**

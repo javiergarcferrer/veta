@@ -1,0 +1,110 @@
+fecha,proveedor,razon_social,cuenta,documento,concepto,moneda,monto,categoria,fuente
+2024-12-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8725373700912259-8801611326621834,"Publicidad online - Dec 10, 2024",USD,2.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8820517998064494-8749950161787950,"Publicidad online - Dec 10, 2024",USD,2.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),9098723876910579-8954903354625961,"Publicidad online - Dec 10, 2024",USD,2.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-11,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8841866892596278-8841866899262944,"Publicidad online - Dec 10, 2024",USD,2.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-11,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8940854656030829-9099135213536112,"Publicidad online - Dec 10, 2024",USD,2.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-15,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8835666656549636-8844168499032777,"Publicidad online - Dec 13 - Dec 14, 2024",USD,15.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-17,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8881426795306954-8829513307164966,"Publicidad online - Dec 14 - Dec 17, 2024",USD,17.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-18,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8767860156663613-9141366779312955,"Publicidad online - Dec 17 - Dec 18, 2024",USD,19.00,publicidad_online,artifact:recibos-meta-anthropic
+2024-12-19,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8849064538543179-8849064541876512,"Publicidad online - Dec 17 - Dec 18, 2024",USD,21.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-01-09,meta,"Meta Platforms, Inc.",ALCOVER ADS,9094650903981479-8876353955811172,"Publicidad online - Dec 9, 2024",USD,1.45,publicidad_online,artifact:recibos-meta-anthropic
+2025-01-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),8895290437253917-9010836585699307,"Publicidad online - Dec 17 - Dec 19, 2024",USD,10.86,publicidad_online,artifact:recibos-meta-anthropic
+2025-10-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),24812897965066581-24812898028399908,"Publicidad online - Oct 9, 2025",USD,3.01,publicidad_online,artifact:recibos-meta-anthropic
+2025-10-18,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25203650975991279-24805209942502045,"Publicidad online - Oct 10 - Oct 18, 2025",USD,24.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-10-22,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),24938526682503702-24938526752503695,"Publicidad online - Oct 18 - Oct 21, 2025",USD,27.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-10-25,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25099170873105950-24915696181453424,"Publicidad online - Oct 21 - Oct 25, 2025",USD,30.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-10-28,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),24992199030469808-24949424811413894,"Publicidad online - Oct 24 - Oct 28, 2025",USD,33.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-11-01,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),24984413651248343-24984413701248338,"Publicidad online - Oct 28 - Nov 1, 2025",USD,36.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-11-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25430522186637489-25130815609941474,"Publicidad online - Nov 1 - Nov 4, 2025",USD,33.75,publicidad_online,artifact:recibos-meta-anthropic
+2025-11-24,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25560093790346994-25260625700293797,"Publicidad online - Nov 11 - Nov 19, 2025",USD,39.07,publicidad_online,artifact:recibos-meta-anthropic
+2025-11-30,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25317183941304645-25440530712303296,"Publicidad online - Nov 24 - Nov 30, 2025",USD,39.00,publicidad_online,artifact:recibos-meta-anthropic
+2025-12-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25293622830327418-25520917427597957,"Publicidad online - Nov 30 - Dec 4, 2025",USD,17.19,publicidad_online,artifact:recibos-meta-anthropic
+2025-12-22,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),SPLIT-2025-12-22a,Publicidad online - split payment,USD,3.21,publicidad_online,artifact:recibos-meta-anthropic
+2025-12-22,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),SPLIT-2025-12-22b,Publicidad online - split payment,USD,5.12,publicidad_online,artifact:recibos-meta-anthropic
+2025-12-22,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),SPLIT-2025-12-22c,Publicidad online - split payment,USD,10.24,publicidad_online,artifact:recibos-meta-anthropic
+2025-12-29,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25560875636935473-25456156444074055,"Publicidad online - Dec 12 - Dec 21, 2025",USD,22.51,publicidad_online,artifact:recibos-meta-anthropic
+2026-01-08,shopify,Shopify Inc.,Tienda Alcover,,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-01-10,shopify,Shopify Inc.,Tienda ALCOVER,,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-01-19,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25634033806286317-25634033832952981,"Publicidad online - Jan 14, 2026, 12:00 AM - Jan 18, 2026, 9:00 PM",USD,41.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-01-23,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),25768127889543581-25749323004757398,"Publicidad online - Jan 17, 2026, 12:00 AM - Jan 23, 2026, 5:54 PM",USD,45.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-02-07,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2556-1259-6381,"Claude Pro - Feb 7 to Mar 7, 2026",USD,20.00,licencia_software,artifact:recibos-meta-anthropic
+2026-02-07,shopify,Shopify Inc.,Tienda Alcover,,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-02-09,shopify,Shopify Inc.,Tienda ALCOVER,,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-02-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26079603701729324-26255449310811435,"Publicidad online - Jan 23, 2026, 12:00 AM - Jan 29, 2026, 11:59",USD,48.82,publicidad_online,artifact:recibos-meta-anthropic
+2026-02-24,meta,"Meta Platforms, Inc.",ALCOVER ADS,26238805429139429-26192298347123467,"Publicidad online - Oct 9, 2025, 12",USD,2.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-02-24,meta,"Meta Platforms, Inc.",ALCOVER ADS,26247630994923539-26247631054923533,"Publicidad online - Feb 23, 2026,",USD,3.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-02-25,meta,"Meta Platforms, Inc.",ALCOVER ADS,26210967431923230-26276513902035243,"Publicidad online - Feb 24, 2026,",USD,4.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-02-27,meta,"Meta Platforms, Inc.",ALCOVER ADS,26269915496028422-26226722863681011,"Publicidad online - Feb 25, 2026,",USD,5.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-02-28,meta,"Meta Platforms, Inc.",ALCOVER ADS,26238730005813639-26267469209606378,"Publicidad online - Feb 26, 2026,",USD,6.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-02,meta,"Meta Platforms, Inc.",ALCOVER ADS,26316574164695887-26042104532142847,"Publicidad online - Feb 28, 2026,",USD,7.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-05,meta,"Meta Platforms, Inc.",ALCOVER ADS,26356451234041509-26291393983880569,"Publicidad online - Mar 3, 2026, 12",USD,9.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-07,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2390-7870-7532,"Claude Pro - Mar 7 to Apr 7, 2026",USD,20.00,licencia_software,artifact:recibos-meta-anthropic
+2026-03-07,meta,"Meta Platforms, Inc.",ALCOVER ADS,26309914092028558-26214641514889152,"Publicidad online - Mar 5, 2026,",USD,10.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-09,meta,"Meta Platforms, Inc.",ALCOVER ADS,26324349633918342-26389789957374303,"Publicidad online - Mar 7, 2026, 12",USD,3.06,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-09,shopify,Shopify Inc.,Tienda Alcover,,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-03-10,meta,"Meta Platforms, Inc.",ALCOVER ADS,26401199952899970-26401200029566629,"Publicidad online - Mar 8, 2026,",USD,11.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-11,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),SPLIT-2026-03-11T11:56:59Z,Publicidad online - split payment,USD,2.81,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-11,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),SPLIT-2026-03-11T12:00:37Z,Publicidad online - split payment,USD,4.92,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-11,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),SPLIT-2026-03-11T22:21:40Z,Publicidad online - split payment,USD,14.75,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-11,shopify,Shopify Inc.,Tienda ALCOVER,,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-03-13,meta,"Meta Platforms, Inc.",ALCOVER ADS,26390634803956484-26427302590289706,"Publicidad online - Mar 8, 2026,",USD,13.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-17,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26611216391901390-26432764503079907,"Publicidad online - Mar 11, 2026, 12:00 AM - Mar 17, 2026, 2:59 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-21,meta,"Meta Platforms, Inc.",ALCOVER ADS,26480251198328180-26480251274994839,"Publicidad online - Mar 12, 2026,",USD,15.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-24,meta,"Meta Platforms, Inc.",ALCOVER ADS,26486469881039644-26489501024069859,"Publicidad online - Mar 21, 2026,",USD,17.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-28,meta,"Meta Platforms, Inc.",ALCOVER ADS,26433958372957464-26313587668327864,"Publicidad online - Mar 24, 2026,",USD,19.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-03-31,meta,"Meta Platforms, Inc.",ALCOVER ADS,26569241532762478-26569241579429140,"Publicidad online - Mar 28, 2026,",USD,21.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-04-06,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26540823072274053-26564831983206496,"Publicidad online - Mar 17, 2026, 12:00 AM - Mar 23, 2026, 11:59",USD,49.17,publicidad_online,artifact:recibos-meta-anthropic
+2026-04-07,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2581-8400-6490,"Claude Pro - Apr 7 to May 7, 2026",USD,20.00,licencia_software,artifact:recibos-meta-anthropic
+2026-04-08,meta,"Meta Platforms, Inc.",ALCOVER ADS,26693506277002672-26660157747004190,"Publicidad online - Mar 31, 2026, 12:00 AM - Apr",USD,23.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-04-08,shopify,Shopify Inc.,Tienda Alcover,512836913,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-04-09,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2416-5654-9003,"Max plan 5x - Apr 9 to May 9, 2026 (net of unused Pro credit)",USD,81.11,licencia_software,artifact:recibos-meta-anthropic
+2026-04-10,shopify,Shopify Inc.,Tienda ALCOVER,513848188,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-04-16,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2492-9641-5911,"Max plan 20x - Apr 16 to May 16, 2026 (net of unused 5x credit)",USD,123.56,licencia_software,artifact:recibos-meta-anthropic
+2026-04-17,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26661661626856857-26803872535969102,"Publicidad online - Apr 13, 2026, 12:00 AM - Apr 17, 2026, 1:51 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-04-22,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26738164669206559-26738164705873222,"Publicidad online - Apr 16, 2026, 12:00 AM - Apr 21, 2026, 8:39 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-04-23,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26716489554707405-26716489598040734,"Publicidad online - Apr 21, 2026, 12:00 AM - Apr 23, 2026, 12:49",USD,15.63,publicidad_online,artifact:recibos-meta-anthropic
+2026-04-28,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26797151696641188-26933571466332541,"Publicidad online - Apr 22, 2026, 12:00 AM - Apr 28, 2026, 3:20 AM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-06,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),26885590824463935-27190121474010876,"Publicidad online - Apr 27, 2026, 12:00 AM - May 5, 2026, 11:21 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-08,shopify,Shopify Inc.,Tienda Alcover,526650132,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-05-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27062617273427957-27062617330094618,"Publicidad online - May 4, 2026, 12:00 AM - May 8, 2026, 11:59 PM",USD,14.62,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-10,shopify,Shopify Inc.,Tienda ALCOVER,527681596,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-05-16,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2585-6677-0360,"Claude Pro - May 16 to Jun 16, 2026",USD,20.00,licencia_software,artifact:recibos-meta-anthropic
+2026-05-16,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2826-5176-1415,"Max plan 5x - May 16 to Jun 16, 2026 (net of unused Pro credit)",USD,80.04,licencia_software,artifact:recibos-meta-anthropic
+2026-05-21,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27238125662543785-27063262923363393,"Publicidad online - May 8, 2026, 12:00 AM - May 21, 2026, 1:00 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-23,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27421520640870957-27123179930705028,"Publicidad online - May 21, 2026, 12:00 AM - May 23, 2026, 6:41 AM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-24,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27134067566282925-27071447835878237,"Publicidad online - May 22, 2026, 12:00 AM - May 24, 2026, 7:04 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-26,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27185910881098600-27160312483658439,"Publicidad online - May 24, 2026, 12:00 AM - May 26, 2026, 11:17",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-27,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27315939448095739-27160426643647025,"Publicidad online - May 25, 2026, 12:00 AM - May 27, 2026, 7:52 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-28,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2481-6978-9713,"Prepaid extra usage, Individual plan",USD,5.00,licencia_software,artifact:recibos-meta-anthropic
+2026-05-28,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2703-1023-5428,"Prepaid extra usage, Individual plan",USD,20.00,licencia_software,artifact:recibos-meta-anthropic
+2026-05-28,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2874-0259-9127,"Prepaid extra usage, Individual plan",USD,10.00,licencia_software,artifact:recibos-meta-anthropic
+2026-05-29,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27188727507483597-27493840296972324,"Publicidad online - May 26, 2026, 12:00 AM - May 28, 2026, 8:14 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-30,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27103960062627010-27103960162627000,"Publicidad online - May 27, 2026, 12:00 AM - May 29, 2026, 10:48",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-05-31,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27374782555544761-27169732962716390,"Publicidad online - May 29, 2026, 12:00 AM - May 31, 2026, 5:57 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-05,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27436235806066102-27599249816431371,"Publicidad online - May 30, 2026, 12:00 AM - Jun 5, 2026, 12:24 AM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-07,shopify,Shopify Inc.,Tienda Alcover,540603720,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-06-09,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27335380006151687-27246156791740669,"Publicidad online - Jun 5, 2026, 12:00 AM - Jun 9, 2026, 6:42 AM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-09,shopify,Shopify Inc.,Tienda ALCOVER,541677557,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-06-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27362874180068928-27362874220068924,"Publicidad online - Jun 8, 2026, 12:00 AM - Jun 9, 2026, 11:59 PM",USD,21.81,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-11,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2821-4841-0491,"Max plan 20x - Jun 11 to Jul 11, 2026 (net of unused 5x credit)",USD,184.29,licencia_software,artifact:recibos-meta-anthropic
+2026-06-11,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27281388651550816-27689437990745886,"Publicidad online - Jun 9, 2026, 12:00 AM - Jun 11, 2026, 5:48 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-13,meta,"Meta Platforms, Inc.",ALCOVER ADS,27569627489390542-27287767934243161,"Publicidad online - Apr 5, 2026, 12:00 AM - Jun 12",USD,3.23,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-15,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27424700303886323-27424700377219649,"Publicidad online - Jun 10, 2026, 12:00 AM - Jun 15, 2026, 6:55 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-18,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27504210865935265-27775743222115362,"Publicidad online - Jun 15, 2026, 12:00 AM - Jun 18, 2026, 4:21 AM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-20,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27440271755662508-27503810292641982,"Publicidad online - Jun 17, 2026, 12:00 AM - Jun 20, 2026, 4:33 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-06-27,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27520414450981571-27550516757971338,"Publicidad online - Jun 20, 2026, 12:00 AM - Jun 25, 2026, 11:59 PM",USD,92.73,publicidad_online,artifact:recibos-meta-anthropic
+2026-07-04,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27813305841692428-27658397357183282,"Publicidad online - Jun 27, 2026, 12:00 AM - Jul 4, 2026, 8:14 AM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-07-06,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2309-1476-4510,One-time credit purchase,USD,5.00,licencia_software,artifact:recibos-meta-anthropic
+2026-07-07,shopify,Shopify Inc.,Tienda Alcover,554644993,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-07-09,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2353-1258-6581,"Prepaid extra usage, Individual plan",USD,5.00,licencia_software,artifact:recibos-meta-anthropic
+2026-07-09,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2762-4436-4443,"Auto recharge extra usage, Individual plan",USD,15.00,licencia_software,artifact:recibos-meta-anthropic
+2026-07-09,meta,"Meta Platforms, Inc.",ALCOVER ADS,27861089966910953-27894977873522163,"Publicidad online - Jun 13, 2026, 12:00 AM - Jun",USD,12.10,publicidad_online,artifact:recibos-meta-anthropic
+2026-07-09,shopify,Shopify Inc.,Tienda ALCOVER,555662658,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com
+2026-07-10,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27675747462114935-27739726092383733,"Publicidad online - Jul 4, 2026, 12:00 AM - Jul 6, 2026, 11:59 PM",USD,11.98,publicidad_online,artifact:recibos-meta-anthropic
+2026-07-12,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2479-4716-3616,"Max plan 5x - Jul 11 to Aug 11, 2026",USD,100.00,licencia_software,artifact:recibos-meta-anthropic
+2026-07-15,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2482-0131-3280,"Max plan 20x - Jul 15 to Aug 15, 2026 (net of unused 5x credit)",USD,112.21,licencia_software,artifact:recibos-meta-anthropic
+2026-07-29,anthropic,"Anthropic, PBC",Claude (javier@alcover.do),2482-1995-0346,Auto-recharge credits,USD,13.95,licencia_software,artifact:recibos-meta-anthropic
+2026-07-29,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),27961981336824881-27869927606030248,"Publicidad online - Jul 27, 2026, 12:00 AM - Jul 29, 2026, 3:25 PM",USD,49.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-08-03,meta,"Meta Platforms, Inc.",INSTAGRAM (personal),28150756071280733-28172775945745414,"Publicidad online - Jul 28, 2026, 12:00 AM - Aug 3, 2026, 4:00 AM",USD,86.00,publicidad_online,artifact:recibos-meta-anthropic
+2026-08-06,shopify,Shopify Inc.,Tienda Alcover,569026769,Suscripcion mensual plataforma e-commerce,USD,25.00,licencia_software,gmail:billing@shopify.com

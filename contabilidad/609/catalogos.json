@@ -1,0 +1,81 @@
+{
+  "_nota": [
+    "Codigos DGII pendientes de confirmar con la contadora antes de subir a la Oficina Virtual.",
+    "Mientras 'confirmado' sea false el generador escribe el TXT con sufijo -BORRADOR y avisa.",
+    "Fuente de la estructura del 609: DGII, '¿Como esta compuesto el formato de pagos al exterior (609)?' (CA3841)."
+  ],
+  "confirmado": false,
+
+  "contribuyente": {
+    "razonSocial": "ALCOVER S.R.L.",
+    "rnc": "132917091"
+  },
+
+  "tiposIdentificacion": {
+    "_nota": "Beneficiarios del exterior sin RNC dominicano. Confirmar el codigo que aplica la DGII.",
+    "pasaporteOtro": { "codigo": "3", "etiqueta": "Pasaporte / ID tributario del exterior" }
+  },
+
+  "categorias": {
+    "publicidad_online": {
+      "etiqueta": "Publicidad",
+      "codigoDGII": "",
+      "tasaISR": [
+        { "desde": "2000-01-01", "tasa": 0.27, "base": "Art. 305 CT - servicios al exterior" },
+        { "desde": "2026-07-01", "tasa": 0.15, "base": "Ley 30-26 - publicidad online" }
+      ]
+    },
+    "licencia_software": {
+      "etiqueta": "Regalias y otros intangibles",
+      "codigoDGII": "",
+      "tasaISR": [
+        { "desde": "2000-01-01", "tasa": 0.27, "base": "Art. 305 CT - servicios al exterior" },
+        { "desde": "2026-07-01", "tasa": 0.15, "base": "Ley 30-26 - licencias de software" }
+      ]
+    },
+    "otros_servicios": {
+      "etiqueta": "Gastos por trabajos, suministros y servicios",
+      "codigoDGII": "",
+      "tasaISR": [{ "desde": "2000-01-01", "tasa": 0.27, "base": "Art. 305 CT" }]
+    }
+  },
+
+  "proveedores": {
+    "meta": {
+      "razonSocial": "Meta Platforms, Inc.",
+      "pais": "US",
+      "idTributario": "",
+      "relacionado": "N",
+      "descriptores": ["PAYPAL *META", "PAYPAL *FACEBK", "FACEBK", "META PLATFORMS"],
+      "_nota": "Meta cobra via PayPal: en el estado de cuenta el comercio es PayPal, no Meta."
+    },
+    "anthropic": {
+      "razonSocial": "Anthropic, PBC",
+      "pais": "US",
+      "idTributario": "",
+      "relacionado": "N",
+      "descriptores": ["ANTHROPIC"]
+    },
+    "openai": {
+      "razonSocial": "OpenAI, L.L.C.",
+      "pais": "US",
+      "idTributario": "",
+      "relacionado": "N",
+      "descriptores": ["OPENAI"]
+    },
+    "shopify": {
+      "razonSocial": "Shopify Inc.",
+      "pais": "CA",
+      "idTributario": "",
+      "relacionado": "N",
+      "descriptores": ["SHOPIFY"],
+      "_nota": "El descriptor trae el numero de factura: 'Shopify* 555662658'. Es la llave de conciliacion mas fuerte."
+    }
+  },
+
+  "conciliacion": {
+    "_nota": "El banco postea el cargo dias despues de la fecha del recibo, y convierte a RD$ a su propia tasa.",
+    "ventanaDias": 8,
+    "toleranciaUSD": 0.02
+  }
+}

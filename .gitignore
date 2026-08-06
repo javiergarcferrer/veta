@@ -8,3 +8,10 @@ node_modules
 .env
 .env.local
 .env.*.local
+
+# Contabilidad. Los estados de cuenta de la tarjeta traen el consumo completo de
+# la empresa — no van al repositorio; el ledger de recibos si, porque son las
+# facturas de los proveedores. salida/ se regenera con `npm run 609`.
+contabilidad/609/estado-cuenta/*
+!contabilidad/609/estado-cuenta/EJEMPLO-estado-cuenta.csv
+contabilidad/609/salida/

@@ -81,11 +81,14 @@
  *                 library online (the Kvadrat set reads a product page's
  *                 colourways, each with a public link to its colormass export).
  *                 `fetch` returns `{ quality?, productName?, colours: [{ code,
- *                 url, … }] }`; a caller feeds that worklist to the set's own
- *                 importer with a `fetchZip` effect. Absent ⇒ the screen offers
- *                 only the file drop. Handed its effect (`invoke`) exactly like
- *                 `parse` is handed its uploader — this layer imports no network
- *                 client.
+ *                 url, … }] }`; `import({ colours, fetchZip, upload, onProgress })`
+ *                 downloads each colour (effects injected — a browser routes
+ *                 `fetchZip` through the proxy, a back-office run fetches
+ *                 directly) and returns `ParsedColor[]` ready for
+ *                 `planMaterialImport`. Absent ⇒ the screen offers only the file
+ *                 drop. Both are handed their effects (`invoke` / `fetchZip`)
+ *                 exactly like `parse` is handed its uploader — this layer
+ *                 imports no network client.
  *
  *   swatch        WHERE THIS BRAND PUBLISHES A COLOUR'S PHOTO — the second half
  *                 of "materials", and the one every screen reads:

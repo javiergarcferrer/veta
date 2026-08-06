@@ -29,6 +29,11 @@ if (typeof window !== 'undefined') {
 // Functions route at `${SUPABASE_URL}/functions/v1/<name>`.
 export const SUPABASE_URL: string = url || 'http://localhost:54321';
 
+/** The anon key, public-by-design (RLS enforces access). Exported so a caller
+ *  that hits an Edge Function route by hand — not through the JS SDK — can send
+ *  the `apikey` header the gateway expects (e.g. the Kvadrat zip proxy). */
+export const SUPABASE_ANON_KEY: string = anonKey || 'anon';
+
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, anonKey || 'anon', {
   auth: {
     persistSession: true,

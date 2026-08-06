@@ -73,7 +73,7 @@
  */
 
 import { unzipSync, strFromU8 } from 'fflate';
-import { readSwatchBitmap } from './swatchPixels.js';
+import { averageRgb } from './swatchPixels.js';
 import { GENERIC_MODULES } from './generic.js';
 import { defineModuleSet, prettify, relPathOf, splitPath } from './types.js';
 
@@ -278,74 +278,98 @@ function folderOf(file) {
 const blobOf = (bytes, ext) => new Blob([bytes], { type: mimeOf(ext) });
 
 /**
- * A data map's mean value, 0..1, or null when it can't be decoded — sampled on
- * a grid over a downscaled copy (a weave's roughness/specular is flat enough
- * that ~4096 points answer it and a folder stays responsive). Browser-only.
+ * Decode `bytes` to an ImageBitmap already bounded to `maxEdge`, or null. The
+ * RESIZE HAPPENS DURING DECODE (`createImageBitmap`'s resize options) — the one
+ * thing that lets a browser read Kvadrat's originals at all: an 8700 px map
+ * decoded full-size is ~300 MB per surface and takes the tab down, so it is
+ * never allocated. Kvadrat scans are square, so bounding the width bounds the
+ * map. Browser-only; null in Node (no decoder) so the metadata path still runs.
  */
-async function averageGrayOf(bytes, ext) {
+async function boundedBitmap(bytes, ext, maxEdge) {
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
+  const blob = blobOf(bytes, ext);
   try {
-    const bmp = await createImageBitmap(blobOf(bytes, ext));
-    const scale = Math.min(1, 256 / Math.max(bmp.width, bmp.height));
-    const w = Math.max(1, Math.round(bmp.width * scale));
-    const h = Math.max(1, Math.round(bmp.height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const g = canvas.getContext('2d', { willReadFrequently: true });
-    if (!g) { bmp.close?.(); return null; }
-    g.drawImage(bmp, 0, 0, w, h);
-    bmp.close?.();
-    const d = g.getImageData(0, 0, w, h).data;
-    const step = Math.max(1, Math.floor(Math.sqrt((w * h) / 4096)));
-    let sum = 0, n = 0;
-    for (let y = 0; y < h; y += step) {
-      for (let x = 0; x < w; x += step) {
-        const i = (y * w + x) * 4;
-        if (d[i + 3] < 8) continue;
-        sum += (d[i] + d[i + 1] + d[i + 2]) / 3;
-        n += 1;
-      }
-    }
-    if (!n) return null;
-    return Math.max(0, Math.min(1, sum / n / 255));
+    return await createImageBitmap(blob, { resizeWidth: maxEdge, resizeQuality: 'high' });
   } catch {
-    return null;
+    try { return await createImageBitmap(blob); } catch { return null; }
   }
 }
 
+/** An ImageBitmap → a 2D context of the same (already-bounded) size, bitmap
+ *  closed. null when a context can't be had. */
+function drawToCanvas(bmp) {
+  const canvas = document.createElement('canvas');
+  canvas.width = bmp.width; canvas.height = bmp.height;
+  const g = canvas.getContext('2d', { willReadFrequently: true });
+  if (g) g.drawImage(bmp, 0, 0);
+  bmp.close?.();
+  return g ? { canvas, g, w: canvas.width, h: canvas.height } : null;
+}
+
+/** canvas → WebP (JPEG where the browser won't encode WebP). */
+function encode(canvas, type, quality) {
+  return new Promise((res) => {
+    try { canvas.toBlob((b) => res(b || null), type, quality); } catch { res(null); }
+  });
+}
+
 /**
- * The normal map as a bounded, web-sized blob three can bind: decoded,
- * downscaled to `maxEdge`, re-encoded, and green-flipped to +Y up only when the
- * manifest declared `+Y down`. Browser-only (the originals are ~8700 px / tens
- * of MB, so there is no raw passthrough — that would blow the upload cap);
- * returns null where it can't decode, and the colour keeps its flat tone.
+ * DIFFUSE → `{ rgb, blob }`: the exact averaged tone and the bounded, re-encoded
+ * colour map to store — the same shape swatchPixels produces, but with the
+ * resize folded into the decode so an original-res scan never lands full-size.
+ * Browser-only; null in Node.
+ */
+async function decodeDiffuse(bytes, ext, maxEdge) {
+  const bmp = await boundedBitmap(bytes, ext, maxEdge);
+  if (!bmp) return null;
+  const c = drawToCanvas(bmp);
+  if (!c) return null;
+  let rgb = null;
+  try { rgb = averageRgb(c.g.getImageData(0, 0, c.w, c.h).data, c.w, c.h); } catch { rgb = null; }
+  let blob = await encode(c.canvas, 'image/webp', 0.9);
+  if (!blob || blob.type !== 'image/webp') blob = await encode(c.canvas, 'image/jpeg', 0.9);
+  return { rgb, blob: blob || null };
+}
+
+/** A data map's mean value, 0..1 (roughness/specular → the scalar the renderer
+ *  reads). Sampled on a grid over a small bounded decode. Browser-only. */
+async function averageGrayOf(bytes, ext) {
+  const bmp = await boundedBitmap(bytes, ext, 256);
+  if (!bmp) return null;
+  const c = drawToCanvas(bmp);
+  if (!c) return null;
+  const d = c.g.getImageData(0, 0, c.w, c.h).data;
+  const step = Math.max(1, Math.floor(Math.sqrt((c.w * c.h) / 4096)));
+  let sum = 0, n = 0;
+  for (let y = 0; y < c.h; y += step) {
+    for (let x = 0; x < c.w; x += step) {
+      const i = (y * c.w + x) * 4;
+      if (d[i + 3] < 8) continue;
+      sum += (d[i] + d[i + 1] + d[i + 2]) / 3;
+      n += 1;
+    }
+  }
+  if (!n) return null;
+  return Math.max(0, Math.min(1, sum / n / 255));
+}
+
+/**
+ * NORMAL → a bounded PNG three can bind, green-flipped to +Y up only when the
+ * manifest declared +Y down. PNG because a normal is data, not a photo, and a
+ * 2048 normal lands well under the upload cap. Browser-only.
  */
 async function bakeNormalBlob(bytes, ext, { flipGreen = false, maxEdge = 2048 } = {}) {
-  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
-  try {
-    const bmp = await createImageBitmap(blobOf(bytes, ext));
-    const scale = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
-    const w = Math.max(1, Math.round(bmp.width * scale));
-    const h = Math.max(1, Math.round(bmp.height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    const g = canvas.getContext('2d', { willReadFrequently: true });
-    if (!g) { bmp.close?.(); return null; }
-    g.drawImage(bmp, 0, 0, w, h);
-    bmp.close?.();
-    if (flipGreen) {
-      const img = g.getImageData(0, 0, w, h);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) d[i + 1] = 255 - d[i + 1]; // invert G → +Y up
-      g.putImageData(img, 0, 0);
-    }
-    // PNG: a normal map is data, not a photo — lossless keeps the relief true,
-    // and a 2048 normal lands well under the upload cap.
-    const blob = await new Promise((res) => canvas.toBlob((b) => res(b || null), 'image/png'));
-    return blob || null;
-  } catch {
-    return null;
+  const bmp = await boundedBitmap(bytes, ext, maxEdge);
+  if (!bmp) return null;
+  const c = drawToCanvas(bmp);
+  if (!c) return null;
+  if (flipGreen) {
+    const img = c.g.getImageData(0, 0, c.w, c.h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) d[i + 1] = 255 - d[i + 1]; // invert G → +Y up
+    c.g.putImageData(img, 0, 0);
   }
+  return encode(c.canvas, 'image/png');
 }
 
 /**
@@ -400,12 +424,12 @@ export async function parseKvadratExport(file, ctx = {}) {
   // to the metadata above with rgb/textureUrl null, exactly like the contract's
   // "no upload" path).
   if (maps.diffuse) {
-    const bmp = await readSwatchBitmap(blobOf(maps.diffuse.bytes, maps.diffuse.ext), maxEdge ? { maxEdge } : undefined);
-    if (bmp) {
-      rgb = bmp.rgb || null;
-      if (bmp.blob && typeof upload === 'function') {
-        const ext = bmp.blob.type === 'image/webp' ? '.webp' : '.jpg';
-        textureUrl = await Promise.resolve(upload(bmp.blob, `${resolved.code}${ext}`)).catch(() => null);
+    const d = await decodeDiffuse(maps.diffuse.bytes, maps.diffuse.ext, maxEdge || 2048);
+    if (d) {
+      rgb = d.rgb || null;
+      if (d.blob && typeof upload === 'function') {
+        const ext = d.blob.type === 'image/webp' ? '.webp' : '.jpg';
+        textureUrl = await Promise.resolve(upload(d.blob, `${resolved.code}${ext}`)).catch(() => null);
       }
     }
   }
@@ -520,6 +544,7 @@ export const KVADRAT_SOURCE = Object.freeze({
   placeholder: 'https://www.kvadrat.dk/en/products/upholstery/1044-asator',
   hint: 'Pega el enlace de la colección en kvadrat.dk; se importan todos sus colores.',
   fetch: fetchKvadratCollection,
+  import: importKvadratCollection,
 });
 
 const materials = {

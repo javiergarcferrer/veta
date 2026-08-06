@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { zipSync, strToU8 } from 'fflate';
 
 import {
-  parseKvadratCollectionPage, kvadratProductUrl,
+  parseKvadratCollectionPage, kvadratProductUrl, kvadratBlobUrl,
 } from '../supabase/functions/kvadrat-collection/parse.ts';
 import {
   fetchKvadratCollection, importKvadratCollection,
@@ -68,6 +68,22 @@ test('kvadratProductUrl: acepta URL y slug de kvadrat.dk, rechaza lo demás (ant
   assert.equal(kvadratProductUrl('https://evil.example/en/products/upholstery/1044-asator'), null);
   assert.equal(kvadratProductUrl('1044'), null);      // sin slug no es una ruta de producto
   assert.equal(kvadratProductUrl(''), null);
+});
+
+test('kvadratBlobUrl: sólo el host de blob de Kvadrat y /bynderresources/*.zip', () => {
+  const ok = 'https://kvadratimageresizer.blob.core.windows.net/bynderresources/C1B49592-A77F-4F78-B3B586AF3ACA58A7.zip';
+  assert.equal(kvadratBlobUrl(ok), ok);
+  // userinfo/puerto/fragmento reconstruidos fuera; host y prefijo obligatorios.
+  assert.equal(kvadratBlobUrl('https://evil@kvadratimageresizer.blob.core.windows.net/bynderresources/x.zip'), 'https://kvadratimageresizer.blob.core.windows.net/bynderresources/x.zip');
+  assert.equal(kvadratBlobUrl('https://evil.example/bynderresources/x.zip'), null);
+  assert.equal(kvadratBlobUrl('https://kvadratimageresizer.blob.core.windows.net/other/x.zip'), null);
+  assert.equal(kvadratBlobUrl('https://kvadratimageresizer.blob.core.windows.net/bynderresources/x.txt'), null);
+  assert.equal(kvadratBlobUrl('http://kvadratimageresizer.blob.core.windows.net/bynderresources/x.zip'), null);
+});
+
+test('el juego kvadrat trae también el importador en la capacidad source', () => {
+  const set = moduleSetFor({ modules: { set: 'kvadrat' } });
+  assert.equal(typeof set.materials.source.import, 'function');
 });
 
 test('fetchKvadratCollection: invoca la función y normaliza la respuesta', async () => {

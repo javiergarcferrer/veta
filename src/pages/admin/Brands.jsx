@@ -7,6 +7,7 @@ import {
 import { useApp } from '../../context/AppContext.jsx';
 import { useLiveQuery, useLiveQueryStatus } from '../../db/hooks.js';
 import { db, newId } from '../../db/database.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../db/supabaseClient.js';
 import { uploadSwatchTexture, removeSwatchTexture } from '../../db/swatchUpload.js';
 import { useConfirm, useToast } from '../../components/ConfirmProvider.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
@@ -718,6 +719,7 @@ function BrandEnvironmentPanel({
       </div>
 
       <MaterialImportPanel brand={brand} profileId={profileId} onToast={onToast} />
+      <KvadratCollectionPanel brand={brand} profileId={profileId} onToast={onToast} />
       <PriceListImportPanel brand={brand} profileId={profileId} onToast={onToast} />
     </div>
   );
@@ -852,6 +854,149 @@ function MaterialImportPanel({ brand, profileId, onToast }) {
           {result.materials} material{result.materials === 1 ? '' : 'es'} · {result.newColors} colores nuevos
           {result.updatedColors > 0 && <> · {result.updatedColors} actualizados</>}
           {result.skipped > 0 && <> · {result.skipped} archivo{result.skipped === 1 ? '' : 's'} sin código, omitido{result.skipped === 1 ? '' : 's'}</>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * COLECCIÓN KVADRAT — una colección entera desde su enlace, no color a color.
+ *
+ * Sólo aparece cuando el módulo de materiales de la marca declara una `source`
+ * (hoy, Kvadrat). Pega el enlace de la colección; la Edge Function `kvadrat-
+ * collection` enumera cada color con su export público de colormass, y el
+ * importador baja cada ZIP —a través del proxy `kvadrat-zip`, porque el blob no
+ * manda CORS— y lo decodifica por el mismo módulo que lee un ZIP suelto. Se
+ * agrupa por «Product name» del info.txt, así que la colección entra como UN
+ * material con todos sus colores.
+ *
+ * Los efectos se construyen AQUÍ y se inyectan (`invoke`, `fetchZip`, `upload`):
+ * `src/brands/**` no conoce ni Supabase ni el proxy. Cada export es grande
+ * (~194 MB a resolución original), así que esto es para unas pocas colecciones
+ * a la vez; sembrar la biblioteca entera es un trabajo de back-office.
+ */
+function KvadratCollectionPanel({ brand, profileId, onToast }) {
+  const modules = useMemo(() => moduleSetFor(brand), [brand]);
+  const source = modules.materials.source;
+  const [url, setUrl] = useState('');
+  const [state, setState] = useState({ stage: 'idle', done: 0, total: 0, current: '' });
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+
+  const run = useCallback(async () => {
+    const link = url.trim();
+    if (!link) { setError('Pega el enlace de la colección.'); return; }
+    setError(null); setResult(null);
+    setState({ stage: 'enumerate', done: 0, total: 0, current: '' });
+
+    const invoke = (name, opts) => supabase.functions.invoke(name, opts);
+    let colours = [];
+    let productName = null;
+    try {
+      const col = await source.fetch(link, { invoke });
+      colours = col.colours || [];
+      productName = col.productName || null;
+    } catch (e) {
+      setError(e?.message || 'No se pudo leer la colección.');
+      setState({ stage: 'idle', done: 0, total: 0, current: '' });
+      return;
+    }
+
+    setState({ stage: 'importing', done: 0, total: colours.length, current: '' });
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || SUPABASE_ANON_KEY;
+    const fetchZip = async (zurl) => {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/kvadrat-zip?url=${encodeURIComponent(zurl)}`, {
+        headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+      });
+      if (!res.ok) throw new Error(`proxy ${res.status}`);
+      return res.blob();
+    };
+    const upload = (blob, name) => uploadSwatchTexture(blob, { folder: brand.slug || brand.id, name });
+
+    let colors = [];
+    try {
+      colors = await source.import({
+        colours, fetchZip, upload,
+        onProgress: (p) => setState((s) => ({ ...s, done: p.done, total: p.total, current: p.code || '' })),
+      });
+    } catch (e) {
+      setError(e?.message || 'Falló la importación.');
+      setState({ stage: 'idle', done: 0, total: 0, current: '' });
+      return;
+    }
+    if (!colors.length) {
+      setError('No se pudo importar ningún color de esa colección.');
+      setState({ stage: 'idle', done: 0, total: 0, current: '' });
+      return;
+    }
+
+    setState((s) => ({ ...s, stage: 'writing' }));
+    const uploaded = colors.map((c) => c.textureUrl).filter(Boolean);
+    try {
+      const existing = await db.materials.where('brandId').equals(brand.id).toArray();
+      const plan = planMaterialImport({
+        colors, existing, profileId, brandId: brand.id, newId,
+        fallbackName: productName || `${brand.name} · Kvadrat`,
+      });
+      if (plan.rows.length) await db.materials.bulkPut(plan.rows);
+      setResult(plan.summary);
+      onToast?.(`${plan.summary.colors} colores importados`);
+    } catch (e) {
+      // The textures are already paid for; nothing points at them if the write failed.
+      await Promise.all(uploaded.map((u) => removeSwatchTexture(u)));
+      setError(e?.message || 'No se pudieron guardar los materiales.');
+    } finally {
+      setState({ stage: 'idle', done: 0, total: 0, current: '' });
+    }
+  }, [url, source, brand, profileId, onToast]);
+
+  if (!source?.supported) return null;
+  const busy = state.stage !== 'idle';
+
+  return (
+    <div className="rounded-xl border border-ink-100 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Boxes size={14} className="text-ink-400" aria-hidden />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">{source.label}</span>
+      </div>
+      <p className="text-[11px] text-ink-500">{source.hint}</p>
+      <div className="flex gap-2">
+        <input
+          type="url"
+          value={url}
+          disabled={busy}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={source.placeholder}
+          className="flex-1 rounded-lg border border-ink-200 px-2 py-1.5 text-xs disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={run}
+          disabled={busy || !url.trim()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} aria-hidden />}
+          Importar
+        </button>
+      </div>
+      {busy && (
+        <div className="text-[11px] text-ink-500">
+          {state.stage === 'enumerate' && 'Leyendo la colección…'}
+          {state.stage === 'importing' && `Bajando ${state.done}/${state.total}${state.current ? ` · ${state.current}` : ''}`}
+          {state.stage === 'writing' && 'Guardando materiales…'}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-[11px] text-red-800 dark:text-red-200">
+          {error}
+        </div>
+      )}
+      {result && (
+        <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800">
+          {result.materials} material{result.materials === 1 ? '' : 'es'} · {result.newColors} colores nuevos
+          {result.updatedColors > 0 && <> · {result.updatedColors} actualizados</>}
         </div>
       )}
     </div>

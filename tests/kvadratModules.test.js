@@ -12,9 +12,10 @@ import { zipSync, strToU8 } from 'fflate';
 
 import {
   splitQualityColour, classifyColormassMap, parseColormassInfo,
-  parseKvadratFilename, resolveKvadratColor, parseKvadratExport,
+  parseKvadratFilename, resolveKvadratColor, parseKvadratExport, anisotropyRGB,
 } from '../src/brands/modules/kvadrat.js';
 import { moduleSetFor, moduleSetById } from '../src/brands/modules/index.js';
+import { buildFabricByCode } from '../src/lib/togo/fabricIndex.js';
 
 // El info.txt REAL de Asator 0114, byte por byte.
 const ASATOR_INFO = [
@@ -136,10 +137,46 @@ test('parseKvadratExport: un ZIP real → un ParsedColor agrupable por colecció
   assert.equal(color.material.category, 'fabric');
   assert.equal(color.pbr.tileCm, 38.25);
   assert.equal(color.pbr.tileCmY, 38.36);
+  assert.equal(color.pbr.dispCm, 0.01);   // «Displacement scale: 0.01 cm»
   // En Node no hay createImageBitmap: la parte de imagen degrada a null, y el
   // color aún llega con su metadato (el contrato «sin decode» del módulo).
   assert.equal(color.textureUrl, null);
   assert.equal(color.rgb, null);
+  // Los campos de mapa existen en el contrato (null sin canvas).
+  for (const k of ['normalUrl', 'roughnessUrl', 'metalnessUrl', 'displacementUrl', 'anisotropyUrl']) {
+    assert.ok(k in color, `falta ${k} en ParsedColor`);
+    assert.equal(color[k], null);
+  }
+});
+
+test('anisotropyRGB: empaqueta rotación→dirección (RG) y fuerza (B)', () => {
+  // Rotación 0 → dirección (1,0): R=255 (cos), G=128 (sin=0 recentrado); B=fuerza.
+  assert.deepEqual(anisotropyRGB(0, 128), [255, 128, 128]);
+  assert.equal(anisotropyRGB(0, 255)[2], 255);      // la fuerza pasa a B
+  assert.equal(anisotropyRGB(0, 0)[2], 0);
+  // ~Un cuarto de vuelta (byte 64 ≈ 90°) → sin≈1 → G alto.
+  assert.ok(anisotropyRGB(64, 200)[1] > 240);
+});
+
+test('buildFabricByCode: el descriptor arrastra todos los mapas y dispCm', () => {
+  const materials = [{
+    colors: [{
+      code: '1044-0114', rgb: '#7a5a4a',
+      textureUrl: 'https://cdn/d.webp', normalUrl: 'https://cdn/n.png',
+      roughnessUrl: 'https://cdn/r.webp', metalnessUrl: 'https://cdn/m.webp',
+      displacementUrl: 'https://cdn/h.webp', anisotropyUrl: 'https://cdn/a.png',
+      tileCm: 38.25, tileCmY: 38.36, dispCm: 0.01, rough: 0.9,
+    }],
+  }];
+  const fab = buildFabricByCode(materials)['1044-0114'];
+  assert.equal(fab.textureUrl, 'https://cdn/d.webp');
+  assert.equal(fab.normalUrl, 'https://cdn/n.png');
+  assert.equal(fab.roughnessUrl, 'https://cdn/r.webp');
+  assert.equal(fab.metalnessUrl, 'https://cdn/m.webp');
+  assert.equal(fab.displacementUrl, 'https://cdn/h.webp');
+  assert.equal(fab.anisotropyUrl, 'https://cdn/a.png');
+  assert.equal(fab.pbr.tileCm, 38.25);
+  assert.equal(fab.pbr.dispCm, 0.01);
 });
 
 test('parseKvadratExport: no es un ZIP → null, sin lanzar', async () => {

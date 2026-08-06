@@ -1633,8 +1633,10 @@ test('buildFabricByCode: ONE descriptor, because it is part of a baked picture\'
   }];
   const map = buildFabricByCode(materials);
   assert.deepEqual(map['855'], {
-    textureUrl: 'https://cdn/w.webp', normalUrl: 'https://cdn/n.webp', rgb: '#7f9c2a',
-    pbr: { dif: null, rough: 0.7, spec: null, tileCm: 12, tileCmY: null },
+    textureUrl: 'https://cdn/w.webp', normalUrl: 'https://cdn/n.webp',
+    roughnessUrl: null, metalnessUrl: null, displacementUrl: null, anisotropyUrl: null,
+    rgb: '#7f9c2a',
+    pbr: { dif: null, rough: 0.7, spec: null, tileCm: 12, tileCmY: null, dispCm: null },
   });
 
   // FAMILY FALLBACK: every colour of a material shares one physical weave, so a

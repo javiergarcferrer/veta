@@ -401,6 +401,10 @@ export function planMaterialImport({
         ...(c.rgb ? { rgb: c.rgb } : null),
         ...(c.textureUrl ? { textureUrl: c.textureUrl } : null),
         ...(c.normalUrl ? { normalUrl: c.normalUrl } : null),
+        ...(c.roughnessUrl ? { roughnessUrl: c.roughnessUrl } : null),
+        ...(c.metalnessUrl ? { metalnessUrl: c.metalnessUrl } : null),
+        ...(c.displacementUrl ? { displacementUrl: c.displacementUrl } : null),
+        ...(c.anisotropyUrl ? { anisotropyUrl: c.anisotropyUrl } : null),
         ...(c.pbr && typeof c.pbr === 'object' ? c.pbr : null),
       };
       const at = indexByCode.get(entry.code);

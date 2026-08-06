@@ -34,8 +34,22 @@ function pbrOf(c) {
     spec: Number.isFinite(Number(c?.spec)) ? Number(c.spec) : null,
     tileCm: Number(c?.tileCm) > 0 ? Number(c.tileCm) : null,
     tileCmY: Number(c?.tileCmY) > 0 ? Number(c.tileCmY) : null,
+    dispCm: Number(c?.dispCm) > 0 ? Number(c.dispCm) : null,
   };
 }
+
+/** The data-map URLs a scanned colour carries beyond the diffuse — pulled in one
+ *  place so the own-scan and family-fallback branches can't disagree about which
+ *  maps travel. For the fallback they come from the SIBLING: roughness, relief
+ *  and anisotropy are properties of the physical weave, shared across the
+ *  family's colours, so the sibling's are the right ones. */
+const mapsOf = (c) => ({
+  normalUrl: c?.normalUrl || null,
+  roughnessUrl: c?.roughnessUrl || null,
+  metalnessUrl: c?.metalnessUrl || null,
+  displacementUrl: c?.displacementUrl || null,
+  anisotropyUrl: c?.anisotropyUrl || null,
+});
 
 /**
  * `materials` (the public togo-embed catalog rows, or the dealer's own
@@ -52,17 +66,18 @@ export function buildFabricByCode(materials) {
       if (!c?.code) continue;
       // normalUrl = the pCon `bumps` map (real weave relief) when imported.
       if (c.textureUrl) {
-        map[c.code] = { textureUrl: c.textureUrl, normalUrl: c.normalUrl || null, rgb: c.rgb || null, pbr: pbrOf(c) };
+        map[c.code] = { textureUrl: c.textureUrl, ...mapsOf(c), rgb: c.rgb || null, pbr: pbrOf(c) };
       } else if (sib) {
         const own = pbrOf(c), fam = pbrOf(sib);
         map[c.code] = {
-          textureUrl: sib.textureUrl, rgb: c.rgb || null, tint: true,
+          textureUrl: sib.textureUrl, ...mapsOf(sib), rgb: c.rgb || null, tint: true,
           pbr: {
             dif: null,
             rough: own.rough ?? fam.rough,
             spec: own.spec ?? fam.spec,
             tileCm: own.tileCm ?? fam.tileCm,
             tileCmY: own.tileCmY ?? fam.tileCmY,
+            dispCm: own.dispCm ?? fam.dispCm,
           },
         };
       } else if (c.rgb) {

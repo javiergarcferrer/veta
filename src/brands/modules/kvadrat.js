@@ -373,6 +373,69 @@ async function bakeNormalBlob(bytes, ext, { flipGreen = false, maxEdge = 2048 } 
 }
 
 /**
+ * A single data map (roughness / metalness / displacement) → a bounded, re-
+ * encoded blob to store. WebP: these are greyscale data the renderer samples,
+ * not a photo, and lossy at 0.92 is invisible on a flat map while a 2048 png
+ * would be needlessly large. Browser-only.
+ */
+async function bakeDataBlob(bytes, ext, maxEdge = 2048) {
+  const bmp = await boundedBitmap(bytes, ext, maxEdge);
+  if (!bmp) return null;
+  const c = drawToCanvas(bmp);
+  if (!c) return null;
+  let blob = await encode(c.canvas, 'image/webp', 0.92);
+  if (!blob || blob.type !== 'image/webp') blob = await encode(c.canvas, 'image/jpeg', 0.92);
+  return blob || null;
+}
+
+/**
+ * One (rotation, strength) byte pair → the `[R, G, B]` three's `anisotropyMap`
+ * wants: RG is the direction unit vector (cos, sin) remapped [-1,1]→[0,255], B
+ * is strength. Colormass encodes rotation clockwise (black 0° … white 360°), so
+ * the angle is `rotation/255 · 2π`. Pure, so the packing is unit-tested without
+ * a canvas.
+ */
+export function anisotropyRGB(rotationByte, strengthByte) {
+  const angle = (Number(rotationByte) / 255) * Math.PI * 2;
+  const r = Math.round((Math.cos(angle) * 0.5 + 0.5) * 255);
+  const g = Math.round((Math.sin(angle) * 0.5 + 0.5) * 255);
+  const b = Math.max(0, Math.min(255, Math.round(Number(strengthByte) || 0)));
+  return [r, g, b];
+}
+
+/**
+ * The two colormass anisotropy maps (rotation + strength) → the ONE packed map
+ * three binds (`anisotropyMap`): per pixel, direction from the rotation angle in
+ * RG and strength in B (`anisotropyRGB`). PNG — the direction is data that must
+ * not be dithered. Strength is sampled nearest-neighbour when the two maps
+ * differ in size. Browser-only.
+ */
+async function bakeAnisotropyBlob(rot, str, maxEdge = 2048) {
+  const rb = await boundedBitmap(rot.bytes, rot.ext, maxEdge);
+  const sb = await boundedBitmap(str.bytes, str.ext, maxEdge);
+  if (!rb || !sb) { rb?.close?.(); sb?.close?.(); return null; }
+  const cr = drawToCanvas(rb);
+  const cs = drawToCanvas(sb);
+  if (!cr || !cs) return null;
+  const { w, h } = cr;
+  const rd = cr.g.getImageData(0, 0, w, h).data;
+  const sd = cs.g.getImageData(0, 0, cs.w, cs.h).data;
+  const out = cr.g.createImageData(w, h);
+  const od = out.data;
+  for (let y = 0; y < h; y += 1) {
+    const sy = Math.min(cs.h - 1, Math.floor((y * cs.h) / h));
+    for (let x = 0; x < w; x += 1) {
+      const i = (y * w + x) * 4;
+      const sx = Math.min(cs.w - 1, Math.floor((x * cs.w) / w));
+      const [R, G, B] = anisotropyRGB(rd[i], sd[(sy * cs.w + sx) * 4]);
+      od[i] = R; od[i + 1] = G; od[i + 2] = B; od[i + 3] = 255;
+    }
+  }
+  cr.g.putImageData(out, 0, 0);
+  return encode(cr.canvas, 'image/png');
+}
+
+/**
  * One colormass ZIP → one `ParsedColor`, or null when the file isn't a readable
  * export. Never throws on junk (a 400-file drop must not die on one): a corrupt
  * archive, a missing diffuse, a TIFF that won't decode — each degrades to
@@ -415,41 +478,72 @@ export async function parseKvadratExport(file, ctx = {}) {
   });
   if (!resolved.code) return null; // nothing to quote it by
 
-  const pbr = { dif: null, rough: null, spec: null, tileCm: resolved.tileCm, tileCmY: resolved.tileCmY };
+  const edge = maxEdge || 2048;
+  const pbr = {
+    dif: null, rough: null, spec: null,
+    tileCm: resolved.tileCm, tileCmY: resolved.tileCmY,
+    dispCm: firstPos(info?.displacementCm),
+  };
+  const put = (blob, suffix, ext) =>
+    (blob && typeof upload === 'function'
+      ? Promise.resolve(upload(blob, `${resolved.code}-${suffix}.${ext}`)).catch(() => null)
+      : Promise.resolve(null));
+
   let rgb = null;
   let textureUrl = null;
   let normalUrl = null;
+  let roughnessUrl = null;
+  let metalnessUrl = null;
+  let displacementUrl = null;
+  let anisotropyUrl = null;
 
   // DIFFUSE → exact tone + the stored colour map (browser decode; Node dry-runs
   // to the metadata above with rgb/textureUrl null, exactly like the contract's
   // "no upload" path).
   if (maps.diffuse) {
-    const d = await decodeDiffuse(maps.diffuse.bytes, maps.diffuse.ext, maxEdge || 2048);
+    const d = await decodeDiffuse(maps.diffuse.bytes, maps.diffuse.ext, edge);
     if (d) {
       rgb = d.rgb || null;
       if (d.blob && typeof upload === 'function') {
         const ext = d.blob.type === 'image/webp' ? '.webp' : '.jpg';
-        textureUrl = await Promise.resolve(upload(d.blob, `${resolved.code}${ext}`)).catch(() => null);
+        textureUrl = await Promise.resolve(upload(d.blob, `${resolved.code}.${ext.slice(1)}`)).catch(() => null);
       }
     }
   }
 
   // NORMAL → bounded relief, normalised to +Y up.
   if (maps.normal && typeof upload === 'function') {
-    const blob = await bakeNormalBlob(maps.normal.bytes, maps.normal.ext, {
-      flipGreen: resolved.normalYUp === false,
-      maxEdge: maxEdge || 2048,
-    });
-    if (blob) normalUrl = await Promise.resolve(upload(blob, `${resolved.code}-normal.png`)).catch(() => null);
+    const blob = await bakeNormalBlob(maps.normal.bytes, maps.normal.ext, { flipGreen: resolved.normalYUp === false, maxEdge: edge });
+    normalUrl = await put(blob, 'normal', 'png');
   }
 
-  // ROUGHNESS / SPECULAR → the scalar the current renderer reads (the map stays
-  // in the archive for the day a `roughnessMap` slot exists).
-  if (maps.roughness) { const r = await averageGrayOf(maps.roughness.bytes, maps.roughness.ext); if (r != null) pbr.rough = r; }
-  if (maps.specular) { const s = await averageGrayOf(maps.specular.bytes, maps.specular.ext); if (s != null) pbr.spec = s; }
+  // ROUGHNESS → the MAP the renderer binds (a variable-sheen weave stops reading
+  // uniformly matte), and its mean as the scalar fallback for a renderer without
+  // the map slot.
+  if (maps.roughness) {
+    if (typeof upload === 'function') roughnessUrl = await put(await bakeDataBlob(maps.roughness.bytes, maps.roughness.ext, edge), 'roughness', 'webp');
+    const r = await averageGrayOf(maps.roughness.bytes, maps.roughness.ext);
+    if (r != null) pbr.rough = r;
+  }
+  if (maps.specular) {
+    const s = await averageGrayOf(maps.specular.bytes, maps.specular.ext);
+    if (s != null) pbr.spec = s;
+  }
+
+  // METALNESS / DISPLACEMENT → stored maps (metalness is ~black on cloth but
+  // kept for faithfulness; displacement rides with `pbr.dispCm` from info.txt).
+  if (maps.metalness && typeof upload === 'function') metalnessUrl = await put(await bakeDataBlob(maps.metalness.bytes, maps.metalness.ext, edge), 'metalness', 'webp');
+  if (maps.displacement && typeof upload === 'function') displacementUrl = await put(await bakeDataBlob(maps.displacement.bytes, maps.displacement.ext, edge), 'displacement', 'webp');
+
+  // ANISOTROPY → the two colormass maps packed into three's one (the map that
+  // makes a velvet like Asator read as velvet, not flat matte).
+  if (maps['anisotropy-rotation'] && maps['anisotropy-strength'] && typeof upload === 'function') {
+    const blob = await bakeAnisotropyBlob(maps['anisotropy-rotation'], maps['anisotropy-strength'], edge);
+    anisotropyUrl = await put(blob, 'anisotropy', 'png');
+  }
 
   const category = /piel|leather|cuero|leder|elmo/i.test(resolved.collection || '') ? 'leather' : 'fabric';
-  const hasPbr = pbr.tileCm != null || pbr.tileCmY != null || pbr.rough != null || pbr.spec != null;
+  const hasPbr = pbr.tileCm != null || pbr.tileCmY != null || pbr.rough != null || pbr.spec != null || pbr.dispCm != null;
 
   return {
     code: resolved.code,
@@ -457,6 +551,10 @@ export async function parseKvadratExport(file, ctx = {}) {
     rgb,
     textureUrl,
     normalUrl,
+    roughnessUrl,
+    metalnessUrl,
+    displacementUrl,
+    anisotropyUrl,
     pbr: hasPbr ? pbr : null,
     material: resolved.collection ? { name: resolved.collection, grade: null, category } : null,
   };

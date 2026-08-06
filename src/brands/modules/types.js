@@ -68,8 +68,15 @@
  *                 scan) — what the 3D tints with when there is no texture
  *     textureUrl  string|null — the stored weave the 3D tiles
  *     normalUrl   string|null — the stored relief map, when the archive has one
- *     pbr         object|null — { dif, rough, spec, tileCm, tileCmY }, the
- *                 shading port when the archive carries one
+ *     roughnessUrl   string|null — per-texel roughness, when the archive carries
+ *                 a map (not just the `pbr.rough` scalar)
+ *     metalnessUrl   string|null — per-texel metalness (≈black on cloth, kept
+ *                 for faithfulness)
+ *     displacementUrl string|null — small-scale height, paired with `pbr.dispCm`
+ *     anisotropyUrl  string|null — the packed anisotropy map (RG direction, B
+ *                 strength) — what makes a velvet read as velvet
+ *     pbr         object|null — { dif, rough, spec, tileCm, tileCmY, dispCm },
+ *                 the shading port when the archive carries one
  *     material    { name, category, grade }|null — which MATERIAL this colour
  *                 belongs to, when the drop says (a folder name, a filename
  *                 prefix). null ⇒ the caller decides.

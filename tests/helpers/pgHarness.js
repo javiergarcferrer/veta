@@ -71,6 +71,37 @@ export async function withMigratedDatabase(fn) {
         select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
       $$`);
 
+    // Supabase's `storage` schema, to the exact depth the migrations name it:
+    // `storage.buckets` (which 20261209 upserts the four buckets into) and
+    // `storage.objects` (which it writes the read/write policies onto). Both
+    // are platform tables — Supabase's storage service owns their real shape,
+    // no migration of ours may alter them, and this stub therefore claims to be
+    // nothing more than the two columns our own SQL actually touches: a
+    // bucket's `id` for the upsert, and an object's `bucket_id` for the
+    // policies.
+    //
+    // Without it the whole migration set died on the tenth file, which took
+    // every check in schema.test.js with it — the schema parity, the idempotency
+    // signature, the RLS sweep, the SECURITY DEFINER audit. Eight failures,
+    // one missing schema, and none of them about the thing they test.
+    await client.query(`create schema if not exists storage`);
+    await client.query(`
+      create table if not exists storage.buckets (
+        id text primary key,
+        name text not null,
+        public boolean not null default false
+      )`);
+    await client.query(`
+      create table if not exists storage.objects (
+        id uuid primary key default gen_random_uuid(),
+        bucket_id text references storage.buckets(id),
+        name text,
+        metadata jsonb
+      )`);
+    // RLS on, because that is how Supabase ships it — and because a policy
+    // written onto a table with RLS off is a policy that proves nothing.
+    await client.query(`alter table storage.objects enable row level security`);
+
     // PostgREST connects as a privileged role and SETs the request role per
     // request; `authenticated` needs the same table reach that gives it, with
     // RLS — not table grants — doing the actual filtering.

@@ -438,6 +438,90 @@ export async function parseKvadratExport(file, ctx = {}) {
   };
 }
 
+/**
+ * THE COLLECTION SOURCE — enumerate a whole Kvadrat quality by its public
+ * product page instead of hand-dropping one ZIP at a time.
+ *
+ * A Kvadrat product page lists every colourway with a PUBLIC Azure-blob link to
+ * its colormass PBR export (measured on Asator: 25 colours, each a real export).
+ * The page sends no CORS, so — exactly like `LR_FABRIC_LINK` — the scrape lives
+ * in an Edge Function (`kvadrat-collection`) and this only INVOKES it: the
+ * effect (`invoke`) is passed in, never imported, so `src/brands/**` stays free
+ * of the Supabase client. Returns the worklist `importKvadratCollection` runs.
+ *
+ * Throws a user-facing (Spanish) message on any failure — the page is the
+ * source of truth, so a bad URL simply fails the fetch.
+ */
+export async function fetchKvadratCollection(input, { invoke } = {}) {
+  const clean = String(input || '').trim();
+  if (!clean) throw new Error('Pega el enlace de la colección Kvadrat (p. ej. .../products/upholstery/1044-asator).');
+  if (typeof invoke !== 'function') throw new Error('No se pudo contactar el catálogo de Kvadrat.');
+
+  const { data, error } = await invoke('kvadrat-collection', { body: { url: clean } });
+  if (error) {
+    let msg = error.message || 'No se pudo leer la colección de Kvadrat.';
+    try {
+      const eb = await error.context?.json?.();
+      if (eb?.error) msg = eb.error;
+    } catch { /* keep the generic message */ }
+    throw new Error(msg);
+  }
+  if (data?.error) throw new Error(data.error);
+
+  const colours = Array.isArray(data?.colours) ? data.colours : [];
+  if (!colours.length) throw new Error('No se encontraron colores importables en esa colección.');
+  return { quality: data?.quality || null, productName: data?.productName || null, colours };
+}
+
+/** ArrayBuffer from whatever a `fetchZip` effect hands back (bytes, buffer or
+ *  Blob), so the orchestrator doesn't care which transport produced it. */
+async function toArrayBuffer(z) {
+  if (!z) return null;
+  if (z instanceof ArrayBuffer) return z;
+  if (ArrayBuffer.isView(z)) return z.buffer.slice(z.byteOffset, z.byteOffset + z.byteLength);
+  if (typeof z.arrayBuffer === 'function') return z.arrayBuffer();
+  return null;
+}
+
+/**
+ * A worklist of colours (from `fetchKvadratCollection`) → `ParsedColor[]`, ready
+ * for `planMaterialImport`. Effects are injected: `fetchZip(url) → bytes|Blob`
+ * (a browser routes it through the proxy; a back-office run fetches directly)
+ * and `upload` (the same uploader `materials.parse` takes). One colour that
+ * fails to fetch or decode costs that colour and nothing else — a 25-colour
+ * collection never dies on one bad export. `onProgress` reports each step.
+ */
+export async function importKvadratCollection({ colours = [], fetchZip, upload, maxEdge, onProgress } = {}) {
+  if (typeof fetchZip !== 'function') throw new Error('importKvadratCollection necesita un efecto fetchZip.');
+  const out = [];
+  const total = colours.length;
+  let done = 0;
+  for (const c of colours) {
+    onProgress?.({ phase: 'fetch', code: c?.code || null, done, total });
+    try {
+      const buf = await toArrayBuffer(await fetchZip(c.url));
+      if (buf) {
+        const file = { name: `${c.code || 'kvadrat'}.zip`, relPath: `${c.code || 'kvadrat'}.zip`, arrayBuffer: async () => buf };
+        const color = await parseKvadratExport(file, { upload, maxEdge });
+        if (color) out.push(color);
+      }
+    } catch { /* one colour never kills the batch */ }
+    done += 1;
+    onProgress?.({ phase: 'done', code: c?.code || null, done, total });
+  }
+  return out;
+}
+
+/** The UI copy + reader a Kvadrat materials screen renders to import a whole
+ *  collection from a link — mirrors the catalog's `fabricLink` shape. */
+export const KVADRAT_SOURCE = Object.freeze({
+  supported: true,
+  label: 'Colección Kvadrat (colormass)',
+  placeholder: 'https://www.kvadrat.dk/en/products/upholstery/1044-asator',
+  hint: 'Pega el enlace de la colección en kvadrat.dk; se importan todos sus colores.',
+  fetch: fetchKvadratCollection,
+});
+
 const materials = {
   id: 'kvadrat-colormass',
   label: 'Exportación PBR colormass (ZIP)',
@@ -446,6 +530,10 @@ const materials = {
   accept: '.zip',
   accepts: (file) => /\.zip$/i.test(String(file?.name || '')),
   parse: parseKvadratExport,
+  /** Enumerate + import a whole collection from a kvadrat.dk link. Optional
+   *  capability (like the catalog's `fabricLink`): a screen shows it only when
+   *  `source.supported`. */
+  source: KVADRAT_SOURCE,
   /**
    * Kvadrat publishes no swatch URL VETA can read: its shop CDN is auth-gated
    * Azure, so there is no derivable public photo. `urlFor` answers null and

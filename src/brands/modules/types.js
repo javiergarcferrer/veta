@@ -75,6 +75,18 @@
  *                 prefix). null ⇒ the caller decides.
  *   }
  *
+ *   source        OPTIONAL. `{ supported, label, placeholder, hint,
+ *                 fetch(input, { invoke }) }` — how a WHOLE collection is
+ *                 enumerated from the brand's own site when it publishes its
+ *                 library online (the Kvadrat set reads a product page's
+ *                 colourways, each with a public link to its colormass export).
+ *                 `fetch` returns `{ quality?, productName?, colours: [{ code,
+ *                 url, … }] }`; a caller feeds that worklist to the set's own
+ *                 importer with a `fetchZip` effect. Absent ⇒ the screen offers
+ *                 only the file drop. Handed its effect (`invoke`) exactly like
+ *                 `parse` is handed its uploader — this layer imports no network
+ *                 client.
+ *
  *   swatch        WHERE THIS BRAND PUBLISHES A COLOUR'S PHOTO — the second half
  *                 of "materials", and the one every screen reads:
  *

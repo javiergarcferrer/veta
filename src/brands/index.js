@@ -29,6 +29,7 @@ export {
   DEFAULT_MODULE_SET_ID,
   LIGNE_ROSET_MODULES,
   GENERIC_MODULES,
+  KVADRAT_MODULES,
   moduleSetById,
   moduleSetFor,
   modulesValue,

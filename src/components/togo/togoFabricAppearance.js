@@ -27,12 +27,12 @@
  */
 import { swatchProxyUrl, swatchUrl } from '../../lib/swatchImage.js';
 import {
-  sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, correctScanToSwatch,
+  sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, correctScanToSwatch, loadScanExtras,
 } from './togoSceneBuilder.js';
 
 /** A fresh cache bundle for one renderer's lifetime. */
 export function makeAppearanceCache() {
-  return { color: new Map(), texture: new Map(), normal: new Map(), swatch: new Map() };
+  return { color: new Map(), texture: new Map(), normal: new Map(), swatch: new Map(), extra: new Map() };
 }
 
 /** Free every texture the cache holds (call when the renderer is torn down). */
@@ -40,7 +40,8 @@ export function disposeAppearanceCache(cache) {
   if (!cache) return;
   for (const t of cache.texture.values()) t?.dispose?.();
   for (const n of cache.normal.values()) n?.dispose?.();
-  cache.texture.clear(); cache.normal.clear(); cache.color.clear(); cache.swatch.clear();
+  for (const e of cache.extra.values()) { e?.roughness?.dispose?.(); e?.metalness?.dispose?.(); e?.displacement?.dispose?.(); e?.anisotropy?.dispose?.(); }
+  cache.texture.clear(); cache.normal.clear(); cache.color.clear(); cache.swatch.clear(); cache.extra.clear();
 }
 
 const hexToInt = (hex) => {
@@ -114,10 +115,17 @@ export async function loadFabricAppearance(THREE, code, fab, cache) {
     } catch { cache.texture.set(code, null); /* broken texture → colour fallback */ }
   }
 
+  // The rest of the scan's measured PBR maps (roughness/metalness/displacement/
+  // anisotropy) — so a turntable/launch card shows the same velvet the stage does.
+  if (fab?.textureUrl && !cache.extra.has(code)) {
+    cache.extra.set(code, await loadScanExtras(THREE, fab, (u) => new THREE.TextureLoader().loadAsync(u)));
+  }
+
   return {
     color,
     texture: cache.texture.get(code) || null,
     normal: cache.normal.get(code) || null,
     pbr: fab?.pbr || null,
+    extra: cache.extra.get(code) || null,
   };
 }

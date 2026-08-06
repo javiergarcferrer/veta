@@ -7,7 +7,7 @@ import { inferTogoForm, TOGO_HEIGHT_CM } from '../../lib/togo/togoModel.js';
 import { mountOf } from '../../lib/togo/meshParts.js';
 import { footprintOf, snapPlacementInfo, resolvePlacement } from '../../core/quote/index.js';
 import { loadTogoModels, descForPiece } from './togoModelLoader.js';
-import { buildTogoGroup, setupTogoStage, disposeGroup, makeFabricMaps, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, maskToOutline, buildRoomGroup, disposeRoomGroup, correctScanToSwatch, fabricAnisotropy } from './togoSceneBuilder.js';
+import { buildTogoGroup, setupTogoStage, disposeGroup, makeFabricMaps, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, maskToOutline, buildRoomGroup, disposeRoomGroup, correctScanToSwatch, fabricAnisotropy, loadScanExtras } from './togoSceneBuilder.js';
 
 const DEFAULT_FINISH = { sheen: 0.7, sheenRoughness: 0.6, roughness: 0.85, repeat: 3, normalScale: 0.45 };
 const norm360 = (d) => (((d % 360) + 360) % 360);
@@ -615,6 +615,7 @@ export default function TogoStage({
     const fabrics = stateRef.current.fabricByCode || {};
     l.texCache ??= new Map();
     l.normCache ??= new Map();   // per-code weave-relief normal, derived from the scan
+    l.extraCache ??= new Map();  // per-code { roughness, metalness, displacement, anisotropy } scan maps
     l.swatchCache ??= new Map(); // per-code LR swatch tone — the customer's reference
     const [, loaded] = await Promise.all([
       Promise.all(codes.map(async (code) => {
@@ -690,6 +691,13 @@ export default function TogoStage({
               }
               if (!nrm) nrm = makeWeaveNormal(l.THREE, keep.image);
               if (nrm) { nrm.userData.shared = true; l.normCache.set(code, nrm); }
+              // The rest of the scan's measured PBR (roughness/metalness/
+              // displacement/anisotropy) — the maps that make a velvet read as
+              // velvet. Loaded once per code, flagged shared like the normal.
+              if (!l.extraCache.has(code)) {
+                const ex = await loadScanExtras(l.THREE, fab, (u) => new l.THREE.TextureLoader().loadAsync(u));
+                if (ex.roughness || ex.metalness || ex.displacement || ex.anisotropy) l.extraCache.set(code, ex);
+              }
             } else l.texCache.set(code, null); // no tone to tint with → colour fallback
           } catch { l.texCache.set(code, null); /* broken texture → colour fallback */ }
         }
@@ -742,6 +750,7 @@ export default function TogoStage({
       pbrFor: (c) => fabrics[c]?.pbr || null,
       // The scan-derived weave relief (cached per code, shared-flagged).
       normalFor: (c) => l.normCache?.get(c) || null,
+      extrasFor: (c) => l.extraCache?.get(c) || null,
       modelFor: loaded.modelFor,
     });
     // Tag every object with its piece uid (raycast → selection/drag), and give
@@ -2241,6 +2250,7 @@ export default function TogoStage({
         // stage's life.
         l.texCache?.forEach?.((t) => t?.dispose?.());
         l.normCache?.forEach?.((t) => t?.dispose?.());
+        l.extraCache?.forEach?.((e) => { e?.roughness?.dispose?.(); e?.metalness?.dispose?.(); e?.displacement?.dispose?.(); e?.anisotropy?.dispose?.(); });
         // The parsed models are SHARED across every renderer now (see
         // togoModelLoader's sharedModelCache), so this teardown must not free
         // them — the thumbnail engine and the launch card are still holding

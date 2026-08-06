@@ -67,14 +67,14 @@ export default function TogoArViewer({ open, onClose, scene3d, material, storeNa
         // engine hold those same parsed meshes — so disposing it would blank
         // the configurator behind the AR modal (every geometry/material the
         // stage had bound, freed under it).
-        const [{ fabricTextures, colors, pbr, normals, dispose: disposeFabrics }, { cache: modelCache, modelFor }] = await Promise.all([
+        const [{ fabricTextures, colors, pbr, normals, extras, dispose: disposeFabrics }, { cache: modelCache, modelFor }] = await Promise.all([
           loadSceneFabrics(THREE, sd, fabricsRef.current || {}, (c) => swatchProxyUrl(c) || swatchUrl(c)),
           loadTogoModels(sd, new Map()),
         ]);
         if (!alive) { disposeFabrics(); modelCache.forEach((m) => disposeModel(m.object || m)); return; }
 
         const built = buildArGroup({ THREE, RoundedBoxGeometry }, sd, {
-          ...DEFAULT_FINISH, ...(finishRef.current || {}), fabricTextures, colors, pbr, normals, modelFor,
+          ...DEFAULT_FINISH, ...(finishRef.current || {}), fabricTextures, colors, pbr, normals, extras, modelFor,
         });
         disposeGroup = built.dispose;
         const blob = await exportGlbBlob({ GLTFExporter }, built.root);

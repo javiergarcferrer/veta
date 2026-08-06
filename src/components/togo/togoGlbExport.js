@@ -16,7 +16,7 @@
  * exported root is scaled 0.01 — that's what makes AR place the sofa
  * TRUE-TO-SCALE in the customer's room.
  */
-import { buildTogoGroup, makeFabricMaps, disposeGroup, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, correctScanToSwatch } from './togoSceneBuilder.js';
+import { buildTogoGroup, makeFabricMaps, disposeGroup, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, correctScanToSwatch, loadScanExtras } from './togoSceneBuilder.js';
 
 const CM_TO_M = 0.01;
 
@@ -60,6 +60,10 @@ export async function loadSceneFabrics(THREE, scene3d, fabrics = {}, swatchUrlFo
   // scan with pCon fidelity and GLTFExporter carries it into the GLB.
   const pbr = new Map();
   const normals = new Map();
+  // The rest of the scan's measured PBR maps (roughness/metalness/displacement/
+  // anisotropy) — so AR / the downloaded GLB carry the SAME upholstery the live
+  // stage does, not just diffuse+normal.
+  const extras = new Map();
   await Promise.all(codes.map(async (code) => {
     const fab = fabrics?.[code];
     if (fab?.pbr) pbr.set(code, fab.pbr);
@@ -112,10 +116,18 @@ export async function loadSceneFabrics(THREE, scene3d, fabrics = {}, swatchUrlFo
         }
       } catch { /* colour fallback */ }
     }
+    if (fabricTextures.has(code)) {
+      const ex = await loadScanExtras(THREE, fab, (u) => loader.loadAsync(u));
+      if (ex.roughness || ex.metalness || ex.displacement || ex.anisotropy) extras.set(code, ex);
+    }
   }));
   return {
-    fabricTextures, colors, pbr, normals,
-    dispose: () => { fabricTextures.forEach((t) => t.dispose?.()); normals.forEach((t) => t.dispose?.()); },
+    fabricTextures, colors, pbr, normals, extras,
+    dispose: () => {
+      fabricTextures.forEach((t) => t.dispose?.());
+      normals.forEach((t) => t.dispose?.());
+      extras.forEach((e) => { e.roughness?.dispose?.(); e.metalness?.dispose?.(); e.displacement?.dispose?.(); e.anisotropy?.dispose?.(); });
+    },
   };
 }
 
@@ -145,6 +157,7 @@ export function buildArGroup(deps, scene3d, opts = {}) {
   const fabricTextures = opts.fabricTextures instanceof Map ? opts.fabricTextures : new Map();
   const pbr = opts.pbr instanceof Map ? opts.pbr : new Map();
   const scanNormals = opts.normals instanceof Map ? opts.normals : new Map();
+  const extras = opts.extras instanceof Map ? opts.extras : new Map();
 
   const group = buildTogoGroup(deps, scene3d, {
     ...opts,
@@ -153,6 +166,7 @@ export function buildArGroup(deps, scene3d, opts = {}) {
     textureFor: (code) => fabricTextures.get(code) || null,
     pbrFor: (code) => pbr.get(code) || null,
     normalFor: (code) => scanNormals.get(code) || null,
+    extrasFor: (code) => extras.get(code) || null,
   });
 
   const root = new THREE.Group();

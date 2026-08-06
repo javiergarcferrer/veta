@@ -1582,9 +1582,9 @@ export default function TogoEmbed() {
       ]);
       // Private cache, disposed below — see downloadObj.
       const { cache, modelFor } = await loadTogoModels(scene3d, new Map());
-      const { fabricTextures, colors, pbr, normals } = await mod.loadSceneFabrics(THREE, scene3d, fabricByCode, (c) => swatchProxyUrl(c) || swatchUrl(c));
+      const { fabricTextures, colors, pbr, normals, extras } = await mod.loadSceneFabrics(THREE, scene3d, fabricByCode, (c) => swatchProxyUrl(c) || swatchUrl(c));
       const built = mod.buildArGroup({ THREE, RoundedBoxGeometry: rbg.RoundedBoxGeometry }, scene3d, {
-        ...(material || {}), fabricTextures, colors, pbr, normals, modelFor,
+        ...(material || {}), fabricTextures, colors, pbr, normals, extras, modelFor,
       });
       const blob = await mod.exportGlbBlob({ GLTFExporter: glbx.GLTFExporter }, built.root);
       built.dispose();

@@ -346,6 +346,47 @@ export function makeFabricMaterial(THREE, tex, opts = {}) {
     const ns = opts.normalScale ?? 0.5;
     mat.normalScale = new THREE.Vector2(ns, ns);
   }
+  // ── The rest of the scan's MEASURED PBR (colormass ships eight maps; pCon
+  // shipped none of these). Each is linear data, tiled in LOCKSTEP with the
+  // albedo, and bound ONLY for a real scan that carries it — a fabric without
+  // the map (every pCon/LR colour) is byte-for-byte unchanged.
+  if (tex && mat.map) {
+    const tileLike = (t) => {
+      if (!t) return;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.copy(mat.map.repeat);
+      t.anisotropy = opts.anisotropy || FABRIC_ANISOTROPY;
+    };
+    if (opts.scanRoughness) {
+      // The MAP drives roughness per texel (a two-tone or boucle weave stops
+      // reading uniformly matte); mat.roughness becomes the multiplier at 1.
+      mat.roughnessMap = opts.scanRoughness;
+      mat.roughness = 1;
+      tileLike(opts.scanRoughness);
+    }
+    if (opts.scanMetalness) {
+      // ≈black on cloth → dielectric, but bound faithfully rather than assumed.
+      mat.metalnessMap = opts.scanMetalness;
+      mat.metalness = 1;
+      tileLike(opts.scanMetalness);
+    }
+    if (opts.scanAnisotropy && 'anisotropy' in mat) {
+      // THE velvet lobe: RG direction + B strength (the packed map the import
+      // built). This is what makes Asator read as velvet, not flat matte.
+      mat.anisotropy = 1;
+      mat.anisotropyMap = opts.scanAnisotropy;
+      tileLike(opts.scanAnisotropy);
+    }
+    const dispCm = opts.scanPbr?.dispCm;
+    if (opts.scanDisplacement && dispCm > 0) {
+      // Real height, scaled from the manifest (cm→m). Sub-millimetre on cloth
+      // and only visible where the mesh is tessellated — bound for faithfulness,
+      // harmless where it isn't.
+      mat.displacementMap = opts.scanDisplacement;
+      mat.displacementScale = dispCm / 100;
+      tileLike(opts.scanDisplacement);
+    }
+  }
   return mat;
 }
 
@@ -694,7 +735,7 @@ function factoryMaterialFor(source, cache, anisotropy = FABRIC_ANISOTROPY) {
     // flag, and it's per-map (not per-material) so every slot follows the
     // albedo. Textures are cached/shared, hence set on the clone's maps once.
     const aniso = Math.max(1, anisotropy || 1);
-    for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap']) {
+    for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'anisotropyMap', 'displacementMap']) {
       const t = c[slot];
       if (t?.isTexture && t.anisotropy !== aniso) { t.anisotropy = aniso; t.needsUpdate = true; }
     }
@@ -948,6 +989,10 @@ export function buildTogoGroup(deps, scene3d, opts = {}) {
   const textureFor = opts.textureFor || (() => null);
   const pbrFor = opts.pbrFor || (() => null);
   const normalFor = opts.normalFor || (() => null);
+  // The rest of the scan's PBR maps, per code: `{ roughness, metalness,
+  // displacement, anisotropy }` or null. A caller that resolves none (or an old
+  // caller that doesn't pass this) leaves every fabric exactly as it was.
+  const extrasFor = opts.extrasFor || (() => null);
   const modelFor = opts.modelFor || (() => null);
   const group = new THREE.Group();
 
@@ -959,11 +1004,16 @@ export function buildTogoGroup(deps, scene3d, opts = {}) {
   const fabricMaterialFor = (code, fallbackColor) => {
     const tex = code ? textureFor(code) : null;
     const col = (code ? colorFor(code) : null) ?? fallbackColor;
+    const extras = code ? extrasFor(code) : null;
     return tex
       ? makeFabricMaterial(THREE, tex, {
         ...opts, color: null, sheenColor: col ?? undefined,
         scanPbr: code ? pbrFor(code) : null,
         scanNormal: code ? normalFor(code) : null,
+        scanRoughness: extras?.roughness || null,
+        scanMetalness: extras?.metalness || null,
+        scanDisplacement: extras?.displacement || null,
+        scanAnisotropy: extras?.anisotropy || null,
       })
       : makeFabricMaterial(THREE, null, { ...opts, color: col });
   };
@@ -1637,4 +1687,34 @@ export function disposeGroup(group) {
       once(m, () => m.dispose());
     }
   });
+}
+
+/**
+ * Load the scan's EXTRA PBR maps for one fabric descriptor — the four beyond
+ * diffuse+normal that colormass ships and pCon never did: `{ roughness,
+ * metalness, displacement, anisotropy }`, each a linear texture or null.
+ *
+ * One reader, injected its loader (`loadTexture(url) → Promise<Texture>`), so
+ * every surface — the live stage, the turntable, the AR/GLB export, the bake —
+ * resolves them identically instead of drifting four ways. Skipped for a `tint`
+ * (family-fallback) colour, exactly like the normal map is: those inherit the
+ * sibling's weave and are re-tinted, and the maps ride separately. Every failure
+ * degrades to null, and a null map simply isn't bound (today's look).
+ */
+export async function loadScanExtras(THREE, fab, loadTexture) {
+  const out = { roughness: null, metalness: null, displacement: null, anisotropy: null };
+  if (!fab || fab.tint || typeof loadTexture !== 'function') return out;
+  const want = [
+    ['roughness', 'roughnessUrl'], ['metalness', 'metalnessUrl'],
+    ['displacement', 'displacementUrl'], ['anisotropy', 'anisotropyUrl'],
+  ];
+  await Promise.all(want.map(async ([slot, key]) => {
+    const url = fab[key];
+    if (!url) return;
+    try {
+      const t = await loadTexture(url);
+      if (t) { t.colorSpace = THREE.NoColorSpace; t.userData.shared = true; out[slot] = t; }
+    } catch { /* a broken extra map just isn't bound */ }
+  }));
+  return out;
 }

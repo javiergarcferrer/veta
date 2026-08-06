@@ -206,6 +206,7 @@ export default function TogoTurntable({ scene3d, fabricByCode, className = '', o
         textureFor: (c) => look.get(c)?.texture || null,
         pbrFor: (c) => look.get(c)?.pbr || null,
         normalFor: (c) => look.get(c)?.normal || null,
+        extrasFor: (c) => look.get(c)?.extra || null,
         modelFor: loaded.modelFor,
       });
       // Centre the piece ON the turntable's axis and sit it on the floor —

@@ -568,6 +568,7 @@ async function _renderTogoThumb(model, opts = {}) {
       textureFor: () => look?.texture || null,
       normalFor: () => look?.normal || null,
       pbrFor: () => look?.pbr || null,
+      extrasFor: () => look?.extra || null,
       modelFor: loaded.modelFor,
     });
     scene.add(group);

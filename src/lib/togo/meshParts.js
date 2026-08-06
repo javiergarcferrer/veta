@@ -132,12 +132,37 @@ export function accessoryRoleFor(name) {
   return null;
 }
 
-// Two boxes read as THE SAME PART when every extent agrees within 20% —
-// horizontal extents compared orientation-free (sorted), height apart.
-function sizeMatches(a, b) {
+/**
+ * Two boxes read as THE SAME PART when every extent agrees within `tol` —
+ * horizontal extents compared orientation-free (sorted), height apart.
+ *
+ * TWO JOBS, TWO TOLERANCES, and they are not the same question:
+ *
+ *   ACROSS FILES (the default 20%, `classifyPartGroups` fingerprints) matches a
+ *   sofa's group against a SEPARATELY MODELLED loose accessory — different
+ *   export, different modeller, so it needs real slack.
+ *
+ *   INSIDE ONE FILE (`SAME_PART_TOL`, `partKeysFor`) asks whether two nodes of
+ *   ONE material are the same part TYPE. Those are near-identical by
+ *   construction — three back cushions are instanced copies, within a couple of
+ *   percent — so 20% is far looser than the question needs, and the slack is
+ *   what fused a base into its own seat cushion: measured on EXCLUSIF Lounge
+ *   NoArm, whose M1 (base) and M5 (cushion) share material COL0 and sit within
+ *   17% on height and 10% on depth, so ±20% called them one part and no dealer
+ *   could ever separate them.
+ *
+ * WHY TIGHTEN RATHER THAN LOOSEN: over-splitting is RECOVERABLE and
+ * under-splitting is not. A split cluster with no tag of its own inherits its
+ * material's tag (`partRoleFor`), so an extra cluster changes nothing about how
+ * an already-tagged model reads — it only hands the dealer a part they may now
+ * name. Two bodies merged into one averaged box can never be told apart again.
+ */
+const SAME_PART_TOL = 0.10;
+
+function sizeMatches(a, b, tol = 0.2) {
   const close = (x, y) => {
     const m = Math.max(Math.abs(x), Math.abs(y));
-    return m < 1e-6 || Math.abs(x - y) / m <= 0.2;
+    return m < 1e-6 || Math.abs(x - y) / m <= tol;
   };
   const [aw, ad] = [Math.max(a[0], a[2]), Math.min(a[0], a[2])];
   const [bw, bd] = [Math.max(b[0], b[2]), Math.min(b[0], b[2])];
@@ -159,9 +184,11 @@ function sizeMatches(a, b) {
  * type are near-identical boxes (three back cushions), while a bolster is a
  * different box entirely. Shape rather than proximity because on a real sofa the
  * bolster LEANS on the cushions — they touch, so nothing spatial separates them.
- * `sizeMatches` is the same ±20% orientation-free comparison the classifier
- * already trusts, and it compares boxes to each OTHER, so it doesn't care what
- * units either side measured in.
+ * `sizeMatches` compares boxes to each OTHER, so it doesn't care what units
+ * either side measured in — and here it runs at `SAME_PART_TOL`, tighter than
+ * the cross-file fingerprint default, because two nodes of ONE material inside
+ * ONE export are instanced copies when they are the same part (see the note on
+ * `sizeMatches` for the base-fused-to-its-cushion case that forced it).
  *
  * Cluster order is order of first appearance, and the FIRST cluster keeps the
  * bare material name — so every already-tagged model reads exactly as it did,
@@ -177,7 +204,7 @@ export function partKeysFor(nodes) {
     if (!list) { list = []; reps.set(base, list); }
     const size = Array.isArray(n?.size) && n.size.length === 3 ? n.size : null;
     if (!size) { if (!list.length) list.push(null); return base; }
-    let at = list.findIndex((r) => r && sizeMatches(size, r));
+    let at = list.findIndex((r) => r && sizeMatches(size, r, SAME_PART_TOL));
     if (at < 0) { list.push(size); at = list.length - 1; }
     return at === 0 ? base : `${base}~${at + 1}`;
   });

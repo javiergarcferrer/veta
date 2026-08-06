@@ -1455,20 +1455,22 @@ export default function TogoEmbed() {
   // 3D, or changing piece, strands the gold line on a part nobody is pointing
   // at any more (and the rail is unmounted, so no pointer-leave is coming).
   useEffect(() => { setRailHover(null); }, [selectedUid, view]);
-  // ── EL ALCANCE EN REPOSO ES EL MODO ────────────────────────────────────────
-  // Owner, 2026-08-05: «if I click a whole body piece EVERYTHING highlights,
-  // then I can edit the pieces if I wish». En MODO PIEZA una sola tela viste el
-  // cuerpo entero, así que el clic ilumina la pieza COMPLETA — estructura
-  // incluida: es lo que ese SKU compra, y es exactamente lo que el rail ofrece
-  // ahí (SKU base + estructura). `role: null` es el vocabulario que el stage ya
-  // habla para «toda la pieza» (focusMeshes → null → sin filtro).
+  // ── EL ALCANCE EN REPOSO: LO QUE LA TELA REPINTA, NUNCA LA ESTRUCTURA ──────
+  // Owner, 2026-08-06: «pieza should only highlight the components that are
+  // affected — all of them except structure». El oro es una PROMESA: dice qué
+  // va a cambiar de color si eliges una tela aquí. La estructura no se viste de
+  // tela (se elige su acabado, y eso es otro gesto, otro rail), así que
+  // incluirla en el trazo prometía un repintado que no llega — se veía en las
+  // patas, abrazadas por el mismo oro que el cuerpo.
   //
-  // MODO COMPONENTES conserva la regla de 2026-08-01 sin tocar: el conjunto
-  // vestible MENOS la estructura y menos las partes con tela propia — ahí el
-  // clic ES un flujo por componente, y el oro no debe prometer lo que ese gesto
-  // no repinta. El «edit the pieces if I wish» de cualquiera de los dos modos
-  // sigue viviendo en el hover (traza suave) y en el tap, intactos.
-  const restingRole = selected && componentViewOf(selected) ? DRESSABLE_ROLE : null;
+  // Así que LOS DOS MODOS descansan en el conjunto vestible. `DRESSABLE_ROLE`
+  // es el vocabulario que el stage ya habla para eso (focusMeshes → todo menos
+  // `structure`), y en MODO PIEZA `dressableExclude` sale vacío por
+  // construcción —un pick dormido no viste, así que no hay tela propia que
+  // descontar— con lo que el alcance ahí es exactamente «la pieza entera menos
+  // su estructura». En MODO COMPONENTES la regla de 2026-08-01 sigue intacta:
+  // además se descuentan las partes que ya llevan tela propia.
+  const restingRole = selected ? DRESSABLE_ROLE : null;
   // ── UN VISTAZO: EL PUNTERO, SEA CUAL SEA SU PUERTA ────────────────────────
   // Las dos maneras de mirar una parte sin elegirla — el chip del rail y la
   // malla en 3D — componen el MISMO foco aquí, y de aquí salen las tres cosas
@@ -1896,6 +1898,33 @@ export default function TogoEmbed() {
     // the redirect actually did was answer a different question than the one
     // asked, on the tap that asked it.
     const part = role && role !== 'base' && (zone || r?.partFamilies?.[role]) ? role : null;
+    // ── EL PRIMER CLIC ES LA PIEZA ────────────────────────────────────────
+    // Owner, 2026-08-06: «first click should just select the whole SKU base
+    // part; only after that do individual components make soft highlights».
+    // Un clic sobre un COMPONENTE de una pieza que todavía NO está
+    // seleccionada contesta lo mismo que un clic en su cuerpo: selecciona la
+    // pieza, deja «Pieza» (el SKU base) como objetivo y para ahí. Con la pieza
+    // ya seleccionada, el mismo clic entra en el componente.
+    //
+    // Por qué el gesto necesita dos tiempos: el primer clic es cómo se ELIGE
+    // la pieza, y hasta que ocurre no hay nada trazado — los vistazos suaves
+    // del rail y de la malla exigen selección (`selectedUid != null`), así que
+    // antes del primer clic no hay ningún componente que resaltar. Entrar en un
+    // componente en ese mismo gesto se saltaba el paso que da contexto.
+    //
+    // NO es la puerta de 2026-08-01 que se quitó: aquella exigía VESTIR la
+    // pieza entera antes de tocar una parte (una regla del dinero). Ésta no
+    // pide elegir nada — sólo que la pieza esté seleccionada, que es el estado
+    // que el propio clic acaba de crear.
+    if (part && selectedUid !== uid) {
+      paneUidRef.current = uid;
+      setSelectedUid(uid);
+      setMatMode('one');
+      setMatPart(null);         // «Pieza» — el SKU base
+      setFinishRail(null);
+      if (desktop) setView('3d');
+      return;
+    }
     paneUidRef.current = uid;   // a part-tap RETARGETS the pane — don't let the uid-change effect wipe the part
     setSelectedUid(uid);
     setMatMode('one');
@@ -1904,7 +1933,7 @@ export default function TogoEmbed() {
     if (part) setPartsOpenUid(uid);
     if (desktop) { setView('3d'); return; }
     setMatOpen(true);
-  }, [resolvedById, desktop]);
+  }, [resolvedById, desktop, selectedUid]);
 
   // The pane's part target follows the SELECTION: picking a different piece by
   // any other path clears a lingering part role (its family lookup would run

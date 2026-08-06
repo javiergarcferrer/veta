@@ -12,10 +12,10 @@
 // Locked to the exact Azure blob host + `/bynderresources/*.zip` (no SSRF, the
 // same discipline as swatch-proxy), redirects not followed, and a signed-in
 // team member only — this streams real egress and must not be public. The URL
-// validation lives in the pure, unit-tested ../kvadrat-collection/parse.ts.
+// validation lives in the pure, unit-tested ./allow.ts.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { kvadratBlobUrl } from '../kvadrat-collection/parse.ts';
+import { kvadratBlobUrl } from './allow.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

@@ -80,30 +80,3 @@ export function kvadratProductUrl(input: string): string | null {
   if (!/\/products\/[a-z-]+\/\d{3,5}-[a-z0-9-]+/i.test(u.pathname)) return null;
   return `https://${u.hostname}${u.pathname}`;
 }
-
-/** The Kvadrat colormass BLOB host — the one the enumeration hands back per
- *  colour. Kept apart from the product page above: the page is on kvadrat.dk,
- *  the exports on Azure blob. */
-const KVADRAT_BLOB_HOST = 'kvadratimageresizer.blob.core.windows.net';
-
-/**
- * The one blob URL the zip proxy is allowed to stream, or null. Locks the exact
- * Azure host + `/bynderresources/` prefix + `.zip` — rebuilt from origin +
- * pathname so userinfo/port/fragment tricks can't reach `fetch` (the SSRF wall
- * swatch-proxy keeps). Only the exports our own enumeration produces pass.
- */
-export function kvadratBlobUrl(input: string): string | null {
-  const s = String(input || '').trim();
-  if (!s || s.length > 2048) return null;
-  let u: URL;
-  try {
-    u = new URL(s);
-  } catch {
-    return null;
-  }
-  if (u.protocol !== 'https:') return null;
-  if (u.hostname.toLowerCase() !== KVADRAT_BLOB_HOST) return null;
-  if (!/^\/bynderresources\/[A-Za-z0-9-]+\.zip$/i.test(u.pathname)) return null;
-  if (/%2e/i.test(u.pathname)) return null;
-  return `https://${u.hostname}${u.pathname}`;
-}

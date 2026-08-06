@@ -11,8 +11,9 @@ import assert from 'node:assert/strict';
 import { zipSync, strToU8 } from 'fflate';
 
 import {
-  parseKvadratCollectionPage, kvadratProductUrl, kvadratBlobUrl,
+  parseKvadratCollectionPage, kvadratProductUrl,
 } from '../supabase/functions/kvadrat-collection/parse.ts';
+import { kvadratBlobUrl } from '../supabase/functions/kvadrat-zip/allow.ts';
 import {
   fetchKvadratCollection, importKvadratCollection,
 } from '../src/brands/modules/kvadrat.js';

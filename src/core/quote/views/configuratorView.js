@@ -16,6 +16,8 @@
 import { compoundSubtotal } from '../../../lib/pricing.js';
 import { canonicalCollection, distinctCollections } from '../../../lib/togo/collections.js';
 import { activeCatalogModule } from '../../../brands/runtime.js';
+// SECURITY (L6): model.svg is dealer-authored DB content rendered via innerHTML downstream.
+import { sanitizeSvg } from '../../../lib/sanitizeSvg.js';
 import { groupFamilies, productForGrade } from '../../../lib/catalog.js';
 import { composeSubtype, composeFabricLabel } from '../../../lib/subtype.js';
 import { planToDxf } from '../../../lib/togo/planToDxf.js';
@@ -228,7 +230,7 @@ export function resolveTogoModels(models, products) {
     return structureCache.get(collection);
   };
   for (const m of activeModels) {
-    svgById[m.id] = m.svg;
+    svgById[m.id] = sanitizeSvg(m.svg);
     const collection = canonicalCollection(m.collection);
     const fam = m.productRoot ? families.get(m.productRoot) : null;
     let unitPrice = null; let reference = ''; let name = m.name; let subtype = ''; let dimensions = '';
@@ -895,6 +897,80 @@ export function partsModeTotalUsd(r, p) {
 }
 
 /**
+ * ¿Está esta pieza EN VISTA DE COMPONENTES? — the one question every surface
+ * that splits base/componentes asks (the componentes rail's chips, the design
+ * panel's two halves, PartsSection's rows), answered in ONE place.
+ *
+ * THE MODE IS THE ONLY TRUTH (owner, 2026-08-05, pointing at the rail's «O»:
+ * «when this O mode is selected it should only show the base SKU and structure
+ * selections»). Modo pieza lists the piece's own cloth + its estructuras, and
+ * nothing else — those componente chips price nothing while one SKU is being
+ * sold, which is exactly the offer-vs-price disagreement this predicate exists
+ * to prevent.
+ *
+ * This REPLACES the earlier «un componente recién apuntado también abre la
+ * vista» rule (owner, 2026-08: «when a base sku piece is selected by its
+ * component it responsively changes to the component view»): pointing at a
+ * cushion no longer re-dresses the rail behind the pointer. Nothing is lost —
+ * landing a componente pick still ENTERS modo componentes (onPickPartMaterial
+ * → planModeSwitch), so the chips appear the moment the build actually sells
+ * that way, and the switch under the rail is the deliberate way in.
+ */
+/**
+ * LOS PICKS DE COMPONENTE QUE HABLAN AHORA MISMO — the render-facing truth.
+ *
+ * Volver a modo pieza KEEPS `partMaterials` on purpose (flipping back restores
+ * the build), so the stored picks outlive the mode that sold them. But the 3D,
+ * the chips and the itemization used to read the RAW map, mode-blind — and
+ * that is the bug the owner hit as «I can't change the material on my base sku
+ * piece»: after a toggle round-trip, changing the piece's cloth repainted only
+ * the shell, because every componente still wore its DORMANT pick.
+ *
+ * So the question "what is this componente wearing?" has one answer here:
+ *   · modo componentes → the stored picks, all of them.
+ *   · modo pieza       → only the MATERIALIZATION ZONES (a bicolor ottoman is
+ *     still one element — its zones re-grade the piece's own SKU), and every
+ *     BILLED componente rides the piece's cloth, whatever it has stored.
+ *
+ * The mode-aware money paths already answer per mode (resolveCompleteSku); the
+ * one money path that DOES read picks in modo pieza — the unbound-base
+ * fallback — reads this too, so a dormant pick can never bill.
+ */
+export function effectivePartMaterials(p) {
+  const pm = p?.partMaterials || null;
+  if (!pm) return null;
+  if (placementMode(p) === 'parts') return pm;
+  const out = {};
+  for (const role of MATERIALIZATION_ROLES) if (pm[role]) out[role] = pm[role];
+  return Object.keys(out).length ? out : null;
+}
+
+export function componentViewOf(p) {
+  return placementMode(p) === 'parts';
+}
+
+/**
+ * ¿Esta pieza SOLO puede venderse por componentes? — el modelo no tiene SKU
+ * propio (ni `baseFamily` ni un elemento completo atado) pero sí componentes
+ * que facturan.
+ *
+ * Un CUERPO VACÍO no tiene nada que vender de una pieza: en modo pieza
+ * `placementTotalUsd` no puede dar precio ninguno («sin precio»), así que
+ * aterrizar ahí es aterrizar en un callejón sin salida — el visitante tiene que
+ * adivinar que el interruptor es lo que le falta. Owner, 2026-08-05: «if it's
+ * an empty body we can go straight into components».
+ *
+ * Los DOS lados hacen falta: sin componentes que facturar, modo componentes no
+ * cotiza tampoco (`partsModeTotalUsd` → null), y mandar la pieza ahí solo
+ * cambiaría un callejón por otro. Se responde sobre el MODELO resuelto, así que
+ * es la misma respuesta al añadir la pieza y en cualquier lectura posterior.
+ */
+export function sellsByComponentsOnly(r) {
+  if (r?.completeFamily || r?.baseFamily) return false;
+  return componentRoles(r).length > 0;
+}
+
+/**
  * Switching INTO modo componentes seeds every componente from the piece's own
  * cloth (owner: «se aplica el material base a los otros componentes excepto el
  * que cambie»), so the mode is never entered half-empty and the piece looks
@@ -933,7 +1009,10 @@ export function placementTotalUsd(p, resolvedById) {
   // number anyway.
   const complete = resolveCompleteSku(r, p);
   if (complete) return complete.unitUsd;
-  return piecePartsTotal(materializedBase(r, p.partMaterials).unitUsd, r.parts, partPricesFor(r, p.partMaterials));
+  // The unbound-base fallback (no complete SKU to resolve): even here, a
+  // dormant componente pick never bills — modo pieza reads only what is live.
+  const eff = effectivePartMaterials(p);
+  return piecePartsTotal(materializedBase(r, eff).unitUsd, r.parts, partPricesFor(r, eff));
 }
 
 /**
@@ -960,12 +1039,15 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
   // fabric nobody chose. The line stays (the customer picked that cloth and
   // must see it named) with no money on it.
   const badBase = unresolvedWholePiece(r, p);
+  // What each componente is WEARING, per the mode — a dormant pick must not be
+  // named on an «Incluido» line the piece's own cloth is covering.
+  const effPm = effectivePartMaterials(p);
   // MODO COMPONENTES: the model's own SKU is not being sold. Its line STAYS —
   // the customer must still read which piece this is — carrying no money and
   // flagged `byParts`, so the View says «se cotiza por componentes» instead of
   // printing a price nobody is being charged. The componentes below carry it.
   const byParts = placementMode(p) === 'parts';
-  const mb = materializedBase(r, p.partMaterials);
+  const mb = materializedBase(r, effPm);
   const lines = [{
     role: 'base',
     // A monocolor build bills as ONE piece, so the first line IS the whole
@@ -988,7 +1070,7 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
   // above. `included` tells the View to print "Incluido" instead of a price.
   for (const role of MATERIALIZATION_ROLES) {
     if (!partMeshCount(r.parts, role)) continue;
-    const pick = p.partMaterials?.[role] || null;
+    const pick = effPm?.[role] || null;
     // A zone the base ladder can't re-grade is NOT "incluido" — nothing priced
     // it, so it says that instead of borrowing the reassuring word.
     const bad = unresolved.has(role);
@@ -1004,7 +1086,7 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
       defaultGrade: !pick,
     });
   }
-  const prices = partPricesFor(r, p.partMaterials) || {};
+  const prices = partPricesFor(r, effPm) || {};
   for (const role of Object.keys(r.partFamilies || {})) {
     if (!r.partFamilies[role]) continue;
     const qty = partCount(r.parts, role);
@@ -1014,7 +1096,7 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
     // picked at a grade its own SKU doesn't offer left the sheet and the total.
     if (!qty) continue;
     const bad = unresolved.has(role);
-    const pick = p.partMaterials?.[role] || null;
+    const pick = effPm?.[role] || null;
     lines.push({
       role,
       label: labels[role] || role,
@@ -1071,7 +1153,7 @@ export function buildTogoComponents(placed, resolvedById, newId) {
     // Materialization zones re-grade the base SKU (bicolor → dearest zone):
     // the component bills that price AND carries that grade's reference, so
     // the LR order form shows the SKU the factory will actually invoice.
-    const mb = materializedBase(r, p.partMaterials);
+    const mb = materializedBase(r, effectivePartMaterials(p));
     // MONOCOLOR ⇒ the whole piece is ONE cheaper SKU (elemento completo) and
     // the componentes add no lines at all — the same "never a phantom line"
     // rule the zones follow, applied to the ladder the factory will invoice.
@@ -1130,13 +1212,14 @@ export function buildTogoComponents(placed, resolvedById, newId) {
     // ("Grade I — ARDA/FR") so whoever reads the quote sees exactly what has no
     // price yet. Dropping it is what made a by-parts build quote cheaper than the
     // monocolor one; the worker's `unresolved` gate keeps that seed off WhatsApp.
-    const prices = partPricesFor(r, p.partMaterials) || {};
+    const effPm = effectivePartMaterials(p);
+    const prices = partPricesFor(r, effPm) || {};
     const extras = (complete && !byParts) ? [] : Object.keys(r.partFamilies || {}).flatMap((role) => {
       const fam = r.partFamilies[role];
       const unit = prices[role];
       const qty = partCount(r.parts, role);
       if (!fam || !qty) return [];
-      const pick = p.partMaterials?.[role] || null;
+      const pick = effPm?.[role] || null;
       const grade = pick?.grade || (fam.graded ? fam.grades[0] : '');
       const prod = productForGrade(fam, grade);
       return [{
@@ -1329,7 +1412,9 @@ export function scenePlacementsFromPlaced(placed, resolvedById) {
       // Per-part upholstery: the model's tagging + this placement's part picks
       // (role → {code}); the seat mount lifts standalone cushions/bolsters.
       parts: r.parts || null,
-      partMaterials: p.partMaterials || null,
+      // Through the MODE (effectivePartMaterials): a dormant pick must not
+      // dress a componente the piece's own cloth is paying for.
+      partMaterials: effectivePartMaterials(p),
       partFinishes: p.partFinishes || null,
       mountHeightCm: mountOf(r).heightCm,
     };
@@ -1349,7 +1434,9 @@ export function scenePlacementsFromComponents(components) {
       // The plan snapshot carries the part tagging + picks + mount, so a
       // promoted quote replays with the same per-part upholstery and height.
       parts: c.plan.parts || null,
-      partMaterials: c.plan.partMaterials || null,
+      // The plan snapshots the RAW picks plus `partsMode`, so the replay asks
+      // the same mode question the live widget does.
+      partMaterials: effectivePartMaterials(c.plan),
       partFinishes: c.plan.partFinishes || null,
       mountHeightCm: c.plan.mount === 'seat' ? (Number(c.plan.mountHeightCm) || 40) : 0,
     }));

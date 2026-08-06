@@ -77,19 +77,29 @@ const BODY_FILL_MIN = 0.5;
  *  surface; a button is ~0.02%). */
 const MIN_BODY_AREA_SHARE = 0.0015;
 
-/** The OPEN-SHELL road to being a part: carry at least this share of the
- *  mesh's area. Measured on the dealer's own production files (EXCLUSIF bench,
- *  autopsy 2026-08): the LR 3DS library files are open shells throughout —
- *  closedness is
- *  essentially never true there — and each authored mesh is one dominant
- *  surface (81–98%) plus hundreds of tessellation motes and a few mid-size
- *  fragments (2–10%). Those mid-size fragments surviving as their own parts is
- *  exactly the "cojín en parchos" bug: 15% keeps the dominant surface (and
- *  real siblings like individual legs at 20–30% of a legs mesh) and folds
- *  every fragment back into the surface it broke off. Genuinely solid bodies
- *  (a watertight leg at 0.8% of a sofa) still qualify through the CLOSED
- *  formula above — this share is the bar for what closedness can't vouch for. */
-const OPEN_PART_AREA_SHARE = 0.15;
+/** THERE IS NO OPEN-SHELL ROAD TO PART-HOOD. A part is a closed body, full
+ *  stop — the rule the header states and the one the dealer asked for.
+ *
+ *  An `OPEN_PART_AREA_SHARE = 0.15` clause used to sit here, letting any open
+ *  surface carrying ≥15% of a mesh's area become a part on its own. It was
+ *  added on the premise that "the LR 3DS library files are open shells
+ *  throughout — closedness is essentially never true there", and that premise
+ *  is FALSE. Re-measured against the dealer's own EXCLUSIF lounge chair
+ *  (Exclusif_LoungeChair_LowLegs.3ds, autopsy 2026-08): its one authored mesh
+ *  carries NINE connected components and EIGHT of them are closed — frame,
+ *  seat cushion, back pillow, backrest pad and four legs, sphericity 0.58–0.78
+ *  each. The only open component in the whole file is a 2-triangle quad lying
+ *  flat at the floor: the ground-shadow decal, which is not a body and must
+ *  never be a part.
+ *
+ *  The earlier autopsy read the library as open because the topological split
+ *  NEVER RAN on it (see `splitGeometryBySolid` — it bailed on every
+ *  multi-material mesh, which is every LR product), so what was measured was
+ *  the material-group fallback, not the topology.
+ *
+ *  Keeping the clause is what breaks a solid body into pieces: any ≥15% slice
+ *  of a mesh qualifies as its own part whether or not it bounds a volume. That
+ *  is the "solid bodies broken up" the dealer is looking at. */
 
 /** Union-find over vertex ids, path-halving + union by size. Flat arrays: these
  *  run over hundreds of thousands of vertices on a real sofa. */
@@ -338,17 +348,14 @@ export function splitSolids({ positions, indices = null, trimAreaRatio = TRIM_AR
     return { solids: comps.map(({ fill, ...s }) => s), weldTolerance: tol };
   }
 
-  // ── THE FORMULA (header): a part is a self-contained body — closed + big
-  // enough + (encloses volume | fills its box) — OR an open surface carrying a
-  // structural share of the mesh (the LR 3DS library files are open shells
-  // throughout, so
-  // closedness alone can never be the gate there). Everything else is dressing.
+  // ── THE FORMULA (header): a part is a self-contained BODY — closed + big
+  // enough + (encloses volume | fills its box). Nothing else is a part; an open
+  // surface is dressing at any size, and folds into the body it hugs.
   const totalArea = comps.reduce((s, g) => s + g.area, 0);
   let bodies = comps.filter((g) => (
-    (g.closed
-      && g.area >= totalArea * MIN_BODY_AREA_SHARE
-      && (g.solidity >= BODY_SOLIDITY_MIN || g.fill >= BODY_FILL_MIN))
-    || g.area >= totalArea * OPEN_PART_AREA_SHARE
+    g.closed
+    && g.area >= totalArea * MIN_BODY_AREA_SHARE
+    && (g.solidity >= BODY_SOLIDITY_MIN || g.fill >= BODY_FILL_MIN)
   ));
   // Degrade on an all-sheet export: the old area rule, so big open panels still
   // become parts when there is no body to absorb them into.

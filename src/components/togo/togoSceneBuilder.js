@@ -231,6 +231,20 @@ export const FABRIC_UV_CM = 54;
  */
 export const FABRIC_ANISOTROPY = 16;
 
+// ── HOW MUCH THE WEAVE READS ───────────────────────────────────────────────
+// The four numbers that decide whether a fabric scan looks like cloth or like
+// printed paper. They are together, named, because they only work as a SET: the
+// relief (`SCAN_NORMAL_SCALE`, and `strength`/`size` in makeWeaveNormal) is
+// modulated by the light the finish lets through (`SCAN_SHEEN*`,
+// `SCAN_ENV_INTENSITY`), so turning one up while another is at zero does
+// nothing at all — which is exactly how every scan ended up flat.
+// Raising these is the ONLY lever: the depth is DERIVED from the scan
+// (makeWeaveNormal), so no fabric ever needs re-uploading to gain relief.
+export const SCAN_SHEEN = 0.3;            // no .mat — our own cloth lobe
+export const SCAN_SHEEN_PBR = 0.22;       // a pCon .mat is authoritative on colour, not on cloth
+export const SCAN_ENV_INTENSITY = 0.62;   // IBL the relief has to catch
+export const SCAN_NORMAL_SCALE = 1.0;     // how deep the derived weave sits
+
 /** The level to actually use on a renderer — its real capability, never above
  *  what we ask for. Older/mobile GPUs report 4 or 2 and get that. */
 export const fabricAnisotropy = (renderer) => Math.max(
@@ -316,12 +330,23 @@ export function makeFabricMaterial(THREE, tex, opts = {}) {
     // glossy 0.25 (ALCANTARA BORDEAUX's older Phong `shi` → wet-leather look)
     // renders matte with NO re-import. pCon's own PBR export declares these
     // fabrics ~0.8, so 0.8 is a true floor, not a distortion.
-    mat.roughness = Math.max(pbr?.rough ?? 0.85, 0.8);
     if (pbr?.spec != null) mat.specularIntensity = pbr.spec;
-    mat.sheen = pbr ? 0 : 0.15;
+    // SHEEN IS NOT GLOSS, and killing it is what made every scan read flat.
+    // A normal map is only visible through a surface's specular/sheen response
+    // and its IBL: with sheen 0, clearcoat 0 and envMapIntensity halved, the
+    // weave relief below was computed and then rendered invisible — «se ven
+    // todas planas». The gloss complaint this came from («too much shine») was
+    // about the CLEARCOAT/roughness pair, which stays exactly as it was: matte,
+    // never wet. Sheen is the cloth lobe — the soft retro-reflective glow real
+    // upholstery has at grazing angles — and it is precisely what lets a woven
+    // surface show its threads. Tinted to the fabric's own hue (sheenColor =
+    // base, set above), so it glows in the cloth's colour rather than glazing a
+    // white film over it.
+    mat.roughness = Math.max(pbr?.rough ?? 0.85, 0.8);
+    mat.sheen = pbr ? SCAN_SHEEN_PBR : SCAN_SHEEN;
     mat.sheenRoughness = 0.85;
-    mat.clearcoat = 0;
-    mat.envMapIntensity = Math.min(0.5, mat.envMapIntensity);
+    mat.clearcoat = 0;                                    // no wet coat, ever
+    mat.envMapIntensity = Math.min(SCAN_ENV_INTENSITY, mat.envMapIntensity);
     mat.userData.scanFinish = true;
   }
   if (tex && opts.scanNormal) {
@@ -333,7 +358,7 @@ export function makeFabricMaterial(THREE, tex, opts = {}) {
     opts.scanNormal.wrapS = opts.scanNormal.wrapT = THREE.RepeatWrapping;
     opts.scanNormal.repeat.copy(mat.map.repeat);
     opts.scanNormal.anisotropy = opts.anisotropy || FABRIC_ANISOTROPY;
-    const ns = opts.scanNormalScale ?? 0.6;
+    const ns = opts.scanNormalScale ?? SCAN_NORMAL_SCALE;
     mat.normalScale = new THREE.Vector2(ns, ns);
   } else if (opts.normalMap && !pbr && !materialless) {
     // The procedural quilt relief — skipped when materialless (a blank-canvas
@@ -556,7 +581,7 @@ export function correctScanToSwatch(THREE, image, matzInt, swatchInt) {
  * CanvasTexture (caller flags/caches/disposes) or null under Node / on a
  * tainted image.
  */
-export function makeWeaveNormal(THREE, image, { size = 512, strength = 2.0 } = {}) {
+export function makeWeaveNormal(THREE, image, { size = 768, strength = 2.4 } = {}) {
   try {
     if (typeof document === 'undefined' || !image || !image.width || !image.height) return null;
     const cv = document.createElement('canvas');

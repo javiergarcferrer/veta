@@ -23,7 +23,7 @@ import {
   resolveTogoDxf, placementsFromPlaced, resolveTogoScene, scenePlacementsFromPlaced,
   createHistory, historyPush, historyUndo, historyRedo,
   firstWithoutFabric, placementDressed, dressableRoles, duplicatePlacement, cyclePieceUid, SNAP_GRID_CM, RELEASE_DOCK_CM,
-  placementMode, componentRoles, planModeSwitch,
+  placementMode, componentRoles, planModeSwitch, componentViewOf, sellsByComponentsOnly, effectivePartMaterials,
   placementTotalUsd, placementBreakdown, resolveLaunchHero, resolveCollectionMenu,
 } from '../../core/quote/index.js';
 import { mountOf, sanitizePartMaterials, sanitizePartFinishes, finishOptionOf, partRoleFor, roleLabelOf, partLabelOf, structureGroupsOf, structureGroupFor, MATERIALIZATION_ROLES, PART_ROLES } from '../../lib/togo/meshParts.js';
@@ -46,7 +46,34 @@ const SCALE = PX_PER_CM;
 // stage's `insetLeft` (it frames the piece against what is actually visible, so
 // a width that drifts here parks the sofa under a panel).
 const MAT_PANE_REM = 20;
-const COMPONENTS_RAIL_REM = 4.5;
+const LEFT_INSET = 'max(0.75rem, env(safe-area-inset-left))';
+const GUTTER_REM = 0.5;
+
+/**
+ * WHERE THE NEXT SURFACE IN THE LEFT COLUMN STARTS — one expression, read by
+ * every surface that stacks there.
+ *
+ * The picker, the componentes rail and the preview card are one column, and
+ * each used to compute its own left offset from the same constants by hand.
+ * Two expressions that must agree is one that eventually does not: the card
+ * reserved a rail's width while no rail was drawn (a hole in the layout), and
+ * with the PICKER closed but the rail open it ignored the rail entirely and
+ * landed on top of it. Both are the same bug — a duplicated derivation — so
+ * there is now one function and no arithmetic at the call sites.
+ *
+ * `after` names how much of the column to skip: 'edge' (nothing — the column's
+ * own left edge), 'picker', or 'rail' (picker + rail).
+ */
+function leftColumnOffset(after, { railOpen = false, componentsRailOpen = false } = {}) {
+  let rem = 0;
+  if (after === 'picker' || after === 'rail') rem += railOpen ? MAT_PANE_REM + GUTTER_REM : 0;
+  if (after === 'rail') rem += componentsRailOpen ? COMPONENTS_RAIL_REM + GUTTER_REM : 0;
+  return rem > 0 ? `calc(${LEFT_INSET} + ${rem}rem)` : LEFT_INSET;
+}
+// Wide enough for «COMPONENTES» and a chip label at 9px WITHOUT truncating:
+// the rail is a column of names, and a name cut to «Tela de to…» is a label
+// that has stopped labelling.
+const COMPONENTS_RAIL_REM = 5.5;
 
 // The distributor inbox's one repeated typographic device (DealerInbox.jsx's
 // EYEBROW, same values): an 11px uppercase 0.15em label. It carries every
@@ -118,11 +145,12 @@ const FINE_POINTER = typeof window !== 'undefined' && !!window.matchMedia?.('(po
 
 
 // Live min-width media query (unlike FINE_POINTER, a window CAN cross this
-// mid-session — resize/rotate). Drives the desktop workspace: at ≥1280px the
-// build tools graduate from floating mobile chrome (bottom hotbar, estimate
-// deck, selected-piece strip) into two persistent side panes. JS-gated rather
-// than CSS-hidden so the piece list never exists twice in the DOM (screen
-// readers would hear every piece twice).
+// mid-session — resize/rotate). Drives WHERE the two workspace panes hang: at
+// ≥1280px they dock as persistent side columns; below, the SAME panes hang as
+// edge drawers behind the Piezas/Resumen tabs («mobile view is exactly the
+// same components as desktop»). JS-gated rather than CSS-hidden so the piece
+// list never exists twice in the DOM (screen readers would hear every piece
+// twice).
 function useMinWidth(px) {
   const [on, setOn] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(`(min-width: ${px}px)`).matches);
   useEffect(() => {
@@ -283,8 +311,8 @@ export default function TogoEmbed() {
   const [selectedUid, setSelectedUid] = useState(null);
   const [step, setStep] = useState('build'); // 'build' | 'form' | 'done'
   // ≥1280px → the desktop workspace: piece catalog + design inspector as side
-  // panes; the floating hotbar / estimate deck / selected strip stay the
-  // phone-and-tablet chrome. Live (resize crosses it), JS-gated (never both).
+  // panes; below, the same panes as edge drawers, plus the floating hotbar and
+  // estimate deck. Live (resize crosses it), JS-gated (never both).
   // Declared FIRST because the breakpoint decides which chrome each piece of
   // state below belongs to — the floating chip is desktop-only from here on.
   const desktop = useMinWidth(1280);
@@ -343,18 +371,19 @@ export default function TogoEmbed() {
   // the DOM directly — its left/top are owned IMPERATIVELY, NEVER by React's
   // style prop. That's the whole point: the selection anchor is per-frame
   // React state, so this component re-renders every frame while the view
-  // ── THE FLOATING CHIP IS A CURSOR AFFORDANCE, AND THE STRIP REPLACES IT ───
+  // ── THE FLOATING CHIP IS A CURSOR AFFORDANCE — POINTER DEVICES ONLY ───────
   // The chip names the exact part under the RAY, which only a pointer can aim.
   // A touch device has no ray — but the stage cannot tell a finger from a
   // cursor, so the TAP that selects a piece also reports a "hover" (see
-  // TogoStage's 3D tap: reportHover then onSelect). With the selected piece now
-  // opening the full SelectedStrip in 3D as well as 2D, that left a phone with
-  // TWO cards for one selection, the chip landing under the strip so neither
-  // could be read. FINE_POINTER is the honest test for "this hover is real".
+  // TogoStage's 3D tap: reportHover then onSelect); unguarded, every phone tap
+  // raised a phantom hover card over the piece it had just selected.
+  // FINE_POINTER is the honest test for "this hover is real". The phone's
+  // inspector is the Resumen drawer (the SAME DesignPane the desktop docks) —
+  // it opens by the edge tab, never by a fake hover.
   //
   // The SELECTION fallback (nothing hovered → keep the card on the selected
   // piece) was touch's stand-in for hover, and is now desktop-only for the same
-  // reason: below 1280 the strip IS the inspector, in both views.
+  // reason: below 1280 the drawer IS the inspector, in both views.
   //
   // Both derived ONCE — the per-frame anchor the stage reports and the card
   // that renders at it must never disagree about whether the chip is up.
@@ -372,7 +401,16 @@ export default function TogoEmbed() {
   // (chipFollow below, owner rule of the same day) — over an unselected
   // piece the card parks above it, which is the anchored path that has
   // always existed.
-  const chipHover = FINE_POINTER ? hover3d : null;
+  // ONE GATE for the hover policy (owner, 2026-08: «when a model is selected
+  // hover only works on that selected model»). With a piece selected, pointing
+  // at ANOTHER piece answers nothing — no card, no rail retarget, no glow (the
+  // stage applies the same rule to its emissives) — because while you are
+  // dressing one piece every other cue is noise; a TAP still selects, so the
+  // way over is unchanged. With nothing selected, hover previews any piece.
+  // Every consumer (card, rail subject, chip anchor) derives from THIS value,
+  // so the policy cannot be half-applied.
+  const chipHover = FINE_POINTER && hover3d && (selectedUid == null || hover3d.uid === selectedUid)
+    ? hover3d : null;
   // The piece the chip is anchored to (hover wins; else the 3D selection).
   const chipUid = view === '3d' ? (chipHover?.uid ?? null) : null;
   // ── A HOVER CARD FOLLOWS THE MOUSE — ON THE SELECTED PIECE ──────────────
@@ -666,8 +704,8 @@ export default function TogoEmbed() {
   // the catalogue image, and the ONLY one: a tile with no render yet shows its
   // bare plate (see ModelThumb), never a drawing standing in for the piece.
   //
-  // EAGER renders are now only the pieces ON THE PLAN — the ones the Resumen,
-  // the selected strip and the desktop rail must be able to show the instant
+  // EAGER renders are now only the pieces ON THE PLAN — the ones the Resumen
+  // pane (either shell) and the desktop rail must be able to show the instant
   // they open. Every picker tile renders ITSELF when it comes into range
   // (useLazyThumb), so a collection no longer renders thirteen pieces to fill
   // three visible cards. This started as the whole catalogue (~66 sequential
@@ -851,6 +889,29 @@ export default function TogoEmbed() {
     setRoom(makeRectRoom(widthCm, depthCm, { cx: c.x, cy: c.y }));
   }, [room, vm.boundsCm]);
   const clearRoom = useCallback(() => { setRoom(null); setRoomOpen(false); }, []);
+  /**
+   * THE ROOM YOU ARE STILL TYPING, drawn on the plan.
+   *
+   * «Espacio» used to commit or show nothing: you set 400 × 300 and the canvas
+   * stayed empty until CREAR — so the one question the tool exists to answer
+   * («¿cabe?») could only be asked by committing first and undoing after. The
+   * panel now reports its live figures and the plan draws that rectangle
+   * straight away, at the SAME centre `applyRoom` will use, so pressing CREAR
+   * changes nothing on screen: it only stops the preview from being a preview.
+   *
+   * Built through `makeRectRoom` — the very function that builds the real one —
+   * so the outline you judge and the room you get cannot differ.
+   */
+  const [roomDraft, setRoomDraft] = useState(null);   // { widthCm, depthCm } | null
+  const roomPreview = useMemo(() => {
+    if (!roomDraft || room) return null;   // an existing room is already drawn
+    const c = vm.boundsCm
+      ? { x: (vm.boundsCm.minX + vm.boundsCm.maxX) / 2, y: (vm.boundsCm.minY + vm.boundsCm.maxY) / 2 }
+      : { x: roomDraft.widthCm / 2, y: roomDraft.depthCm / 2 };
+    return makeRectRoom(roomDraft.widthCm, roomDraft.depthCm, { cx: c.x, cy: c.y });
+  }, [roomDraft, room, vm.boundsCm]);
+  // The panel is a floating tool: closing it must take its preview with it.
+  useEffect(() => { if (!roomOpen) setRoomDraft(null); }, [roomOpen]);
   const selected = placed.find((p) => p.uid === selectedUid) || null;
   const selectedFamily = selected ? (families.get(resolvedById[selected.pieceId]?.root) || null) : null;
   // THE MATERIAL RAIL IS A DRAWER, and these two decide it. `railFamily` is the
@@ -934,7 +995,7 @@ export default function TogoEmbed() {
   const railOpen = desktop && view === '3d' && vm.count > 0
     && (finishRail ? true : (selected ? !!railFamily : matMode === 'all'));
   // The RIGHT-hand twin of `railOpen`: «Tu diseño» is an overlay too, so the
-  // stage has to frame against the strip it leaves. Derived here — once — and
+  // stage has to frame against the width it leaves. Derived here — once — and
   // used BOTH to mount the pane and to size the stage's inset, so the canvas can
   // never be told a pane is there when it isn't (that disagreement is exactly
   // what the left side learned with the material rail). Unlike the rail it is
@@ -1035,7 +1096,16 @@ export default function TogoEmbed() {
     // (which can exceed 12 cm) engages when the piece drops next to the run.
     const snapped = seat ? { x, y } : snapPlacement({ x, y, w: fp.w, h: fp.h, col: r.collection }, others, { edgeCm: RELEASE_DOCK_CM });
     const uid = newUid();
-    commitPlaced([...placed, { uid, pieceId: modelId, x: snapped.x, y: snapped.y, rot: spawnRot }]);
+    // CUERPO VACÍO ⇒ derecho a componentes (owner, 2026-08-05: «if it's an
+    // empty body we can go straight into components»). Un modelo sin SKU propio
+    // no puede cotizar en modo pieza, así que nacer ahí es nacer «sin precio»
+    // con el interruptor como único camino — y nadie lo busca. El Model decide
+    // (sellsByComponentsOnly); esto solo siembra el modo con su respuesta.
+    const bodyless = sellsByComponentsOnly(r);
+    commitPlaced([...placed, {
+      uid, pieceId: modelId, x: snapped.x, y: snapped.y, rot: spawnRot,
+      ...(bodyless ? { partsMode: true } : {}),
+    }]);
     suppressSelNarration.current = true;   // the add message is the one that must be heard
     setSelectedUid(uid);
     buzz(11);
@@ -1297,8 +1367,16 @@ export default function TogoEmbed() {
   }, [chipHover?.uid, selectedUid, placed]);
   const stripResolved = stripPiece ? resolvePlacement(stripPiece, resolvedById) : null;
   const stripEntries = useMemo(
-    () => pieceSwatchEntries(stripPiece, stripResolved, locale),
-    [stripPiece, stripResolved, locale],
+    () => pieceSwatchEntries(
+      stripPiece, stripResolved, locale,
+      // Component view = THE MODE, full stop (owner, 2026-08-05: «when this O
+      // mode is selected it should only show the base SKU and structure
+      // selections»). Pointing at, or opening the picker on, a componente no
+      // longer re-dresses the rail behind the pointer — landing the pick is
+      // what enters modo componentes, and then the chips are simply there.
+      stripPiece && stripResolved ? componentViewOf(stripPiece) : false,
+    ),
+    [stripPiece, stripResolved, locale, matPart],
   );
   // WHAT THE POINTER IS ON, as a strip key — the 3D hover's own part, mapped
   // through the same role/group pair the entries are keyed by, so the highlight
@@ -1336,8 +1414,17 @@ export default function TogoEmbed() {
   // change; only the rail's CONTENT follows the pointer (`stripPiece`), and
   // content moves no camera. Anything else that costs canvas has the same
   // obligation.
-  const componentsRailOpen = desktop && view === '3d' && selectedUid != null && !!stripPiece;
-  const dressableExclude = Object.keys(selected?.partMaterials || {})
+  // …and it must agree with what the rail ACTUALLY renders: `ComponentsRail`
+  // bails on an empty entry list, so a presence flag that ignored the entries
+  // reserved 5.5rem of canvas for a panel nobody drew. Hover-safe BY the gate
+  // on `chipHover` above: with a selection, hover never names another piece,
+  // so `stripPiece` (and these entries) can only change by SELECTING — and
+  // presence that only moves on selection cannot feed the camera loop.
+  const componentsRailOpen = desktop && view === '3d' && selectedUid != null
+    && !!stripPiece && stripEntries.length > 0;
+  // Off the EFFECTIVE picks: a dormant pick repaints with the piece in modo
+  // pieza, so excluding it would shrink the promise the gold line makes.
+  const dressableExclude = Object.keys(effectivePartMaterials(selected) || {})
     .filter((role) => PART_ROLES.includes(role) && role !== 'base' && role !== 'structure');
   // ── POINTING AT A CHIP IS POINTING AT THE PART ──────────────────────────
   // The componentes rail's half of the 3D hover. The mesh has always answered a
@@ -1357,37 +1444,60 @@ export default function TogoEmbed() {
   // 3D, or changing piece, strands the gold line on a part nobody is pointing
   // at any more (and the rail is unmounted, so no pointer-leave is coming).
   useEffect(() => { setRailHover(null); }, [selectedUid, view]);
+  // ── EL ALCANCE EN REPOSO ES EL MODO ────────────────────────────────────────
+  // Owner, 2026-08-05: «if I click a whole body piece EVERYTHING highlights,
+  // then I can edit the pieces if I wish». En MODO PIEZA una sola tela viste el
+  // cuerpo entero, así que el clic ilumina la pieza COMPLETA — estructura
+  // incluida: es lo que ese SKU compra, y es exactamente lo que el rail ofrece
+  // ahí (SKU base + estructura). `role: null` es el vocabulario que el stage ya
+  // habla para «toda la pieza» (focusMeshes → null → sin filtro).
+  //
+  // MODO COMPONENTES conserva la regla de 2026-08-01 sin tocar: el conjunto
+  // vestible MENOS la estructura y menos las partes con tela propia — ahí el
+  // clic ES un flujo por componente, y el oro no debe prometer lo que ese gesto
+  // no repinta. El «edit the pieces if I wish» de cualquiera de los dos modos
+  // sigue viviendo en el hover (traza suave) y en el tap, intactos.
+  const restingRole = selected && componentViewOf(selected) ? DRESSABLE_ROLE : null;
   const hoverFocus = railHover && selectedUid != null
     ? {
       uid: selectedUid,
-      role: railHover.role,
+      // El chip de la tela de la pieza apunta a lo mismo que el clic en ella.
+      role: railHover.role === DRESSABLE_ROLE ? restingRole : railHover.role,
       groupKey: railHover.groupKey || null,
-      ...(railHover.role === DRESSABLE_ROLE && dressableExclude.length ? { exclude: dressableExclude } : {}),
+      ...(railHover.role === DRESSABLE_ROLE && restingRole && dressableExclude.length ? { exclude: dressableExclude } : {}),
     }
     : null;
   const finishTarget = finishSheet || finishRail;
+  const committedPart = (railOpen || matOpen) && matPart ? matPart : null;
   const focusPart = hoverFocus || (finishTarget
     ? { uid: finishTarget.uid, role: 'structure', groupKey: finishTarget.partKey }
     : (selectedUid == null || matMode === 'all'
       ? null
       : {
         uid: selectedUid,
-        role: (railOpen || matOpen) && matPart ? matPart : DRESSABLE_ROLE,
+        role: committedPart || restingRole,
         groupKey: null,
-        ...(!((railOpen || matOpen) && matPart) && dressableExclude.length ? { exclude: dressableExclude } : {}),
+        ...(!committedPart && restingRole && dressableExclude.length ? { exclude: dressableExclude } : {}),
       }));
   // The same target, narrowed to the cases that NAME a part — what the floating
   // card retargets onto (and, stage-side, what the anchor boxes over). Derived
   // from `focusPart` rather than re-read off the picker state, so the card, the
   // outline and the glow are three readings of ONE fact: the gold line and the
   // card it belongs to cannot end up on different parts.
-  const chipFocus = focusPart && focusPart.role !== DRESSABLE_ROLE ? focusPart : null;
+  // `role: null` (modo pieza en reposo) NAMES no part — it is the whole piece —
+  // so it belongs on this side of the line exactly like DRESSABLE_ROLE does.
+  const chipFocus = focusPart && focusPart.role && focusPart.role !== DRESSABLE_ROLE ? focusPart : null;
   // WHAT the one preview card says, derived once. WHERE it goes is the render's
   // call: the picker's footer while it is open, a floating card at the bottom
   // of that same column while it is shut.
   const hoverPreview = view === '3d'
     ? hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed, resolvedById, locale })
     : null;
+  // What the pointer is on INSIDE the swatch wall, reported up by the picker
+  // rather than floated by it. It OUTRANKS the piece/chip preview: the pointer
+  // is literally on that swatch, while the other describes something it left.
+  const [swatchPreview, setSwatchPreview] = useState(null);
+  const onePreview = swatchPreview || hoverPreview;
 
   // Fabric pick for ONE PART of the selected piece (cushion/bolster/arm) — the
   // pick stores {grade, fabric, code} only; prices re-derive from the part's
@@ -1462,9 +1572,20 @@ export default function TogoEmbed() {
   }, [commitPlaced, resolvedById, announce, tr]);
 
   // Apply ONE fabric to EVERY piece, repricing each by its OWN bound model.
+  /**
+   * «UNA SOLA TELA PARA TODAS» — and that is a statement about the whole build,
+   * so it puts every piece in MODO PIEZA wearing it.
+   *
+   * It used to write `material` and leave the mode alone, which made the action
+   * lie on any piece being sold by componentes: those render and price from
+   * their own `partMaterials`, so the piece the visitor just told to change
+   * did not change — the one thing an "apply to all" may never do. One cloth
+   * everywhere IS the elemento completo everywhere; that is the same sentence.
+   */
   const applyFabricToAll = useCallback((pick) => {
     buzz([7, 18, 11]);
-    commitPlaced((prev) => prev.map((row) => {
+    commitPlaced((prev) => prev.map((raw) => {
+      const row = planModeSwitch(raw, resolvePlacement(raw, resolvedById), 'complete');
       const fam = families.get(resolvedById[row.pieceId]?.root);
       const p = fam ? productForGrade(fam, pick.grade) : null;
       return {
@@ -1917,6 +2038,10 @@ export default function TogoEmbed() {
         ...(p.material ? { material: { grade: p.material.grade, fabric: p.material.fabric, code: p.material.code } } : {}),
         ...(partMaterials ? { partMaterials } : {}),
         ...(partFinishes ? { partFinishes } : {}),
+        // WHICH MODE the visitor built in — without it the worker replays a
+        // by-componentes build as modo pieza and quotes the OTHER price. Only
+        // an explicit true rides; absent = modo pieza, like every stored lead.
+        ...(p.partsMode === true ? { partsMode: true } : {}),
       };
     });
     return (
@@ -1963,6 +2088,10 @@ export default function TogoEmbed() {
            must be declared the moment the right pane is, or 2D nets a full
            -332px and the plan slides under the piece catalog. Same render
            condition as the pane itself, three lines above. */
+        /* How much of the canvas the left column covers, in px — the same
+           widths the column itself is laid out from (12px = the 0.75rem inset,
+           8px = the 0.5rem gutter). 2D has no material pane; its own left
+           overlay is the PIECES pane. */
         insetLeft={(railOpen ? MAT_PANE_REM * 16 + 12 : (desktop && view === '2d' && vm.count > 0 ? 16 * 16 + 12 : 0))
           + (componentsRailOpen ? COMPONENTS_RAIL_REM * 16 + 8 : 0)}
         /* …and the design pane covers this much of the RIGHT edge, by the same
@@ -1970,6 +2099,15 @@ export default function TogoEmbed() {
            `right-[max(0.75rem,…)]` inset (12px). The stage nets the two and
            shifts the piece into what is actually visible. */
         insetRight={designPaneOpen ? 20 * 16 + 12 : 0}
+        /* LA MITAD DE ABAJO, dicha UNA vez: la misma constante que dimensiona
+           la hoja encuadra la pieza en la mitad que queda visible. Al cerrarla
+           vuelve a 0 y la cámara recentra el conjunto por el camino que ya
+           tenía — el «dynamic response» de siempre, sin una segunda ruta. */
+        insetBottomFrac={matOpen && !desktop ? MATERIALS_SHEET_FRAC : 0}
+        /* …y el HUD flotante de arriba, que cierra la franja por el otro lado.
+           Solo mientras la hoja parte la pantalla: con ella cerrada el encuadre
+           es el que ya estaba y no se toca. */
+        insetTop={matOpen && !desktop ? 3.25 * 16 + 12 : 0}
         view={view} placed={placed} resolvedById={resolvedById} material={material}
         selectedUid={selectedUid} onSelect={setSelectedUid} onMove={movePiece}
         onRotateTo={rotateTo} gesturesRef={stageGestures} onHoverPiece={onHover3d}
@@ -1983,7 +2121,15 @@ export default function TogoEmbed() {
            group ALONE while the question is on screen. Owned here (it is this
            component's picker state); CanvasArea only forwards it. */
         focusPart={focusPart}
-        room={room}
+        /* …and WHETHER that focus is a mere PREVIEW: pointing at a chip in the
+           componentes rail is not picking it, so the stage strokes the shape in
+           soft gold (the weight the chip itself lights in) instead of the full
+           selection line. Owned here for the same reason focusPart is — it is
+           this component's hover state; CanvasArea only forwards it. */
+        focusSoft={!!hoverFocus}
+        /* …and the room, real or still being typed — one prop, so the plan
+           cannot draw a committed room and a draft at the same time. */
+        room={room || roomPreview}
         /* A piece drawing as the simplified shape because its mesh 404'd —
            narrated, never silent (see onModelFallback). */
         onModelFallback={onModelFallback}
@@ -2019,7 +2165,7 @@ export default function TogoEmbed() {
         // pick cloth it cannot wear.
         const wearing = finish
           ? (finishOptionOf(finish.spec, p.partFinishes?.[finish.group])?.label || t(locale, 'part.finish'))
-          : (p.partMaterials?.[hover3d.partRole]?.fabric || t(locale, 'part.clickToEdit'));
+          : (effectivePartMaterials(p)?.[hover3d.partRole]?.fabric || t(locale, 'part.clickToEdit'));
         return (
           <div className="absolute z-20 pointer-events-none -translate-x-1/2" style={{ left: hover3d.x, top: hover3d.y + 22 }}>
             <div className="hud-panel px-2 py-1 flex items-center gap-1.5 max-w-[220px]">
@@ -2031,17 +2177,39 @@ export default function TogoEmbed() {
         );
       })()}
 
-      {/* ── THE PREVIEW, with the PICKER CLOSED. With it open the card is the
-           picker's own FOOTER (MaterialsPane `preview`) — owner, 2026-08: «al
-           fondo del selector de materiales, para ahorrar espacio». Floating at
-           mid-height it sat squarely over the swatch wall it was supposed to be
-           helping you read. Still ONE card either way, in the same column, just
-           docked instead of overlaid. Pointer-transparent, so it can never
-           intercept the orbit it floats over. ── */}
-      {view === '3d' && !railOpen && !matOpen && hoverPreview && (
-        <div className="fixed z-30 pointer-events-none left-[max(0.75rem,env(safe-area-inset-left))] bottom-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {/* ── THE ONE PREVIEW ──────────────────────────────────────────────
+           One card, one home, whatever the pointer is on — a swatch in the
+           wall, a part in the 3D, a chip in the componentes rail.
+           WHERE it sits is the whole point (owner, 2026-08): OUTBOARD of the
+           material picker, on the free canvas beside it. Floating over the wall
+           it covered the very swatches it was describing, and two cards at once
+           — the wall's own plus the workspace's — is what «we have only one
+           preview modal» forbids. With the picker closed it takes that column's
+           own left edge, so the card always arrives where the eye learned it.
+           Pointer-transparent: it appears where the pointer is going, and a card
+           that could swallow a move would fight the thing it describes. ── */}
+      {desktop && view === '3d' && onePreview && (
+        <div
+          /* ANCHORED TO THE BOTTOM of that column (owner, 2026-08). At the top
+             it sat in the eye's path between the toolbar and the piece, over
+             the part of the canvas the build actually occupies; down here it
+             is out of the way of both and still in the one place the eye has
+             learned to find it. */
+          className="absolute z-30 pointer-events-none bottom-[max(0.75rem,env(safe-area-inset-bottom))]"
+          style={{
+            // NEXT TO THE PICKER, one gutter out (owner, 2026-08: «next to the
+            // material picker», not beyond the componentes rail — the rail is
+            // top-anchored and usually short, so 'after rail' read as a card
+            // adrift in empty canvas). The rail shares this x at the TOP; the
+            // card is bottom-anchored at z-30 over its z-20, so on the rare
+            // build whose rail runs the full column the transient hover card
+            // wins, which is the right trade for a cue that follows the
+            // pointer.
+            left: leftColumnOffset('picker', { railOpen }),
+          }}
+        >
           <div className="hud-panel w-64 p-2 animate-in fade-in zoom-in-95 duration-150">
-            <SwatchPreviewBody preview={hoverPreview} />
+            <SwatchPreviewBody preview={onePreview} />
           </div>
         </div>
       )}
@@ -2117,6 +2285,7 @@ export default function TogoEmbed() {
       {vm.count > 0 && roomOpen && (
         <RoomPanel
           room={room}
+          onDraft={setRoomDraft}
           fitInfo={roomFitInfo}
           locale={locale}
           onApply={applyRoom}
@@ -2156,9 +2325,10 @@ export default function TogoEmbed() {
       {/* ── Desktop workspace panes (≥1280px). Left: the piece catalog with big
            rendered images (2D only, like the hotbar it replaces — 3D is a
            look-only preview that deserves the width). Right: "your design" —
-           placed pieces + per-piece controls + live estimate + the quote CTA
-           (replaces the bottom deck AND the floating selected strip). Hidden
-           while the plan is empty: the starter overlay is THE one picker. ── */}
+           the SAME DesignPane the phone hangs in its Resumen drawer, docked as
+           a column (it replaces the phone's bottom estimate deck up here).
+           Hidden while the plan is empty: the starter overlay is THE one
+           picker. ── */}
       {desktop && view === '2d' && vm.count > 0 && (
         <PiecesPane
           models={paletteModels} renderThumbById={renderThumbById}
@@ -2195,17 +2365,14 @@ export default function TogoEmbed() {
           finishSpec={finishRail?.spec || null}
           finishCurrent={finishRail ? (placed.find((row) => row.uid === finishRail.uid)?.partFinishes?.[finishRail.partKey] ?? null) : null}
           onPickFinish={onPickFinish}
-          /* The hover preview DOCKS here (owner, 2026-08: «al fondo del selector
-             de materiales, para ahorrar espacio») instead of floating over the
-             swatch wall it exists to explain. */
-          preview={hoverPreview}
+          onSwatchPreview={setSwatchPreview}
           /* The OFFER, not the catalog: a grade this target can't be priced in
              is never shown as a tile (see `pickableMaterials`). */
           materials={pickableMaterials}
           family={railFamily}
           nameFilter={selected ? nameFilterOf(resolvedById[selected.pieceId]?.offeredKeys) : allNameFilter}
-          currentGrade={selected && matPart ? selected?.partMaterials?.[matPart]?.grade : (selected ? selected?.material?.grade : undefined)}
-          currentFabric={selected && matPart ? selected?.partMaterials?.[matPart]?.fabric : (selected ? selected?.material?.fabric : undefined)}
+          currentGrade={selected && matPart ? effectivePartMaterials(selected)?.[matPart]?.grade : (selected ? selected?.material?.grade : undefined)}
+          currentFabric={selected && matPart ? effectivePartMaterials(selected)?.[matPart]?.fabric : (selected ? selected?.material?.fabric : undefined)}
           pricesHidden={pricesHidden}
           fmt={fmt}
           onPick={onPanePick}
@@ -2225,19 +2392,46 @@ export default function TogoEmbed() {
           locale={locale} fmt={fmt}
         />
       )}
-      {/* Resumen — the right-edge twin of the Piezas drawer. Rendered HERE, as a
-          child of the stage, because it positions against it; it used to sit in
-          the modal cluster and come up from the bottom. */}
-      {!desktop && vm.count > 0 && (
-        <QuoteSheet
-          open={quoteOpen} onClose={() => setQuoteOpen(false)}
-          placed={placed} resolvedById={resolvedById} models={models} renderThumbById={renderThumbById}
-          locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
-          subtotalUsd={pricedUsd} pending={pendingFabric} unpriced={unpricedPieces} overallCm={vm.overallCm}
-          onRequest={() => { setQuoteOpen(false); setStep('form'); }}
-          onPickFabricFor={pickFabricFor}
-          onPickPartFor={(uid, role) => { setQuoteOpen(false); openPartMaterial(uid, role); }}
-        />
+      {/* ── TU DISEÑO, on the phone: the SAME right pane the desktop runs,
+           in the Resumen drawer's shell («mobile view is exactly the same
+           components as desktop» — owner, 2026-08). It replaced QuoteSheet, a
+           phone-only re-implementation of this very surface that had to be
+           kept in step by hand. Mounted only while open, like the picker
+           drawer; every action that OPENS the picker closes this first — two
+           88vw drawers at once is a curtain, not a workspace. ── */}
+      {quoteOpen && !desktop && (
+        <>
+          <button
+            type="button"
+            aria-label={t(locale, 'common.close')}
+            onClick={() => setQuoteOpen(false)}
+            className="absolute inset-0 z-30 bg-ink-900/20 animate-in fade-in duration-200"
+          />
+          <DesignPane
+            shellClassName={DESIGN_DRAWER_SHELL}
+            onClose={() => setQuoteOpen(false)}
+            placed={placed} resolvedById={resolvedById} models={models}
+            selectedUid={selectedUid} onSelectRow={setSelectedUid}
+            renderThumbById={renderThumbById}
+            locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
+            pricedUsd={pricedUsd} animatedUsd={animatedUsd} pendingFabric={pendingFabric} unpriced={unpricedPieces}
+            overallCm={vm.overallCm} selectedFamily={selectedFamily}
+            waiting={waiting}
+            onFixPending={() => { setQuoteOpen(false); fixPendingFabric(); }}
+            onFabricAll={() => { setQuoteOpen(false); openMaterial('all'); }}
+            onQuote={() => { buzz(9); setQuoteOpen(false); setStep('form'); }}
+            onPickFabricFor={(uid) => { setQuoteOpen(false); pickFabricFor(uid); }}
+            onClearFabric={clearFabric}
+            onPickPartFor={(uid, role) => { setQuoteOpen(false); openPartMaterial(uid, role); }}
+            onClearPartFor={clearPartMaterial}
+            onPickFinishFor={(uid, groupKey) => { setQuoteOpen(false); openPartMaterial(uid, 'structure', groupKey); }}
+            onClearFinishFor={clearPartFinish}
+            partsOpenUid={partsOpenUid}
+            onTogglePartsFor={(uid) => setPartsOpenUid((cur) => (cur === uid ? null : uid))}
+            onSwitchMode={switchMode}
+            onDuplicate={duplicateSel} onDelete={deleteSel}
+          />
+        </>
       )}
       {/* ── COMPONENTES — the piece's own parts as a rail DOWN THE RIGHT SIDE
            OF THE MATERIAL PANE. It used to be a wrapped grid inside that pane,
@@ -2258,9 +2452,7 @@ export default function TogoEmbed() {
           activeKey={stripActiveKey}
           hoverKey={stripHoverKey}
           locale={locale}
-          offsetLeft={railOpen
-            ? `calc(max(0.75rem, env(safe-area-inset-left)) + ${MAT_PANE_REM + 0.5}rem)`
-            : 'max(0.75rem, env(safe-area-inset-left))'}
+          offsetLeft={leftColumnOffset('picker', { railOpen })}
           /* Entry → focus vocabulary, translated HERE so the rail stays a plain
              list of chips and the stage keeps one language: the piece's own
              cloth chip IS the dressable piece (never a part named "base"). */
@@ -2269,6 +2461,14 @@ export default function TogoEmbed() {
               ? { role: DRESSABLE_ROLE, groupKey: null }
               : { role: e.role, groupKey: e.groupKey || null })
             : null)}
+          modeSwitch={stripPiece ? (
+            <ModeSwitch
+              compact
+              piece={stripPiece} r={resolvePlacement(stripPiece, resolvedById)} resolvedById={resolvedById}
+              locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
+              onSwitch={(mode) => switchMode(stripPiece.uid, mode)}
+            />
+          ) : null}
           onPick={(e) => {
             if (!stripPiece) return;
             setRailHover(null);   // the target is COMMITTED now — the preview has nothing left to preview
@@ -2299,40 +2499,15 @@ export default function TogoEmbed() {
           partsOpenUid={partsOpenUid}
           onTogglePartsFor={(uid) => setPartsOpenUid((cur) => (cur === uid ? null : uid))}
           onSwitchMode={switchMode}
+          /* The rail carries the switch whenever it is up (3D, a piece
+             selected). The pane keeps it for the cases the rail is NOT there —
+             2D, or nothing selected — so there is EXACTLY ONE on screen and it
+             never disappears entirely. */
+          /* …y la hoja del teléfono lo lleva en su fila de componentes, así que
+             tampoco ahí puede haber dos. */
+          showModeSwitch={!componentsRailOpen && !(matOpen && !desktop)}
           onDuplicate={duplicateSel} onDelete={deleteSel}
         />
-      )}
-
-      {/* ── Selected-piece header — a compact card pinned at the TOP, just below
-           the tool buttons. On desktop the design pane IS the inspector; on the
-           phone and tablet THIS is it, in BOTH views (owner, 2026-07-31: «this
-           should show whenever a piece is selected»). It used to be 2D-only,
-           which left 3D — the view where you actually dress the piece — with
-           nothing but the little floating chip: the parts, the estructura and
-           the way into each were simply unreachable there without a mouse. ONE
-           render site rather than a 3D twin, so the two views cannot drift into
-           different cards for the same selection. Its rotate control stays 2D:
-           that one lives on the canvas beneath the piece (see RotateDock). ── */}
-      {!desktop && selected && selResolved && (
-        <div className="absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+6.5rem)] sm:top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] inset-x-0 z-20 px-3 flex justify-center pointer-events-none">
-          <div className="w-full max-w-md">
-            <SelectedStrip
-              selected={selected} selResolved={selResolved} selectedFamily={selectedFamily}
-              totalUsd={placementTotalUsd(selected, resolvedById)} dressed={dressed(selected)}
-              resolvedById={resolvedById} onSwitchMode={switchMode}
-              renderThumbById={renderThumbById}
-              locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
-              onPickFabric={() => openMaterial('one')} onClearFabric={clearFabric}
-              onPickPart={(role) => openPartMaterial(selected.uid, role)}
-              onClearPart={(role) => clearPartMaterial(selected.uid, role)}
-              onPickFinish={(groupKey) => openPartMaterial(selected.uid, 'structure', groupKey)}
-              onClearFinish={(groupKey) => clearPartFinish(selected.uid, groupKey)}
-              partsOpen={partsOpenUid === selected.uid}
-              onToggleParts={() => setPartsOpenUid((cur) => (cur === selected.uid ? null : selected.uid))}
-              onDuplicate={duplicateSel} onDelete={deleteSel}
-            />
-          </div>
-        </div>
       )}
 
       {/* ── Bottom control deck — the build hotbar and the live estimate + quote
@@ -2431,8 +2606,8 @@ export default function TogoEmbed() {
                   : (
                     // Nothing priced yet → the fastest path to a real quote: pick
                     // ONE fabric and it lands on EVERY piece at once (each
-                    // repriced by its own model). Per-piece changes still live on
-                    // the selected strip and the 3D chip's pencil.
+                    // repriced by its own model). Per-piece changes live in the
+                    // Resumen drawer and on the 3D chip's pencil.
                     <button type="button" onClick={() => openMaterial('all')} className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 px-3 py-1 text-[13px] font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition">
                       <Palette size={13} className="shrink-0" aria-hidden /> {t(locale, 'estimate.chooseFabricAll')}
                     </button>
@@ -2447,30 +2622,99 @@ export default function TogoEmbed() {
         </div>
       </div>
 
-      <FabricModal
-        open={matOpen}
-        onClose={() => { setMatOpen(false); setMatPart(null); }}
-        onSelect={matPart
-          ? (pick) => onPickPartMaterial(matPart, pick)
-          : (matMode === 'all' ? applyFabricToAll : onPickMaterial)}
-        /* Same OFFER the desktop rail gets — the phone can't be allowed to store
-           a pick the rail refuses (see `pickableMaterials`). */
-        materials={pickableMaterials}
-        locale={locale}
-        heading={matPart
-          ? roleLabelOf(selResolved?.parts, matPart, t(locale, `part.${matPart}`))
-          : (matMode === 'all' ? t(locale, 'tools.oneFabricAll') : t(locale, 'parts.wholePiece'))}
-        /* A materialization ZONE (ottoman interior/exterior) reprices the BASE
-           SKU by grade — its picker shows the base family's ladder; a billed
-           part (cushion/bolster) shows its own SKU's ladder. Read off the ONE
-           derivation the rail and the offer share (`partFamily`), so the
-           ladder that prices the pick and the ladder that filtered the tiles
-           are the same object by construction. */
-        family={matPart ? partFamily : (matMode === 'all' ? null : selectedFamily)}
-        nameFilter={matMode === 'all' && !matPart ? allNameFilter : nameFilterOf(resolvedById[selected?.pieceId]?.offeredKeys)}
-        currentGrade={matPart ? selected?.partMaterials?.[matPart]?.grade : (matMode === 'all' ? undefined : selected?.material?.grade)}
-        currentFabric={matPart ? selected?.partMaterials?.[matPart]?.fabric : (matMode === 'all' ? undefined : selected?.material?.fabric)}
-      />
+      {/* ── THE PHONE'S MATERIAL PICKER ──────────────────────────────────
+           The SAME component the desktop rail renders (MaterialsPane) — one
+           component, two shells, so «idéntica a la versión desktop» holds by
+           construction and there is never a second picker to keep in step by
+           hand. What differs is only WHERE it is stowed, and on a portrait
+           screen that is the BOTTOM: it rises to half the height and the piece
+           takes the other half (MATERIALS_SHEET_SHELL). It used to pull out of
+           the LEFT edge at 88vw, which spent the phone's scarce axis and
+           covered the very piece the pick was about.
+           Mounted only while open: the swatch wall is the heaviest surface in
+           the widget and a phone should not carry it stowed. ── */}
+      {matOpen && !desktop && (
+        <>
+          {/* Tocar el plano detrás la guarda — el mismo gesto que cierra todo lo
+              guardable aquí. INVISIBLE a propósito: el tinte oscuro apagaba la
+              mitad de arriba justo cuando esa mitad existe PARA mirar la pieza
+              (dueño, 2026-08-05: «don't opaque the screen with that dark hue»).
+              La hoja ya se separa sola — es una tarjeta con sombra sobre el
+              plano —, así que el velo solo cobraba contraste sin dar nada. */}
+          <button
+            type="button"
+            aria-label={t(locale, 'common.close')}
+            onClick={() => { setMatOpen(false); setMatPart(null); }}
+            className="absolute inset-0 z-30"
+          />
+          <MaterialsPane
+            shellClassName={MATERIALS_SHEET_SHELL}
+            /* LOS COMPONENTES, A LA DERECHA DEL MURO. Misma lista que la
+               columna de escritorio y mismo vocabulario de foco — solo cambia
+               la concha. Sube con la hoja porque ahí se elige QUÉ vestir antes
+               de CON QUÉ, y no le quita altura a las telas: ocupa el hueco que
+               quedaba a su derecha. */
+            sideSlot={stripPiece && stripEntries.length > 0 ? (
+              <ComponentsRail
+                docked
+                entries={stripEntries}
+                activeKey={stripActiveKey}
+                hoverKey={stripHoverKey}
+                locale={locale}
+                onHover={(e) => setRailHover(e
+                  ? (e.role === 'base'
+                    ? { role: DRESSABLE_ROLE, groupKey: null }
+                    : { role: e.role, groupKey: e.groupKey || null })
+                  : null)}
+                /* Idéntico al de escritorio: el mismo chip abre la misma
+                   puerta, aquí y allá. */
+                onPick={(e) => {
+                  if (!stripPiece) return;
+                  setRailHover(null);   // the target is COMMITTED now — the preview has nothing left to preview
+                  if (e.role === 'structure') openPartMaterial(stripPiece.uid, 'structure', e.groupKey);
+                  else openPartMaterial(stripPiece.uid, e.role);
+                }}
+                modeSwitch={(
+                  <ModeSwitch
+                    compact
+                    piece={stripPiece} r={resolvePlacement(stripPiece, resolvedById)} resolvedById={resolvedById}
+                    locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
+                    onSwitch={(mode) => switchMode(stripPiece.uid, mode)}
+                  />
+                )}
+              />
+            ) : null}
+            onClose={() => { setMatOpen(false); setMatPart(null); }}
+            locale={locale}
+            targetLabel={selected ? (selResolved?.label || t(locale, 'piece.generic')) : null}
+            partRole={selected && matPart ? matPart : null}
+            partLabel={selected && matPart ? roleLabelOf(selResolved?.parts, matPart, t(locale, `part.${matPart}`)) : null}
+            onClearPart={() => setMatPart(null)}
+            pickerKey={`${selectedUid ?? 'all'}:${(selected && matPart) || 'base'}`}
+            /* Same OFFER the desktop rail gets — the phone can't be allowed to
+               store a pick the rail refuses (see `pickableMaterials`). */
+            materials={pickableMaterials}
+            /* A materialization ZONE (ottoman interior/exterior) reprices the
+               BASE SKU by grade — its picker shows the base family's ladder; a
+               billed part shows its own SKU's. Read off the ONE derivation the
+               rail and the offer share (`partFamily`). */
+            family={matPart ? partFamily : (matMode === 'all' ? null : selectedFamily)}
+            nameFilter={matMode === 'all' && !matPart ? allNameFilter : nameFilterOf(resolvedById[selected?.pieceId]?.offeredKeys)}
+            currentGrade={matPart ? effectivePartMaterials(selected)?.[matPart]?.grade : (matMode === 'all' ? undefined : selected?.material?.grade)}
+            currentFabric={matPart ? effectivePartMaterials(selected)?.[matPart]?.fabric : (matMode === 'all' ? undefined : selected?.material?.fabric)}
+            pricesHidden={pricesHidden}
+            fmt={fmt}
+            /* The PHONE docks it in the drawer's own footer: at 88vw there is
+               no canvas beside the drawer to hang a card on, and floating it
+               would cover the wall exactly as it did on desktop. */
+            onSwatchPreview={setSwatchPreview}
+            preview={onePreview}
+            onPick={matPart
+              ? (pick) => onPickPartMaterial(matPart, pick)
+              : (matMode === 'all' ? applyFabricToAll : onPickMaterial)}
+          />
+        </>
+      )}
 
       <TogoArViewer open={arOpen} onClose={() => setArOpen(false)} scene3d={scene3d} material={material} storeName={storeName} phoneUrl={handoffUrl} fabricByCode={fabricByCode} />
 
@@ -2557,7 +2801,7 @@ const ROOM_PRESETS_M = [[3, 3], [4, 3], [5, 4], [6, 5]];
  *  centred rectangular floor. A visual reference — it reports fit, never blocks.
  *  Anchored under the top-left toolbar; owns its own W/D draft, reseeded when
  *  the room changes from outside (undo, a restored link). */
-function RoomPanel({ room, fitInfo, locale, onApply, onClear, onClose }) {
+function RoomPanel({ room, fitInfo, locale, onApply, onClear, onClose, onDraft }) {
   const size = roomSize(room);
   const [w, setW] = useState(size?.widthCm ?? 400);
   const [d, setD] = useState(size?.depthCm ?? 300);
@@ -2595,6 +2839,17 @@ function RoomPanel({ room, fitInfo, locale, onApply, onClear, onClose }) {
   const blank = String(w).trim() === '' || String(d).trim() === '';
   const applied = !!size && size.widthCm === wantW && size.depthCm === wantD;
   const nothingToDo = blank || applied;
+  // Report the live figures up so the plan can draw them. Blank fields report
+  // NOTHING rather than the 50 cm floor `clampRoomDim` would hand back — a room
+  // flashing to its minimum while you clear a field to retype it is the preview
+  // arguing with you. Through a ref so an inline parent callback can't re-fire
+  // this on every render.
+  const draftRef = useRef(onDraft);
+  draftRef.current = onDraft;
+  useEffect(() => {
+    draftRef.current?.(blank ? null : { widthCm: wantW, depthCm: wantD });
+  }, [blank, wantW, wantD]);
+  useEffect(() => () => draftRef.current?.(null), []);
   const submit = (e) => {
     e?.preventDefault?.();
     if (nothingToDo) return;   // Enter in a field reaches here too
@@ -3230,21 +3485,73 @@ function PiecesPane({ models, renderThumbById = {}, onAdd, hoveredPieceId, onHov
  *  whose ✕ returns to the piece); with nothing selected a pick dresses every
  *  piece at once. Picking never closes anything — the pane persists, so fabric
  *  exploration is one continuous flow over the live 3D model. */
-function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClearPart, pickerKey, materials, family, nameFilter, currentGrade, currentFabric, pricesHidden, fmt, onPick, finishSpec = null, finishCurrent = null, onPickFinish, preview = null }) {
+// The desktop rail's own shell — a fixed-width column stowed against the left
+// edge. Named because the PHONE reuses the very same component with a different
+// shell (see MATERIALS_SHEET_SHELL): «que sea una copia del material picker en
+// desktop» is only true by CONSTRUCTION if it is the same component, not a
+// second implementation that has to be kept in step.
+const MATERIALS_PANE_SHELL = 'hud-panel hud-panel-solid animate-in fade-in slide-in-from-left-4 duration-200 absolute z-20 left-[max(0.75rem,env(safe-area-inset-left))] top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-80 flex flex-col overflow-hidden';
+
+// TU DISEÑO's two anchorings, same recipe as the material pane's pair below:
+// the desktop right column, and the phone's right-edge drawer. «Mobile view is
+// exactly the same components as desktop» (owner, 2026-08) — the phone used to
+// render a DIFFERENT summary (QuoteSheet) plus a floating selected-piece card,
+// three implementations of one surface; now there is ONE DesignPane and only
+// where it hangs changes.
+const DESIGN_PANE_SHELL = 'hud-panel hud-panel-solid togo-rise absolute z-20 right-[max(0.75rem,env(safe-area-inset-right))] top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-80 flex flex-col overflow-hidden';
+const DESIGN_DRAWER_SHELL = 'hud-panel hud-panel-solid animate-in slide-in-from-right duration-200 absolute z-40 right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-[min(21rem,88vw)] flex flex-col overflow-hidden';
+
+/**
+ * UNA PANTALLA VERTICAL SE DIVIDE EN VERTICAL (owner, 2026-08-05: «if I select
+ * a piece it's gonna move the POV towards the top of the screen … and the
+ * material picker will slide from the bottom … it takes half of the screen and
+ * the other half is left for focusing on the piece»).
+ *
+ * El picker del teléfono deja de salir del lado IZQUIERDO. Un cajón lateral en
+ * un teléfono cobra su ancho al eje que ya es el escaso: a 88vw tapaba la pieza
+ * que iba a vestir, así que el gesto («cámbiale la tela a ESTO») escondía su
+ * propio sujeto. Vertical el reparto es limpio — mitad de arriba la pieza,
+ * mitad de abajo las telas — y ninguna de las dos le quita nada a la otra.
+ *
+ * La otra mitad del trato la cumple la cámara: `insetBottomFrac` (la MISMA
+ * mitad, dicha una vez aquí y leída allá) desliza la plataforma para que la
+ * pieza se centre en la franja visible, y al cerrar vuelve al centro por el
+ * mismo camino que ya tenía. El ancho completo también es lo que le da sitio a
+ * los componentes ACOSTADOS en su cabecera — en la columna de 21rem no cabían
+ * sin robarle el muro a las telas.
+ */
+const MATERIALS_SHEET_FRAC = 0.5;
+const MATERIALS_SHEET_SHELL = 'hud-panel hud-panel-solid animate-in slide-in-from-bottom duration-200 absolute z-40 left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] h-1/2 flex flex-col overflow-hidden';
+
+function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClearPart, pickerKey, materials, family, nameFilter, currentGrade, currentFabric, pricesHidden, fmt, onPick, finishSpec = null, finishCurrent = null, onPickFinish, preview = null, onSwatchPreview = null, shellClassName = MATERIALS_PANE_SHELL, onClose = null, sideSlot = null }) {
   return (
     <aside
       aria-label={t(locale, 'fabric.pickerTitle')}
       /* Slides in from the edge it is stowed against — the drawer reads as
          coming OUT rather than appearing, which is what makes "stored" legible
          as a state instead of just absent. */
-      className="hud-panel hud-panel-solid animate-in fade-in slide-in-from-left-4 duration-200 absolute z-20 left-[max(0.75rem,env(safe-area-inset-left))] top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-80 flex flex-col overflow-hidden"
+      className={shellClassName}
     >
       {/* No edge line here: the 2px `bg-brand-600` "answering" line this pane
            once carried renders DARK SLATE under the embed's `togo-rams` ramp
            remap — the hard dark rail the owner retired (2026-08-01). The
            pane's presence is the signal; the header names the target. */}
       <div className="shrink-0 px-3 pt-3 pb-2 flex flex-col gap-1">
-        <span className="eyebrow">{t(locale, 'fabric.pickerTitle')}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="eyebrow">{t(locale, 'fabric.pickerTitle')}</span>
+          {/* Only the phone drawer gets a close: the desktop rail IS the
+              workspace and has nothing to close back to. */}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t(locale, 'common.close')}
+              className="grid place-items-center w-8 h-8 -mr-1 rounded-full text-ink-500 hover:bg-ink-100/70 active:scale-95 transition"
+            >
+              <X size={16} aria-hidden />
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 min-w-0">
           {targetLabel ? (
             <>
@@ -3274,7 +3581,15 @@ function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClea
           )}
         </div>
       </div>
-      <div className="flex-1 min-h-0">
+      {/* LOS COMPONENTES, A LA DERECHA DEL MURO. La otra opción que el dueño
+          dio («either across the top or to the VERY RIGHT of the material») y
+          la que gana en una hoja de media pantalla: acostados arriba cobraban
+          una fila entera de alto —~90 px de 332— al eje que aquí es el escaso,
+          mientras la derecha del muro se quedaba vacía. De pie no cuestan
+          altura ninguna y ocupan ese hueco. En escritorio va vacío: allí la
+          lista ya tiene su propia columna flotante. */}
+      <div className="flex-1 min-h-0 flex flex-row">
+        <div className="flex-1 min-w-0 flex flex-col">
         {finishSpec ? (
           <FinishPlates key={pickerKey} locale={locale} spec={finishSpec} current={finishCurrent} onPick={onPickFinish} />
         ) : (
@@ -3295,14 +3610,28 @@ function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClea
              the colour's own scan, for the rare code LR no longer publishes. */
           swatchSrc={swatchTileUrl}
           swatchFallbackSrc={swatchTextureUrl}
+          /* THE PICK ITSELF. An earlier edit dropped this line while rewiring
+             the preview dock, and every material pick in the widget died with
+             a TypeError — desktop rail and phone drawer alike («no me deja
+             cambiar el material», three reports). Caught by the Playwright
+             harness (scripts/e2e-togo-pick.mjs); keep that green. */
           onPick={(material, color) => onPick(toPick(material, color))}
+          /* The wall reports what the pointer is on instead of floating its
+             own card; the WORKSPACE paints it, in the one home it owns. */
+          onDockPreview={onSwatchPreview}
         />
         )}
+        </div>
+        {sideSlot}
       </div>
       {/* THE PREVIEW, DOCKED. A real footer, not an overlay: the wall above
           SHRINKS to make room, so the card never covers the swatches it is
           explaining (owner, 2026-08: «al fondo del selector de materiales, para
           ahorrar espacio»). Pointer-transparent — it explains, the wall acts. */}
+      {/* THE DOCKED PREVIEW — phones only, where there is no canvas beside the
+          drawer to put it on. On desktop it lives OUTBOARD of this column (see
+          the workspace's one card) so it can never cover the wall it is
+          describing. */}
       {preview && (
         <div className="shrink-0 border-t border-ink-200/70 p-2 pointer-events-none animate-in fade-in duration-150">
           <SwatchPreviewBody preview={preview} />
@@ -3358,23 +3687,23 @@ function FinishPlates({ locale, spec, current, onPick }) {
   );
 }
 
-/** Desktop-only (≥1280px) RIGHT workspace pane — "your design", the persistent
- *  inspector: every placed piece as a row (thumbnail rendered in ITS chosen
- *  fabric, name, fabric line, price), a row click selects the piece on the plan
- *  and expands into the per-piece controls (the SAME segmented fabric chip +
- *  duplicate/delete the floating SelectedStrip carries on small screens); the
- *  footer is the live estimate + the quote CTA. On desktop this pane REPLACES
- *  the bottom estimate deck and the floating selected strip — one calm place
- *  instead of chrome appearing and vanishing over the canvas. Shown in both
- *  views (the deck was too); the fabric-pick chips work from 3D exactly like
- *  the 3D hover chip does. */
+/** THE "TU DISEÑO" pane — the ONE inspector, worn in two shells (see the shell
+ *  constants above): the desktop right column, and the phone's Resumen drawer.
+ *  Every placed piece as a row (thumbnail rendered in ITS chosen fabric, name,
+ *  fabric line, price); a row click selects the piece on the plan and expands
+ *  into the per-piece controls (fabric chip, per-part picks, mode switch,
+ *  duplicate/delete); the footer is the live estimate + the quote CTA. One calm
+ *  place instead of chrome appearing and vanishing over the canvas — shown in
+ *  both views; the fabric-pick chips work from 3D exactly like the 3D hover
+ *  chip does. `onClose` (phone shell only) adds the drawer's ✕. */
 function DesignPane({
   placed, resolvedById, models = [], selectedUid, onSelectRow, renderThumbById = {},
   locale, fmt, fromMode = false, pricesHidden = false, pricedUsd = 0, animatedUsd = 0, pendingFabric = 0,
   unpriced = 0,
   overallCm, selectedFamily = null, partsOpenUid = null, waiting = null,
   onFixPending, onFabricAll, onQuote, onPickFabricFor, onClearFabric,
-  onPickPartFor, onClearPartFor, onPickFinishFor, onClearFinishFor, onTogglePartsFor, onSwitchMode, onDuplicate, onDelete,
+  onPickPartFor, onClearPartFor, onPickFinishFor, onClearFinishFor, onTogglePartsFor, onSwitchMode, showModeSwitch = true, onDuplicate, onDelete,
+  shellClassName = DESIGN_PANE_SHELL, onClose = null,
 }) {
   const modelById = useMemo(() => Object.fromEntries(models.map((m) => [m.id, m])), [models]);
   const rows = placed.map((p) => ({ p, r: resolvePlacement(p, resolvedById) }));
@@ -3404,17 +3733,31 @@ function DesignPane({
   return (
     <aside
       aria-label={t(locale, 'panel.design')}
-      className="hud-panel hud-panel-solid togo-rise absolute z-20 right-[max(0.75rem,env(safe-area-inset-right))] top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-80 flex flex-col overflow-hidden"
+      className={shellClassName}
     >
-      <div className="shrink-0 px-3 pt-3 pb-2 flex items-baseline justify-between gap-2">
+      <div className="shrink-0 px-3 pt-3 pb-2 flex items-center justify-between gap-2">
         <span className="eyebrow">{t(locale, 'panel.design')}</span>
-        <span className="text-[11px] text-ink-500 tabular-nums">{piecesLabel(locale, rows.length)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-ink-500 tabular-nums">{piecesLabel(locale, rows.length)}</span>
+          {/* Only the phone drawer gets a close: on desktop this pane IS the
+              workspace's right column and has nothing to close back to. */}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t(locale, 'common.close')}
+              className="grid place-items-center w-8 h-8 -mr-1 rounded-full text-ink-500 hover:bg-ink-100/70 active:scale-95 transition"
+            >
+              <X size={16} aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin px-2 pb-2 flex flex-col gap-1.5">
         {rows.map(({ p, r }) => {
           const sel = p.uid === selectedUid;
           // Base + its tagged parts at their grades — the same roll-up the
-          // quote line carries, so the pane, the strip and the resumen agree.
+          // quote line carries, so both shells of this pane price alike.
           const rowUsd = placementTotalUsd(p, resolvedById);
           // DRESSED, either way — one cloth over the whole piece, or every
           // componente carrying its own. The row used to read `p.material`
@@ -3470,7 +3813,7 @@ function DesignPane({
                       componentes, the piece's own tela is not what is being
                       bought, so it leaves the screen rather than sitting there
                       as a control that changes no money. */}
-                  {placementMode(p) === 'complete' && (
+                  {!componentViewOf(p) && (
                   <div className="flex flex-col gap-1">
                     {/* SCOPE FIRST. The swatch alone reads as "a fabric,
                         somewhere on this piece"; named, it reads as "dress the
@@ -3510,10 +3853,10 @@ function DesignPane({
                     </div>
                   </div>
                   )}
-                  {/* The SAME hierarchy the mobile strip renders, from the same
-                      component. In modo pieza the componentes are «Incluido»
-                      and there is nothing to choose, so the section is off —
-                      the switch above is the way to them. */}
+                  {/* The per-part hierarchy (see PartsSection's own doc). In
+                      modo pieza the componentes are «Incluido» and there is
+                      nothing to choose, so the section is off — the switch
+                      above is the way to them. */}
                   <PartsSection
                     piece={p} r={r} locale={locale}
                     open={partsOpenUid === p.uid} onToggle={() => onTogglePartsFor?.(p.uid)}
@@ -3524,6 +3867,18 @@ function DesignPane({
                     onPickFinish={(groupKey) => onPickFinishFor?.(p.uid, groupKey)}
                     onClearFinish={(groupKey) => onClearFinishFor?.(p.uid, groupKey)}
                   />
+                  {/* WHICH OF THE TWO WAYS this piece is sold — BELOW the list
+                      it governs (owner: «debajo del material list»): the list
+                      is what you came to read, the switch is how you change
+                      what it is made of. Suppressed while the componentes rail
+                      is up, because the rail is carrying it there. */}
+                  {showModeSwitch && (
+                  <ModeSwitch
+                    piece={p} r={r} resolvedById={resolvedById}
+                    locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
+                    onSwitch={(mode) => onSwitchMode?.(p.uid, mode)}
+                  />
+                  )}
                 </div>
               )}
             </div>
@@ -3604,25 +3959,31 @@ function DesignPane({
  * Keys are `role` for cloth and `structure:<group>` for an acabado — the same
  * pair `openPartMaterial` takes, so a click needs no translation table.
  */
-function pieceSwatchEntries(piece, r, locale) {
+function pieceSwatchEntries(piece, r, locale, componentView = false) {
   if (!piece || !r) return [];
   // THE SAME EXCLUSION the panel keeps: componentes ON ⇒ no «tela de toda la
   // pieza» chip (that SKU is not being sold), componentes OFF ⇒ no componente
   // chips (that one SKU bought them). A rail offering both would be offering a
-  // build the money rule has no price for.
-  const byParts = placementMode(piece) === 'parts';
+  // build the money rule has no price for. WHICH side is on is the caller's
+  // question, answered by the Model (`componentViewOf`) — mode, or a live
+  // componente target — never re-derived here.
+  const byParts = componentView;
   const out = byParts ? [] : [{
     key: 'base',
     role: 'base',
     groupKey: null,
     label: t(locale, 'parts.wholePiece'),
+    // The rail is 5.5rem of column: it shows the short name and keeps the long
+    // one as the chip's title/aria. Every other entry is already short (a
+    // dealer's own «Cojín», «Rulo», «Estructura»), so only this one needs it.
+    shortLabel: t(locale, 'parts.wholePieceShort'),
     code: piece.material?.code || '',
     fabric: piece.material?.fabric || t(locale, 'fabric.none'),
     inherited: false,
     color: null,
   }];
   for (const role of (byParts ? dressableRoles(r) : [])) {
-    const pick = piece.partMaterials?.[role] || null;
+    const pick = effectivePartMaterials(piece)?.[role] || null;
     out.push({
       key: role,
       role,
@@ -3714,7 +4075,7 @@ function hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed,
       meta: opt?.label || t(locale, 'part.finish'),
     };
   }
-  const pick = role === 'base' ? (p.material || null) : (p.partMaterials?.[role] || null);
+  const pick = role === 'base' ? (p.material || null) : (effectivePartMaterials(p)?.[role] || null);
   const code = pick?.code || (role !== 'base' ? p.material?.code : '') || '';
   return {
     base: code ? swatchTileUrl(code, SWATCH_PX.plate) : null,
@@ -3754,19 +4115,44 @@ function hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed,
  * pointer-leave of the LIST, not of each chip, so sliding down the column is
  * one continuous read instead of a flicker between neighbours.
  */
-function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale, offsetLeft }) {
+/**
+ * `docked` no cambia el componente, cambia su CONCHA (owner, 2026-08-05: «not
+ * change the UIs, but change their layouts»). Los chips, sus estados y su
+ * vocabulario de foco son los mismos; lo que cambia es dónde vive la columna:
+ * FLOTANTE en escritorio (su propia tarjeta junto al picker) o ACOPLADA a la
+ * derecha del muro de telas dentro de la hoja del teléfono. Vertical las dos —
+ * probamos acostarla en la cabecera y cobraba una fila entera de alto en una
+ * hoja de media pantalla, que es el eje escaso ahí. Una sola lista de
+ * componentes en todo el widget: la alternativa era una segunda que mantener a
+ * mano, y así es justo como el picker del teléfono se desincronizó del de
+ * escritorio la vez pasada.
+ */
+function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale, offsetLeft, modeSwitch = null, docked = false }) {
   if (!entries.length) return null;
+  const Shell = docked ? 'div' : 'aside';
   return (
-    <aside
+    <Shell
       aria-label={t(locale, 'parts.components')}
-      style={{ left: offsetLeft }}
-      className="hud-panel hud-panel-solid togo-rise absolute z-20 w-[4.5rem] top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] max-h-[calc(100%-max(0.75rem,env(safe-area-inset-top))-max(0.75rem,env(safe-area-inset-bottom))-3.25rem)] flex flex-col overflow-hidden"
+      /* Width from the SAME constant the stage's insetLeft and the rail's own
+         offset read — a literal class here is a second copy that drifts.
+         Acoplada conserva el ancho (los chips son los mismos) y no posiciona:
+         la fila flex del cuerpo la coloca. */
+      style={docked ? { width: `${COMPONENTS_RAIL_REM}rem` } : { left: offsetLeft, width: `${COMPONENTS_RAIL_REM}rem` }}
+      className={docked
+        ? 'shrink-0 border-l border-ink-200/70 flex flex-col overflow-hidden'
+        : 'hud-panel hud-panel-solid togo-rise absolute z-20 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] max-h-[calc(100%-max(0.75rem,env(safe-area-inset-top))-max(0.75rem,env(safe-area-inset-bottom))-3.25rem)] flex flex-col overflow-hidden'}
     >
-      <span className="shrink-0 px-1 pt-2 pb-1.5 text-center text-[9px] uppercase tracking-[0.08em] text-ink-400">
-        {t(locale, 'parts.components')}
-      </span>
+      {/* No letter-spacing here: 0.08em is what pushed «COMPONENTES» past the
+          edge. The eyebrow treatment survives in the case and the weight.
+          Acoplada el título sobra: la columna vive bajo una cabecera que ya
+          nombra la pieza, y ese renglón es alto de swatch en media pantalla. */}
+      {!docked && (
+        <span className="shrink-0 px-1 pt-2 pb-1.5 text-center text-[9px] uppercase leading-tight text-ink-400">
+          {t(locale, 'parts.components')}
+        </span>
+      )}
       <div
-        className="flex-1 min-h-0 overflow-y-auto scroll-thin px-1.5 pb-2 flex flex-col gap-1.5"
+        className={`flex-1 min-h-0 overflow-y-auto scroll-thin px-1.5 flex flex-col gap-1.5 ${docked ? 'pt-2 pb-2' : 'pb-2'}`}
         onMouseLeave={() => onHover?.(null)}
       >
         {entries.map((e) => {
@@ -3801,12 +4187,22 @@ function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale,
                     ? <img src={swatchTileUrl(e.code, SWATCH_PX.strip)} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                     : <span className="absolute inset-0 grid place-items-center" aria-hidden><Palette size={14} className="text-ink-300" /></span>}
               </span>
-              <span className="mt-0.5 block truncate text-center text-[9px] leading-tight text-ink-600">{e.label}</span>
+              <span className="mt-0.5 block truncate text-center text-[9px] leading-tight text-ink-600">{e.shortLabel || e.label}</span>
             </button>
           );
         })}
       </div>
-    </aside>
+      {/* THE MODE, under the list it decides the contents of (owner pointed the
+          arrow here): these chips ARE the componentes, so the switch that turns
+          them on and off belongs at their foot, not across the workspace in the
+          design pane. Acostada la fila, «al pie» es el extremo derecho — mismo
+          sitio relativo, eje girado. */}
+      {modeSwitch && (
+        <div className="shrink-0 border-t border-ink-200/70 px-1.5 py-2 grid place-items-center">
+          {modeSwitch}
+        </div>
+      )}
+    </Shell>
   );
 }
 
@@ -3822,7 +4218,7 @@ function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale,
  * way back on the very next render.
  */
 function partDivergence(piece, role) {
-  const pick = piece?.partMaterials?.[role] || null;
+  const pick = effectivePartMaterials(piece)?.[role] || null;
   if (!pick) return null;
   const own = String(pick.code || '').trim();
   const base = String(piece?.material?.code || '').trim();
@@ -3851,56 +4247,92 @@ function partDivergence(piece, role) {
  *   3. the parts themselves, one row each, each saying what it wears — «Igual
  *      que la pieza» until it diverges — with a pipette in and a way back out.
  *
- * Rendered by BOTH the mobile SelectedStrip and the desktop DesignPane from
- * this one definition, so the two surfaces cannot drift into different shapes
+ * Rendered by DesignPane in BOTH its shells (desktop pane + phone drawer) from
+ * this one definition, so the two anchorings cannot drift into different shapes
  * of the same idea.
  */
 /**
  * ── EL TOGGLE: SKU base ⇄ componentes ──────────────────────────────────────
  *
  * Owner, 2026-08: «cuando componentes está encendido, el SKU base está apagado,
- * y viceversa». So this is a SWITCH, and the thing it switches is which half of
- * the panel EXISTS: on, and the piece's own tela is gone from the screen; off,
- * and the componentes are. Showing both at once was the bug — it read as two
- * things you could have together, which is exactly what the money rule forbids.
+ * y viceversa» — so the thing it switches is which half of the panel EXISTS,
+ * not a preference. Showing both at once was the bug: it read as two things you
+ * could have together, which is exactly what the money rule forbids.
  *
- * The other mode's price rides alongside, so flipping is an informed choice
- * rather than a leap. It comes from the SAME engine the quote will use — the
- * switch asks it the other mode's question, never a second formula.
+ * TWO ICONS, not words (owner: «un icono O y otro I|I»): the choice is about
+ * SHAPE — one solid thing, or that thing split into its parts — and a glyph
+ * says that faster than a label in four languages. `O` is the whole piece,
+ * `I|I` the componentes. Drawn inline rather than pulled from the icon set so
+ * the pair reads as ONE idea at 14px, which no two stock icons do.
+ *
+ * It sits BELOW the list it governs: the list is what you came to read, the
+ * switch is how you change what it is made of.
+ *
+ * The other mode's price rides alongside — flipping is an informed choice, not
+ * a leap. It comes from the SAME engine the quote will use (the switch asks it
+ * the other mode's question, never a second formula).
  *
  * Only rendered when the model HAS componentes: with none there is one way to
  * sell the piece and a switch would be a question with one answer.
  */
-function ModeSwitch({ piece, r, resolvedById, locale, fmt, fromMode = false, pricesHidden = false, onSwitch }) {
+const WHOLE_ICON = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    <circle cx="12" cy="12" r="7.5" />
+  </svg>
+);
+const PARTS_ICON = (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+    <path d="M6 4.5v15M12 4.5v15M18 4.5v15" />
+  </svg>
+);
+
+function ModeSwitch({ piece, r, resolvedById, locale, fmt, fromMode = false, pricesHidden = false, onSwitch, compact = false }) {
   if (!componentRoles(r).length) return null;
   const on = placementMode(piece) === 'parts';
   const otherUsd = pricesHidden
     ? null
     : placementTotalUsd({ ...piece, partsMode: !on }, resolvedById);
-  return (
+  const opt = (active, label, icon, mode) => (
     <button
       type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onSwitch?.(on ? 'complete' : 'parts')}
-      className="w-full flex items-center gap-2 rounded-xl border border-ink-200/80 bg-surface/70 px-2 py-1.5 text-left hover:bg-ink-50 active:scale-[0.99] transition"
+      aria-pressed={active}
+      aria-label={label}
+      title={label}
+      onClick={() => { if (!active) onSwitch?.(mode); }}
+      className={`grid place-items-center w-7 h-6 rounded-full transition ${
+        active ? 'bg-ink-900 text-white' : 'text-ink-400 hover:text-ink-700 hover:bg-ink-100/70'
+      }`}
     >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[11px] font-medium text-ink-800">{t(locale, 'mode.parts')}</span>
-        <span className="block truncate text-[10px] leading-tight text-ink-400">
-          {on
-            ? `${t(locale, 'mode.whole')}: ${otherUsd != null ? fmt(otherUsd, { from: fromMode }) : t(locale, 'mode.pending')}`
-            : t(locale, 'mode.switchHint')}
-        </span>
-      </span>
-      {/* The switch itself — the affordance, not a label pretending to be one. */}
-      <span
-        aria-hidden
-        className={`shrink-0 inline-flex h-5 w-9 items-center rounded-full p-0.5 transition ${on ? 'bg-ink-900' : 'bg-ink-200'}`}
-      >
-        <span className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-4' : 'translate-x-0'}`} />
-      </span>
+      {icon}
     </button>
+  );
+  const pair = (
+    <div className="shrink-0 inline-flex items-center rounded-full border border-ink-200/80 bg-surface/70 p-0.5 gap-0.5">
+      {opt(!on, t(locale, 'mode.whole'), WHOLE_ICON, 'complete')}
+      {opt(on, t(locale, 'mode.parts'), PARTS_ICON, 'parts')}
+    </div>
+  );
+  // COMPACT — the componentes rail is 4.5rem wide, so the caption cannot ride
+  // along. The pair alone still says everything the switch is for; the mode
+  // names live on as aria-label + tooltip, and the OTHER mode's price is the
+  // one thing that has to go, because a truncated number is worse than none.
+  if (compact) return pair;
+  return (
+    <div className="flex items-center gap-2">
+      {pair}
+      {/* What you are in, and what the other one costs — the whole reason the
+          switch is worth looking at. */}
+      <span className="min-w-0 flex-1 truncate text-[10px] leading-tight text-ink-400">
+        <span className="text-ink-600">{on ? t(locale, 'mode.parts') : t(locale, 'mode.whole')}</span>
+        {!pricesHidden && (
+          <>
+            {' · '}
+            {on ? t(locale, 'mode.whole') : t(locale, 'mode.parts')}:{' '}
+            {otherUsd != null ? fmt(otherUsd, { from: fromMode }) : t(locale, 'mode.pending')}
+          </>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -3918,9 +4350,12 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
   // hasn't been chosen yet.
   // ON ⇒ the componentes are what is being bought and each one is choosable;
   // OFF ⇒ the piece's own SKU bought them, so there is nothing to choose here
-  // and the rows are gone. The ESTRUCTURA is not part of that switch: it wears
-  // a FINISH, price-neutral in either mode, so it stays on screen throughout.
-  const fabricRoles = placementMode(piece) === 'parts' ? roles : [];
+  // and the rows are gone. «ON» is the Model's call (`componentViewOf`), and it
+  // is the MODE alone — pointing at a componente no longer opens these rows
+  // behind the pointer (owner, 2026-08-05). The ESTRUCTURA is not part of that
+  // switch: it wears a FINISH, price-neutral in either mode, so it stays on
+  // screen throughout.
+  const fabricRoles = componentViewOf(piece) ? roles : [];
   // A piece with neither parts nor structure never shows step 2 at all — by
   // construction, not by copy.
   if (!fabricRoles.length && !structures.length) return null;
@@ -4095,86 +4530,6 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
   );
 }
 
-/** Selected-piece card — the piece's identity line (name · dims · price) over
- *  its per-piece controls. The FABRIC is a segmented chip, not a mystery icon
- *  row: swatch + full name + pencil opens the picker, and the chip's divided ×
- *  tail removes the tela (a bare × next to the actions read as "close this
- *  card"). No fabric yet → the terracotta "Elegir tela" chip is the next step.
- *  The price reads as a figure (display face, right-aligned); before a fabric
- *  lands it shows the model's "desde" price, same register as the hotbar. */
-function SelectedStrip({ selected, selResolved, resolvedById = {}, totalUsd = null, dressed = false, renderThumbById = {}, locale, fmt, fromMode = false, pricesHidden = false, onSwitchMode, onPickFabric, onClearFabric, onPickPart, onClearPart, onPickFinish, onClearFinish, partsOpen = false, onToggleParts, onDuplicate, onDelete, selectedFamily }) {
-  // DRESSED, either way (placementDressed, handed down): a build dressed
-  // componente by componente states its price as a real figure, not as the
-  // model's grey «desde» sticker.
-  const priced = dressed && selResolved.unitPrice != null;
-  // Base + tagged parts at their grades — the number the quote will carry.
-  const unit = totalUsd ?? selResolved.unitPrice;
-  // …except when there ISN'T one. A dressed piece with no total is wearing
-  // cloth its own ladder never sold, and `selResolved.unitPrice` is exactly the
-  // wrong fallback for it: the pick stamped the model's CHEAPEST grade there,
-  // so the card would state, in the largest figure on screen, the price of a
-  // fabric nobody chose. Undressed is untouched — that number is the model's
-  // honest «desde».
-  const unpriced = dressed && totalUsd == null;
-  return (
-    <div className="hud-panel pointer-events-auto flex items-stretch gap-2.5 pl-1.5 pr-1.5 py-1.5 togo-rise">
-      <ModelThumb id={selected.pieceId} render={renderThumbById} alt={selResolved.label} className="shrink-0 w-14 h-14 self-center rounded-lg bg-ink-50/60" />
-      <div className="min-w-0 flex-1 flex flex-col justify-center gap-1.5">
-        <div className="flex items-baseline gap-2 pr-1">
-          <span className="min-w-0 flex-1 truncate text-[13px] font-display font-semibold leading-tight">{selResolved.label}</span>
-          <span className="shrink-0 text-[11px] text-ink-400 tabular-nums">{selResolved.widthCm} × {selResolved.depthCm} cm</span>
-          {!pricesHidden && (unpriced ? (
-            <span className="shrink-0 text-[11px] text-ink-500">{t(locale, 'summary.noPrice')}</span>
-          ) : priced ? (
-            <span className="shrink-0 text-[15px] font-display font-semibold tabular-nums tracking-tight leading-none">{fmt(unit, { from: fromMode })}</span>
-          ) : unit != null && (
-            <span className="shrink-0 text-[11px] text-ink-400 tabular-nums">{fmt(unit, { from: true })?.replace(/\.\d\d$/, '')}</span>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          {selected.material ? (
-            <div className="min-w-0 inline-flex items-stretch rounded-full border border-ink-200/80 bg-surface/70 overflow-hidden">
-              <button type="button" onClick={onPickFabric} title={t(locale, 'fabric.change')} className="min-w-0 inline-flex items-center gap-1.5 pl-1 pr-1.5 py-1 hover:bg-ink-100/60 active:bg-ink-100 transition">
-                {selected.material.code
-                  ? <ImageView id={null} fallbackUrl={swatchTileUrl(selected.material.code, SWATCH_PX.pill)} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
-                  : <span className="w-5 h-5 rounded-full bg-ink-100 grid place-items-center shrink-0"><Palette size={11} className="text-ink-400" aria-hidden /></span>}
-                <span className="min-w-0 truncate text-[11px] font-medium text-ink-700">{selected.material.fabric || t(locale, 'fabric.generic')}</span>
-                <Pencil size={11} className="shrink-0 text-ink-400" aria-hidden />
-              </button>
-              <button type="button" onClick={onClearFabric} title={t(locale, 'fabric.remove')} aria-label={t(locale, 'fabric.remove')} className="shrink-0 inline-flex items-center px-1.5 border-l border-ink-200/70 text-ink-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition">
-                <X size={11} aria-hidden />
-              </button>
-            </div>
-          ) : selectedFamily ? (
-            <button type="button" onClick={onPickFabric} className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 pl-2 pr-2.5 py-1 text-[11px] font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition">
-              <Palette size={12} aria-hidden /> {t(locale, 'fabric.choose')}
-            </button>
-          ) : (
-            <span className="text-[11px] text-ink-400 px-1">{t(locale, 'fabric.noOptions')}</span>
-          )}
-          <div className="flex-1" />
-          <div className="flex items-center gap-0.5 shrink-0">
-            <button type="button" onClick={onDuplicate} className="btn-icon" title={t(locale, 'piece.duplicate')} aria-label={t(locale, 'piece.duplicate')}><CopyPlus size={15} /></button>
-            <button type="button" onClick={onDelete} className="btn-icon-danger" title={t(locale, 'piece.remove')} aria-label={t(locale, 'piece.remove')}><Trash2 size={15} /></button>
-          </div>
-        </div>
-        {/* The same two-way switch the desktop pane carries — the phone is where
-            most visitors build, so the pricing choice cannot be desktop-only. */}
-        <ModeSwitch
-          piece={selected} r={selResolved} resolvedById={resolvedById}
-          locale={locale} fmt={fmt} fromMode={fromMode} pricesHidden={pricesHidden}
-          onSwitch={(mode) => onSwitchMode?.(selected.uid, mode)}
-        />
-        {/* The parts live UNDER the piece's own fabric, never beside it. */}
-        <PartsSection
-          piece={selected} r={selResolved} locale={locale}
-          open={partsOpen} onToggle={onToggleParts}
-          onPickPart={onPickPart} onClearPart={onClearPart} onPickFinish={onPickFinish} onClearFinish={onClearFinish}
-        />
-      </div>
-    </div>
-  );
-}
 
 // Empty-plan starter — the configurator's OPENING PAGE, not a card in a box: an
 // editorial, full-bleed composition on the warm canvas (the register of a Ligne
@@ -4312,7 +4667,8 @@ function CanvasArea({
   view, placed, resolvedById, material, selectedUid, onSelect, onMove, onRotateTo, gesturesRef, onHoverPiece,
   models = [], onAddPiece, renderThumbById = {}, overallCm, fill = false,
   collections = [], collectionMenu = [], collectionThumbs = {}, activeCollection, onCollection, hintPieceId = null, rates, locale, fmt, pricesHidden = false, fromMode = false,
-  onTapPart, fabricByCode, onSelAnchor, chipUid = null, onChipAnchor, chipFollow = false, focusPart = null, room = null, insetLeft = 0, insetRight = 0,
+  onTapPart, fabricByCode, onSelAnchor, chipUid = null, onChipAnchor, chipFollow = false, focusPart = null, focusSoft = false, room = null, insetLeft = 0, insetRight = 0,
+  insetBottomFrac = 0, insetTop = 0,
   onModelFallback,
 }) {
   const boxedH = 'h-[56vh] min-h-[320px] lg:h-[58vh] lg:min-h-[440px]';
@@ -4400,12 +4756,15 @@ function CanvasArea({
            its state); CanvasArea only forwards them. */
         insetLeft={insetLeft}
         insetRight={insetRight}
+        insetBottomFrac={insetBottomFrac}
+        insetTop={insetTop}
         mode={view} placed={placed} resolvedById={resolvedById} material={material}
         selectedUid={selectedUid} onSelect={onSelect} onMove={onMove}
         onRotateTo={onRotateTo} gesturesRef={gesturesRef} onHoverPiece={onHoverPiece}
         onSelectedScreenPos={onSelPos} onSelContour={setContour}
         hintPieceId={hintPieceId} onRotateLive={setRotDeg} onTapPart={onTapPart} fabricByCode={fabricByCode}
-        chipUid={chipUid} onChipAnchor={onChipAnchor} chipFollow={chipFollow} focusPart={focusPart} room={room}
+        chipUid={chipUid} onChipAnchor={onChipAnchor} chipFollow={chipFollow} focusPart={focusPart}
+        focusSoft={focusSoft} room={room}
         onModelFallback={onModelFallback}
         dims={overallCm?.widthCm > 0
           ? {
@@ -4469,218 +4828,6 @@ function CanvasArea({
   );
 }
 
-/** The quote summary — a sheet listing every placed piece with its swatch (hover
- *  a swatch to see it big), unit price, the assembled size, the running total,
- *  and the "request a quote" CTA. Read-only over `placed` (the same data the
- *  lead submission and the estimate dock use). */
-function QuoteSheet({ open, onClose, placed, resolvedById, models = [], renderThumbById = {}, locale, fmt, fromMode = false, pricesHidden = false, subtotalUsd, pending = 0, unpriced = 0, overallCm, onRequest, onPickFabricFor, onPickPartFor }) {
-  const [preview, setPreview] = useState(null); // hovered swatch → big centered preview
-  useEffect(() => { if (!open) setPreview(null); }, [open]);
-  // ITEMIZED per piece: the header row (thumb · name · dims · module total)
-  // over one line per priced component — the base SKU and each tagged part
-  // (qty × unit), each with ITS OWN fabric + swatch, each clickable to change
-  // that part. The same numbers the quote line's components will carry.
-  const rows = placed.map((p) => {
-    const r = resolvePlacement(p, resolvedById);
-    // The dealer's own name per role (Estudio labels), falling back to the
-    // visitor's localized role label — placementBreakdown takes the map, so
-    // the itemized rows and the chips can't end up calling a part two things.
-    const partLabels = Object.fromEntries(
-      ['base', ...MATERIALIZATION_ROLES, ...Object.keys(r.partFamilies || {})]
-        .map((role) => [role, roleLabelOf(r.parts, role, t(locale, `part.${role}`))]),
-    );
-    const { lines, totalUsd } = placementBreakdown(p, resolvedById, partLabels);
-    return {
-      uid: p.uid, pieceId: p.pieceId, label: r.label || r.name || 'Togo', w: r.widthCm, d: r.depthCm,
-      // DRESSED, either way — see placementDressed. Reading `p.material` here
-      // made the Resumen offer «Elegir tela» (and count as pendiente) on a
-      // build whose every componente already carries cloth.
-      code: p.material?.code || '', priced: placementDressed(p, resolvedById),
-      price: totalUsd,
-      // Only itemize when the module actually HAS tagged parts — a plain Togo
-      // piece stays a single quiet row.
-      lines: lines.length > 1 ? lines : [],
-    };
-  });
-  // Render each fabricked row in its CHOSEN fabric (sampled swatch hue), so the
-  // Resumen thumbnail matches the placed piece. Only while the sheet is open.
-  const modelById = useMemo(() => Object.fromEntries(models.map((m) => [m.id, m])), [models]);
-  const fabricRows = open ? rows.filter((row) => row.code).map((row) => ({
-    key: row.uid, code: row.code,
-    model: modelById[row.pieceId] || { id: row.pieceId, widthCm: row.w, depthCm: row.d, name: row.label },
-  })) : [];
-  const fabricThumbs = useTogoFabricThumbs(fabricRows, ROW_THUMB);   // 48px rows
-  // A right-edge RAIL, not a bottom sheet. The Resumen is the other half of the
-  // pair the Piezas drawer opens on the left, so it slides in from the opposite
-  // edge with the same idiom — same backdrop, same 200ms ease-out transform, same
-  // header and footer furniture. Coming up from the bottom made it read as a
-  // different kind of object, and it landed on top of the plan the customer was
-  // reading instead of beside it.
-  //
-  // It deliberately does NOT use the shared <Modal>: that is the internal app's
-  // component, its phone treatment IS the bottom sheet (items-end, rounded-t,
-  // slide-in-from-bottom), and re-shaping it here would re-shape every dialog in
-  // the back office. Always mounted so the transform has something to animate.
-  return (
-    <div
-      className={`absolute inset-0 z-30 ${open ? '' : 'pointer-events-none'}`}
-      aria-hidden={!open}
-      inert={open ? undefined : ''}
-    >
-      <div
-        onClick={onClose}
-        className={`absolute inset-0 bg-ink-900/25 transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0'}`}
-      />
-      <aside
-        aria-label={t(locale, 'panel.summary')}
-        /* Same floating-card treatment as the Piezas drawer opposite — one
-           panel language across every viewport arrangement. */
-        className={`hud-panel absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-[min(21rem,88vw)] flex flex-col overflow-hidden transition-transform duration-200 ease-out ${open ? 'translate-x-0' : 'translate-x-[calc(100%+2rem)]'}`}
-      >
-        <div className="shrink-0 px-3 pt-3 pb-2 flex items-center justify-between gap-2 border-b border-ink-100">
-          <span className={EYEBROW}>{t(locale, 'panel.summary')}</span>
-          <div className="flex items-center gap-2">
-            {rows.length > 0 && <span className={`${EYEBROW} text-ink-400`}>{piecesLabel(locale, rows.length)}</span>}
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t(locale, 'common.close')}
-              className="grid place-items-center w-8 h-8 -mr-1 rounded-full text-ink-500 hover:bg-ink-100/70 active:scale-95 transition"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain scroll-thin px-3 py-2">
-          {!rows.length && <p className="text-sm text-ink-500 py-6 text-center">{t(locale, 'summary.empty')}</p>}
-          {rows.length > 0 && (
-            <ul className="divide-y divide-ink-100 -my-1">
-              {rows.map((row) => (
-                <li key={row.uid} className="py-2.5">
-                  <div className="flex items-center gap-3">
-                    <ModelThumb id={row.uid} render={{ [row.uid]: fabricThumbs[row.uid] || renderThumbById[row.pieceId] }} alt={row.label} className="shrink-0 w-12 h-12 rounded-lg bg-ink-50 p-1" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium leading-tight">{row.label}</div>
-                      <div className="text-[11px] text-ink-500 tabular-nums">{row.w}×{row.d} cm</div>
-                    </div>
-                    <div className="shrink-0 w-28 text-right text-sm">
-                      {row.priced
-                        ? (!pricesHidden && (row.price != null ? <span className="font-semibold tabular-nums">{fmt(row.price, { from: fromMode })}</span> : <span className="text-ink-500">{t(locale, 'summary.noPrice')}</span>))
-                        : (
-                          <button type="button" onClick={() => onPickFabricFor?.(row.uid)} className="inline-flex items-center gap-1 border border-ink-900 text-ink-900 px-2 py-1 text-[11px] tracking-wide hover:bg-ink-900 hover:text-white transition-colors">
-                            <Palette size={11} aria-hidden /> {t(locale, 'fabric.choose')}
-                          </button>
-                        )}
-                    </div>
-                  </div>
-                  {/* The itemization — what this module is MADE OF, priced line
-                      by line. Every line is a door: click it to change that
-                      part's fabric (the same picker the canvas pipette opens). */}
-                  {row.lines.length > 0 && (
-                    <ul className="mt-1.5 ml-10 space-y-0.5">
-                      {row.lines.map((ln) => (
-                        <li key={ln.role} className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => (ln.role === 'base' ? onPickFabricFor?.(row.uid) : onPickPartFor?.(row.uid, ln.role))}
-                            className="min-w-0 flex-1 flex items-center gap-1.5 text-left rounded-md px-1 py-0.5 hover:bg-ink-50 active:bg-ink-100 transition group"
-                            title={ln.skuName ? `${ln.skuName} — ${t(locale, 'fabric.change')}` : t(locale, 'fabric.change')}
-                          >
-                            {ln.code ? (
-                              <img
-                                src={swatchTileUrl(ln.code, SWATCH_PX.row)} alt="" loading="lazy" decoding="async"
-                                className="w-4 h-4 rounded-full object-cover border border-ink-200 shrink-0 cursor-zoom-in"
-                                onMouseEnter={() => setPreview({ code: ln.code, fabric: ln.fabric })}
-                                onMouseLeave={() => setPreview(null)}
-                              />
-                            ) : (
-                              <span className="w-4 h-4 rounded-full bg-ink-100 grid place-items-center shrink-0"><Palette size={9} className="text-ink-400" aria-hidden /></span>
-                            )}
-                            <span className="text-[11px] text-ink-700 shrink-0 tabular-nums">
-                              {ln.qty > 1 ? `${ln.qty} × ` : ''}{ln.label || t(locale, `part.${ln.role}`)}
-                            </span>
-                            <span className="min-w-0 truncate text-[11px] text-ink-400">
-                              {ln.fabric || (ln.role === 'base' ? t(locale, 'fabric.choose') : t(locale, 'fabric.baseDefault'))}
-                            </span>
-                            <Pencil size={10} className="shrink-0 text-ink-300 opacity-0 group-hover:opacity-100 transition" aria-hidden />
-                          </button>
-                          {!pricesHidden && ln.totalUsd != null && (
-                            <span className="shrink-0 text-[11px] text-ink-500 tabular-nums">
-                              {ln.qty > 1 && <span className="text-ink-300">{fmt(ln.unitUsd, { from: fromMode })} {t(locale, 'price.each')} · </span>}
-                              {fmt(ln.totalUsd, { from: fromMode })}
-                            </span>
-                          )}
-                          {/* Materialization zone (ottoman interior/exterior):
-                              covered by the base SKU — never its own price. */}
-                          {!pricesHidden && ln.included && (
-                            <span className="shrink-0 text-[11px] text-ink-500">{t(locale, 'price.included')}</span>
-                          )}
-                          {/* …and the line NOTHING priced: the cloth on it isn't
-                              sold at that grade for this part. It keeps its place
-                              on the sheet (the customer picked it) and says so —
-                              «Incluido» would be a promise nobody costed. */}
-                          {!pricesHidden && ln.unresolved && (
-                            <span className="shrink-0 text-[11px] text-ink-500">{t(locale, 'summary.noPrice')}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {/* STACKED, not a row. The label, the figure, the pending-fabric chip and
-            the CTA were competing for one line: the CTA is the longest string in
-            the panel ("Solicitar cotización") and shrink-0, which left the
-            pending link ~150px for a 38-character sentence — so it wrapped
-            mid-phrase and orphaned its arrow onto a second underlined line. In a
-            column each one gets the full width, and the CTA spans it. Same
-            furniture as the desktop rail's footer, which already solved this. */}
-        {rows.length > 0 && (
-          <div className="shrink-0 border-t border-ink-200/70 px-3 py-3 flex flex-col gap-2">
-            {!pricesHidden && (
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] text-ink-500 uppercase tracking-wide">{t(locale, 'summary.totalLabel')}</span>
-                {/* A build carrying an unpriceable piece has NO total: the sum
-                    would be short by whatever that piece is worth, and «$0.00»
-                    on a $10,895 body reads as free. The rows above say which. */}
-                {unpriced > 0
-                  ? <span className="text-xl font-display font-semibold tracking-tight leading-none text-ink-500">{t(locale, 'summary.noPrice')}</span>
-                  : <span className="text-xl font-display font-semibold tabular-nums tracking-tight leading-none">{fmt(subtotalUsd, { from: fromMode })}</span>}
-              </div>
-            )}
-            {!pricesHidden && pending > 0 && (
-              <button
-                type="button"
-                onClick={() => onPickFabricFor?.(rows.find((r) => !r.priced)?.uid)}
-                className={`self-start inline-flex items-center gap-1.5 text-left border border-ink-900 text-ink-900 px-2 py-1 ${EYEBROW_INK} hover:bg-ink-900 hover:text-white transition-colors`}
-              >
-                {t(locale, 'summary.pendingFabric', { count: pending })} <ArrowRight size={10} aria-hidden />
-              </button>
-            )}
-            {overallCm?.widthCm > 0 && (
-              <span className="text-[11px] text-ink-500 tabular-nums">{t(locale, 'summary.overall', { w: overallCm.widthCm, d: overallCm.depthCm })}</span>
-            )}
-            <button type="button" onClick={onRequest} className="btn-brand text-sm w-full justify-center">
-              {t(locale, 'summary.request')} <ArrowRight size={15} />
-            </button>
-          </div>
-        )}
-      </aside>
-      {open && preview && createPortal(
-        <div className="fixed inset-0 z-[90] pointer-events-none flex items-center justify-center p-4">
-          <div className="bg-surface rounded-2xl shadow-pop border border-ink-200 p-2">
-            <img src={swatchTileUrl(preview.code, SWATCH_PX.preview)} alt={preview.fabric} decoding="async" fetchpriority="high" className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl object-cover" />
-            {preview.fabric && <div className="mt-1.5 text-center text-xs text-ink-700">{preview.fabric}</div>}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </div>
-  );
-}
 
 
 function nameFilterOf(keys) {
@@ -4727,56 +4874,6 @@ function DownloadSheet({ open, onClose, onDxf, dxfBusy, onObj, objBusy, onGlb, g
   );
 }
 
-/** The fabric picker — the SAME MaterialColorPicker the internal editor uses,
- *  wrapped in a Modal, fed public-safe catalog data (no DB). */
-function FabricModal({ open, onClose, onSelect, materials, family, nameFilter, currentGrade, currentFabric, locale, heading = null }) {
-  // MaterialColorPicker (a shared component with its own copy) overrides this
-  // title as the visitor drills into categories; only the initial label is ours
-  // — and it names the SCOPE the pick will land on (the whole piece, one part,
-  // or every piece), so the phone flow opens saying what it is about to dress.
-  const label = heading || t(locale, 'fabric.pickerTitle');
-  const [title, setTitle] = useState(() => label);
-  useEffect(() => { if (open) setTitle(label); }, [open, label]);
-  return (
-    // `flushBody` + our OWN scroller — the same construct SwatchPicker and
-    // CatalogPicker use, and the pairing `fill` actually requires: fill pins the
-    // picker's back/search block with `position: sticky; top: 0`, which lands at
-    // the CONTENT edge of whatever scrolls. The Modal's DEFAULT body carries
-    // `py-5`, so that top padding became a permanent 20px see-through window
-    // between the sheet header and the pinned block, with swatches parading
-    // through it as the grid scrolled (owner, 2026-07-31: «el material picker
-    // tiene un gap entre el action bar y el top header»). A flush column with NO
-    // top padding closes it. The child owns ALL padding in flush mode: the
-    // picker's fill blocks self-pad (`pt-4 -mx-4 px-4`), and the `pb-4` here
-    // keeps the list tail off the sheet edge.
-    <Modal open={open} onClose={onClose} title={title} size="lg" flushBody>
-      {/* Modal returns null while closed, so the picker fully unmounts and
-          remounts on reopen — its step state resets without an explicit key.
-          `scroll-thin` (index.css): the phone sheet scrolls the same picker the
-          desktop rail does, so it wears the same on-brand thumb instead of the
-          platform's grey slab. */}
-      {open && (
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-thin px-4 sm:px-6 pb-4">
-          <MaterialColorPicker
-            materials={materials}
-            family={family}
-            nameFilter={nameFilter}
-            currentGrade={currentGrade}
-            currentFabric={currentFabric}
-            autoDrill
-            // `fill`: this scroller is the ONE scroll region. Without it the
-            // picker nests its own max-h scroller inside the scrolling sheet,
-            // and on a phone the two regions + overscroll-contain left the tail
-            // of the swatch list unreachable (owner, 2026-07-31).
-            fill
-            onPick={(material, color) => { onSelect(toPick(material, color)); onClose(); }}
-            onTitleChange={setTitle}
-          />
-        </div>
-      )}
-    </Modal>
-  );
-}
 
 function Centered({ children }) {
   return <div className="min-h-full bg-surface grid place-items-center p-6">{children}</div>;

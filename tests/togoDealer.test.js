@@ -396,11 +396,10 @@ test('an unscoped dealer — and no dealer at all — get the catalog ARRAY ITSE
   assert.deepEqual(filterModelsForDealer(null, { collections: ['Togo'] }), []);
 });
 
-// Upstream pinned this against the additive migration that ADDED `collections`
-// to an existing dealers table. Here the column is born with the table in the
-// baseline, so the pin follows it there — same guarantee, one migration earlier:
-// the dealer's catalog scope is part of the schema the repo can rebuild, not a
-// column that only ever existed in one live project.
+// Upstream lo fija contra la migracion aditiva que AÑADIO `collections` a una
+// tabla que ya existia. Aqui la columna nace con la tabla en el baseline, asi
+// que el pin la sigue hasta alli: misma garantia, una migracion antes. (Este
+// reemplazo hay que rehacerlo en cada sync — el archivo llega verbatim.)
 test('the baseline defines `dealers.collections` and reloads the schema', () => {
   const sql = readFileSync(
     new URL('../supabase/migrations/20260101000000_veta_baseline.sql', import.meta.url),
@@ -933,25 +932,19 @@ test('catalogModelShape NEVER emits svg — the public catalog carries no CAD ou
   assert.equal(JSON.stringify(out).includes('<svg'), false);
 });
 
-// The allowlist below is the point of this test: `catalogModelShape` is the
-// PUBLIC payload — anyone with the embed URL reads it — so a column added to
-// `togo_models` must never reach the wire just because the shaper spread a row.
-// The list is therefore maintained BY HAND, and a new key here is a deliberate
-// decision to publish it, never a diff to silence.
-//
-// The four baked-thumbnail keys are published on purpose: the widget's piece
-// list renders them as plain <img>s instead of loading a mesh per tile, and a
-// thumbnail URL is a public CDN object already. (This pin arrived from upstream
-// asserting the pre-thumbnail 16 — it had not been updated when those columns
-// shipped, so it fails there too; corrected here rather than carried over
-// broken.)
 test('catalogModelShape emits EXACTLY the keys the widget consumes', () => {
   const out = catalogModelShape(modelRow(), shapeCtx);
   assert.deepEqual(Object.keys(out).sort(), [
     'bound', 'collection', 'defaultRot', 'depthCm', 'family', 'id', 'mesh',
     'mount', 'mountHeightCm', 'name', 'offeredFabricKeys', 'parts',
     'partFamilies', 'priceUsd', 'root', 'widthCm',
-    'thumbUrl', 'thumbStamp', 'heroThumbUrl', 'heroThumbStamp',
+    // The BAKED THUMBNAILS (ModelStudio's «Miniaturas» pass): the widget paints
+    // its catalogue from these <img> urls and only renders a mesh when the
+    // stamp no longer matches the row (bakedThumbUrl) — consumed, not stray.
+    // This pin lagged the feature for a while and taught a real lesson: it
+    // read as «pre-existing red» all session while a DIFFERENT wire actually
+    // broke, so a stale pin is not harmless noise — it is camouflage.
+    'heroThumbStamp', 'heroThumbUrl', 'thumbStamp', 'thumbUrl',
   ].sort());
 });
 

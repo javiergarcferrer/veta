@@ -5,7 +5,7 @@ import { prefersReducedMotion } from '../../lib/motion.js';
 import { swatchProxyUrl, swatchUrl } from '../../lib/swatchImage.js';
 import { inferTogoForm, TOGO_HEIGHT_CM } from '../../lib/togo/togoModel.js';
 import { mountOf } from '../../lib/togo/meshParts.js';
-import { footprintOf, snapPlacementInfo, resolvePlacement } from '../../core/quote/index.js';
+import { footprintOf, snapPlacementInfo, resolvePlacement, effectivePartMaterials } from '../../core/quote/index.js';
 import { loadTogoModels, descForPiece } from './togoModelLoader.js';
 import { buildTogoGroup, setupTogoStage, disposeGroup, makeFabricMaps, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, maskToOutline, buildRoomGroup, disposeRoomGroup, correctScanToSwatch, fabricAnisotropy, loadScanExtras } from './togoSceneBuilder.js';
 
@@ -67,6 +67,21 @@ const ringRadiusFor = (pointerType) => (pointerType === 'touch' ? RING_R_TOUCH :
  * piece — a bug that looks exactly like the behaviour it replaced.
  */
 export const DRESSABLE_ROLE = 'dressable';
+
+/**
+ * ¿Es este foco un REPOSO? — la iluminación que lleva la mera SELECCIÓN, sin
+ * nada apuntado: la pieza ENTERA en modo pieza (`role` ausente ⇒ sin filtro) o
+ * su conjunto vestible en modo componentes (DRESSABLE_ROLE).
+ *
+ * No es un compromiso — ES la selección —, así que la pista TRANSITORIA del
+ * hover lo supera (se traza suave sobre la parte bajo el puntero). Un foco
+ * COMPROMETIDO nombra una parte (un rol, una estructura: un picker abierto) y
+ * se queda con el trazo. Un solo predicado para los dos lectores (el glow y el
+ * contorno): con dos copias, «modo pieza» entraba en uno y no en el otro.
+ */
+function isRestingFocus(fp) {
+  return !!fp && (!fp.role || fp.role === DRESSABLE_ROLE);
+}
 
 /** The selection outline's gold — the stroke below, exported because the
  *  componentes rail lights its chips in it. A chip and the line it lights are
@@ -227,7 +242,13 @@ export function preferPick(candidates) {
  * pick, which the whole-piece pick would not repaint — see focusMeshes). Parts
  * are a 3D concern — the plan ignores it — and a filter that matches nothing
  * falls back to the whole piece, so a selected piece is never left
- * unhighlighted.
+ * unhighlighted. NO `role` AND NO `groupKey` means the WHOLE PIECE on purpose
+ * (modo pieza: one cloth over the whole body, so the click lights all of it);
+ * it reads as a REST like DRESSABLE_ROLE does — see isRestingFocus.
+ *
+ * `focusSoft` says that focus is a PREVIEW, not a pick (the pointer is on a
+ * componentes chip): the stage strokes the same shape in soft gold instead of
+ * the full selection line. The mesh hover raises its own soft trace stage-side.
  *
  * `onModelFallback(rows)` reports pieces whose real mesh did NOT load, so they
  * are drawing as the procedural stand-in — `[{ pieceId, url }]`, once per model
@@ -244,7 +265,8 @@ export default function TogoStage({
   onSelectedScreenPos, onSelContour, className = '', dims = null,
   hintPieceId = null, onRotateLive, onTapPart, fabricByCode = null,
   chipUid = null, onChipAnchor, chipFollow = false, room = null, ground = null, insetLeft = 0, insetRight = 0,
-  focusPart = null, onModelFallback,
+  insetBottomFrac = 0, insetTop = 0,
+  focusPart = null, focusSoft = false, onModelFallback,
 }) {
   const mountRef = useRef(null);
   const api = useRef(null);
@@ -270,8 +292,8 @@ export default function TogoStage({
   const [ready, setReady] = useState(false);   // first frame rendered → drop the loading veil
 
   // Latest props the imperative three loop reads without re-subscribing.
-  const stateRef = useRef({ placed, resolvedById, mode, material, selectedUid, onSelect, onMove, onRotateTo, onHoverPiece, onSelectedScreenPos, onSelContour, dims, hintPieceId, onRotateLive, onTapPart, fabricByCode, chipUid, onChipAnchor, chipFollow, room, ground, focusPart, onModelFallback });
-  stateRef.current = { placed, resolvedById, mode, material, selectedUid, onSelect, onMove, onRotateTo, onHoverPiece, onSelectedScreenPos, onSelContour, dims, hintPieceId, onRotateLive, onTapPart, fabricByCode, chipUid, onChipAnchor, chipFollow, room, ground, insetLeft, insetRight, focusPart, onModelFallback };
+  const stateRef = useRef({ placed, resolvedById, mode, material, selectedUid, onSelect, onMove, onRotateTo, onHoverPiece, onSelectedScreenPos, onSelContour, dims, hintPieceId, onRotateLive, onTapPart, fabricByCode, chipUid, onChipAnchor, chipFollow, room, ground, focusPart, focusSoft, onModelFallback });
+  stateRef.current = { placed, resolvedById, mode, material, selectedUid, onSelect, onMove, onRotateTo, onHoverPiece, onSelectedScreenPos, onSelContour, dims, hintPieceId, onRotateLive, onTapPart, fabricByCode, chipUid, onChipAnchor, chipFollow, room, ground, insetLeft, insetRight, insetBottomFrac, insetTop, focusPart, focusSoft, onModelFallback };
 
   /** The NET covered strip as a SIGNED fraction of the LIVE canvas width:
    *  (left − right) / width. Read at framing time, never cached: the caller
@@ -287,6 +309,30 @@ export default function TogoStage({
     const px = (stateRef.current.insetLeft || 0) - (stateRef.current.insetRight || 0);
     if (!(w > 0) || !Number.isFinite(px)) return 0;
     return Math.max(-0.45, Math.min(0.45, px / w));
+  }, []);
+
+  /** The same quantity on the VERTICAL axis: the fraction of the canvas HEIGHT
+   *  the bottom sheet covers. A FRACTION, not px, and deliberately so — the
+   *  phone's picker is sized as a PERCENTAGE of this very box (half of it), so
+   *  the caller already knows the answer exactly and px would only be a
+   *  measurement of it that a resize could catch mid-flight. Positive = the
+   *  bottom is covered, so the piece slides UP into the strip still visible
+   *  above the sheet. Clamped a little wider than the horizontal pair: a
+   *  half-screen sheet IS 0.5, and clamping that to 0.45 would leave the piece
+   *  sitting slightly low in its own half. */
+  const netInsetFracV = useCallback(() => {
+    const f = Number(stateRef.current.insetBottomFrac);
+    if (!Number.isFinite(f)) return 0;
+    // MINUS whatever chrome owns the TOP edge (px — the HUD is a fixed rem row,
+    // so px is its honest unit exactly as it is the side columns'; only the
+    // sheet is a percentage). Without this the piece centres between the canvas
+    // TOP and the sheet, which is not the strip anyone can see: it rose under
+    // the toolbar and the plan's «180 cm» bracket clipped off the top edge.
+    const h = api.current?.renderer?.domElement?.clientHeight || 0;
+    const top = Number(stateRef.current.insetTop) || 0;
+    const net = h > 0 ? f - top / h : f;
+    if (!Number.isFinite(net)) return 0;
+    return Math.max(-0.6, Math.min(0.6, net));
   }, []);
 
   // placed + resolved → absolute-world pieces (NOT recentred): plan-x→world-x,
@@ -305,7 +351,9 @@ export default function TogoStage({
         uid: p.uid, pieceId: p.pieceId, widthCm: w, depthCm: d, form: inferTogoForm(r.label || r.name, w, d),
         x: (Number(p.x) || 0) + fp.w / 2, z: (Number(p.y) || 0) + fp.h / 2,
         rotationDeg: rot, fabricCode: p.material?.code || r.code || '', collection: r.collection || null, mesh: r.mesh || null,
-        parts: r.parts || null, partMaterials: p.partMaterials || null,
+        // Effective, not raw: in modo pieza a componente's dormant pick must
+        // not dress it — the piece's own cloth is what is being sold.
+        parts: r.parts || null, partMaterials: effectivePartMaterials(p),
         partFinishes: p.partFinishes || null,
         mountHeightCm: mountOf(r).heightCm,
       };
@@ -367,7 +415,18 @@ export default function TogoStage({
   //
   // `radius` is whatever this pose frames: the whole layout, or ONE selected
   // piece (see derivedPose) — `margin3d` is how much air to leave around it.
-  const poseFor = useCallback((m, center, radius, aspect, netInset = 0, margin3d = MARGIN_3D_LAYOUT) => {
+  //
+  // `netInsetV` is the SAME idea on the other axis, and it is what makes the
+  // phone's vertical split work: a portrait screen divides top/bottom, so the
+  // picker rises from the BOTTOM and takes half the height, and the piece has
+  // to sit centred in the half that is still visible ABOVE it. Same rig slide,
+  // same negation — but along the camera's own SCREEN-UP axis, not world +Y:
+  // the 3D pose looks DOWN at the floor, so its screen-up leans away from the
+  // camera, and sliding along plain +Y would push the piece up AND toward the
+  // lens (it would grow as it rose). The half-HEIGHT in world units is
+  // `tan(halfFov)·dist` — no `aspect`, because the FOV is the vertical one and
+  // the width is what gets multiplied by it, never the height.
+  const poseFor = useCallback((m, center, radius, aspect, netInset = 0, margin3d = MARGIN_3D_LAYOUT, netInsetV = 0) => {
     const halfFov = (33 * Math.PI / 180) / 2;
     const fit = Math.max(0.4, Math.min(1, aspect || 1));     // the tighter axis
     // The distance that fits the FOOTPRINT (floor level) with ~22% margin.
@@ -399,6 +458,10 @@ export default function TogoStage({
     const shiftFor = (dist) => (netInset !== 0 && aspect > 0
       ? -(Math.tan(halfFov) * dist * aspect * netInset)
       : 0);
+    // The vertical twin. Negated for the same measured reason: the rig moves
+    // TOWARD the covered edge so the piece reads away from it — sheet at the
+    // bottom, rig slides down, piece rises into the visible top half.
+    const shiftForV = (dist) => (netInsetV !== 0 ? -(Math.tan(halfFov) * dist * netInsetV) : 0);
     return m === '2d'
       // DEAD straight-down. The top-down basis is supplied by camera.up=(0,0,-1).
       // CRITICAL: add the furniture HEIGHT to the camera height. A Togo is ~72 cm
@@ -410,7 +473,10 @@ export default function TogoStage({
       ? (() => {
         const camY = fitDist + TOGO_HEIGHT_CM;               // the height it really flies at
         const dx = shiftFor(camY);
-        return { px: center.x + dx, py: camY, pz: center.z, tx: center.x + dx, ty: 0, tz: center.z };
+        // Straight down with `camera.up = (0,0,-1)`, so screen-up IS world −z:
+        // sliding the rig along screen-up by `dv` is a −z move of that much.
+        const dv = shiftForV(camY);
+        return { px: center.x + dx, py: camY, pz: center.z - dv, tx: center.x + dx, ty: 0, tz: center.z - dv };
       })()
       // Low front-quarter angle. Pull back by the height too so a tall stack frames.
       : (() => {
@@ -430,10 +496,22 @@ export default function TogoStage({
         // else — `d` is signed, and negative slides the rig back along it.
         const d = shiftFor(dist3d);
         const n = Math.hypot(0.83, 0.32) || 1;
-        const dx = d * (0.83 / n), dz = d * (-0.32 / n);
+        const rx = 0.83 / n, rz = -0.32 / n;
+        const dx = d * rx, dz = d * rz;
+        // SCREEN-UP for this pose, derived rather than assumed: with
+        // right = normalize(forward × worldUp) already known (rx,0,rz), the
+        // screen-up axis is right × forward. Looking DOWN at the floor it tilts
+        // away from the camera — which is exactly why world +Y is the wrong
+        // axis to slide along: it would lift the piece AND walk it toward the
+        // lens, so it would grow while it rose.
+        const fx = -fitDist3d * 0.32, fy = tY - camY, fz = -fitDist3d * 0.83;
+        const ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
+        const un = Math.hypot(ux, uy, uz) || 1;
+        const dv = shiftForV(dist3d);
+        const vx = dv * (ux / un), vy = dv * (uy / un), vz = dv * (uz / un);
         return {
-          px: center.x + fitDist3d * 0.32 + dx, py: camY, pz: center.z + fitDist3d * 0.83 + dz,
-          tx: center.x + dx, ty: tY, tz: center.z + dz,
+          px: center.x + fitDist3d * 0.32 + dx + vx, py: camY + vy, pz: center.z + fitDist3d * 0.83 + dz + vz,
+          tx: center.x + dx + vx, ty: tY + vy, tz: center.z + dz + vz,
         };
       })();
   }, []);
@@ -458,6 +536,7 @@ export default function TogoStage({
   // frame and the two can't drift apart in look or in behaviour.
   const derivedPose = useCallback((l, m, aspect) => {
     const net = netInsetFrac();
+    const netV = netInsetFracV();
     const uid = stateRef.current.selectedUid;
     if (m === '3d' && uid != null && l?.group && l.THREE) {
       const pg = l.group.children.find((g) => g.userData.uid === uid);
@@ -470,14 +549,14 @@ export default function TogoStage({
         if (!box.isEmpty()) {
           const r = Math.max(45, Math.hypot(box.max.x - box.min.x, box.max.z - box.min.z) / 2);
           const c = { x: (box.min.x + box.max.x) / 2, z: (box.min.z + box.max.z) / 2 };
-          return poseFor('3d', c, r, aspect, net, MARGIN_3D_PIECE);
+          return poseFor('3d', c, r, aspect, net, MARGIN_3D_PIECE, netV);
         }
       }
       // Selected but not in the group yet (a rebuild is mid-flight, or it was
       // just deleted) → the layout frame, never a frame around nothing.
     }
-    return poseFor(m, l.scene3d.center, l.scene3d.radius, aspect, net);
-  }, [poseFor, netInsetFrac]);
+    return poseFor(m, l.scene3d.center, l.scene3d.radius, aspect, net, MARGIN_3D_LAYOUT, netV);
+  }, [poseFor, netInsetFrac, netInsetFracV]);
 
   // Place the camera at a pose for a mode. In 2D we drive the camera DIRECTLY
   // (top-down `up`, lookAt, OrbitControls OFF) so it's a rock-solid plan view with
@@ -544,6 +623,15 @@ export default function TogoStage({
     if (dimTopRef.current) dimTopRef.current.style.display = 'none';
     if (dimLeftRef.current) dimLeftRef.current.style.display = 'none';
     stateRef.current.onSelContour?.(null);
+    // ¿INTERRUMPIMOS un vuelo en curso? Entonces la cámara YA viene con
+    // velocidad, y arrancar otra vez en easeInOut la frena en seco para volver
+    // a acelerar — ese frenazo ES el tirón al seleccionar una pieza: el toque
+    // selecciona (un vuelo) y abre la hoja un instante después (otro), y el
+    // segundo empezaba PARADO desde donde el primero iba lanzado. Encadenando
+    // en easeOut la velocidad entra alta y decae: dos destinos, un movimiento.
+    // Sin nada en vuelo se conserva el easeInOut, que es el arranque correcto
+    // desde el reposo.
+    const chaining = !!l.tween;
     if (l.tween) cancelAnimationFrame(l.tween);
     if (dur <= 0 || prefersReducedMotion()) {
       l.tween = null;
@@ -560,7 +648,9 @@ export default function TogoStage({
       if (!api.current) return;
       if (t0 == null) t0 = ts;
       const p = Math.min(1, (ts - t0) / dur);
-      const e = p < 0.5 ? 2 * p * p : 1 - ((-2 * p + 2) ** 2) / 2;   // easeInOutQuad
+      const e = chaining
+        ? 1 - (1 - p) ** 3                                          // easeOutCubic — entra con la velocidad que traía
+        : (p < 0.5 ? 2 * p * p : 1 - ((-2 * p + 2) ** 2) / 2);      // easeInOutQuad
       camera.position.set(from.px + (to.px - from.px) * e, from.py + (to.py - from.py) * e, from.pz + (to.pz - from.pz) * e);
       const ux = uFrom.x + (uTo.x - uFrom.x) * e, uy = uFrom.y + (uTo.y - uFrom.y) * e, uz = uFrom.z + (uTo.z - uFrom.z) * e;
       const ul = Math.hypot(ux, uy, uz) || 1;
@@ -956,14 +1046,23 @@ export default function TogoStage({
     // the selected piece, so hovering its legs lit nothing — and the estructura,
     // which the resting highlight excludes by design, read as dead.
     const fp = stateRef.current.focusPart;
-    const resting = fp?.role === DRESSABLE_ROLE;
+    const resting = isRestingFocus(fp);
+    // HOVER ANSWERS ONLY ON THE SELECTED PIECE while one exists (owner,
+    // 2026-08: «when a model is selected hover only works on that selected
+    // model») — in 3D, where hover is a dressing cue: while you are dressing
+    // one piece, another piece lighting up under a passing pointer is noise.
+    // The same rule gates the React side at `chipHover` (card + rail), so the
+    // two halves cannot disagree. A TAP still lands anywhere — the way onto
+    // another piece is selection, not hover. 2D keeps whole-piece hover: there
+    // the cue is "what would I grab", which must work across the plan.
+    const lockToSel = in3d && sel != null;
     l.group.children.forEach((pg) => {
       const isSel = sel != null && pg.userData.uid === sel;
-      const isHover = !isSel && l.hoverUid != null && pg.userData.uid === l.hoverUid;
+      const isHover = !isSel && !lockToSel && l.hoverUid != null && pg.userData.uid === l.hoverUid;
       const isHint = !isSel && !isHover && hint != null && pg.userData.pieceId === hint;
       const base = isSel ? (in3d ? 0 : 0.5) : isHover ? 0.2 : isHint ? 0.22 : 0;
       const focus = focusMeshesFor(pg);
-      const hovering = !!hp && pg.userData.uid === hp.uid;
+      const hovering = !!hp && pg.userData.uid === hp.uid && (!lockToSel || hp.uid === sel);
       const hi = Math.max(0.5, base + 0.15);
       // A COMMITTED part focus outranks the transient hover cue on the same
       // piece — two lit parts on one piece read as two selections.
@@ -1203,7 +1302,7 @@ export default function TogoStage({
         if (!pg) return;
         const cw = renderer.domElement.clientWidth, ch = renderer.domElement.clientHeight;
         const fp = stateRef.current.focusPart;
-        const focus = fp && fp.role !== DRESSABLE_ROLE ? focusMeshesFor(pg) : null;
+        const focus = fp && !isRestingFocus(fp) ? focusMeshesFor(pg) : null;
         // NO-VANISH, same rule as the outline: a subset that boxes to nothing
         // falls back to the piece rather than parking the card at a NaN.
         let scoped = false;
@@ -1270,15 +1369,23 @@ export default function TogoStage({
 
         // Each note sits ON its own bracket line, centred at the midpoint —
         // the chip's near-opaque ground is what interrupts the hairline, the
-        // way every drafting/planner surface does it. Both notes are the SAME
-        // horizontal pill: the depth note used to be a sideways-text capsule
-        // (writing-mode: vertical-rl in a px-0.5 shell) and on the owner's
-        // phone it rendered as a cramped, misshapen chip that read as a bug
-        // (screenshot 2026-07-30) — a rotated tag is drafting-correct but
-        // this is a customer surface, not a blueprint. Measured, not assumed:
-        // the notes are real DOM, so their own box decides the room they need.
+        // way every drafting/planner surface does it.
+        //
+        // THE DEPTH NOTE READS ALONG ITS OWN RULE (owner, 2026-08), which is
+        // how every drafting surface annotates a vertical dimension. It is NOT
+        // the sideways-text capsule that was retired: that one re-flowed the
+        // GLYPHS (`writing-mode: vertical-rl` inside a px-0.5 shell) and came
+        // out cramped and misshapen on the owner's phone (2026-07-30). This
+        // rotates the FINISHED PILL — identical box, identical padding,
+        // identical typography, turned a quarter — so there is nothing left to
+        // reflow and nothing to cramp.
+        //
+        // Measured, not assumed: the notes are real DOM, so their own box
+        // decides the room they need. The depth note's ROTATED footprint is its
+        // offsetHEIGHT (a quarter turn swaps the axes), and reading its width
+        // here is what would tuck a 60px pill under a rail 20px wide.
         const topH = topEl.offsetHeight || 20;
-        const leftW = leftEl.offsetWidth || 20;
+        const leftW = leftEl.offsetHeight || 20;
         // `insetLeft` is whatever chrome owns the left edge (the piece rail) —
         // a note tucked under it rendered as "0 c".
         const inset = Number(d.insetLeft) || 0;
@@ -1308,7 +1415,10 @@ export default function TogoStage({
 
         leftEl.style.left = `${xLine.toFixed(1)}px`;
         leftEl.style.top = `${((y1 + y2) / 2).toFixed(1)}px`;
-        leftEl.style.transform = 'translate(-50%, -50%)';
+        // Rotated ANTICLOCKWISE so the text runs bottom-to-top, the drafting
+        // convention for a vertical dimension (and the only one that stays
+        // upright-readable with a tilt of the head, never upside down).
+        leftEl.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
         leftEl.style.display = '';
       };
 
@@ -1409,7 +1519,18 @@ export default function TogoStage({
       // the sofa during orbit/dolly). Islands ride ONE path as separate closed
       // subpaths; the strokes are independent, and `fill="none"` means their
       // winding never interacts.
-      const drawOutline = (loops) => {
+      //
+      // SOFT vs FIRM is the difference between «lo que estás mirando» and «lo
+      // que elegiste» (owner, 2026-08-05: «haz ese soft highlight también
+      // cuando se pasa la pipeta por arriba del modelo … tanto cuando se hover
+      // con el mouse como cuando se hover en el component material strip»). A
+      // HOVER traces the shape under the pointer at a thinner, translucent
+      // weight — the same soft gold the rail's chip wears on hover, so the chip
+      // and the mesh read as one gesture — while a COMMITMENT (the selection,
+      // an open picker) keeps the full-weight line. Only the STROKE changes:
+      // the geometry, the anchor and the glow are untouched, so there is still
+      // exactly ONE trace on screen and it can never contradict the card.
+      const drawOutline = (loops, soft = false) => {
         const svg = outlineSvgRef.current; if (!svg) return;
         let d = '';
         for (const pts of loops || []) {
@@ -1420,6 +1541,13 @@ export default function TogoStage({
         if (d) {
           outlineCasingRef.current?.setAttribute('d', d);
           outlineGoldRef.current?.setAttribute('d', d);
+          // The casing thins WITH the gold (it is the contrast backing, not a
+          // shadow): keeping it at 6px under a 2.25px stroke reads as a dark
+          // halo rather than a lighter line.
+          outlineCasingRef.current?.setAttribute('stroke-width', soft ? '4' : '6');
+          outlineCasingRef.current?.setAttribute('stroke-opacity', soft ? '0.45' : '1');
+          outlineGoldRef.current?.setAttribute('stroke-width', soft ? '2.25' : '3.5');
+          outlineGoldRef.current?.setAttribute('stroke-opacity', soft ? '0.65' : '1');
           svg.style.display = '';
         } else {
           svg.style.display = 'none';
@@ -1433,6 +1561,10 @@ export default function TogoStage({
         const uid = stateRef.current.selectedUid;
         const cw = renderer.domElement.clientWidth, ch = renderer.domElement.clientHeight;
         let loops = null;
+        // Is this trace a PREVIEW? The rail says so from React (`focusSoft` —
+        // pointing at a chip is pointing at the part, and it must not read as
+        // having picked it); the mesh-hover branch below adds its own case.
+        let soft = !!stateRef.current.focusSoft;
         // Compute the outline in BOTH modes: plan view strokes the gold selection
         // outline over it, and 3D does too (the outline replaces the warm colour
         // glow as the selection cue). Skipped mid-tween (a fabric crossfade doesn't
@@ -1450,14 +1582,17 @@ export default function TogoStage({
             // body ('base') keeps the dressable promise (its click IS the
             // whole-piece flow). 3D only — the 2D outline doubles as the drag
             // affordance and must not jump under the pointer.
+            // …and it traces SOFT: the pipette is over the part, nothing has
+            // been chosen yet, so the line states «esto es lo que editarías»
+            // at hover weight instead of impersonating a selection.
             const hp = l.hoverPart;
             if (stateRef.current.mode === '3d'
-                && stateRef.current.focusPart?.role === DRESSABLE_ROLE
+                && isRestingFocus(stateRef.current.focusPart)
                 && hp && hp.uid === uid && hp.role && hp.role !== 'base') {
               const scoped = (hp.role === 'structure' && hp.partKey
                 ? focusMeshes(pieceMeshes(pg), { groupKey: hp.partKey })
                 : null) || focusMeshes(pieceMeshes(pg), { role: hp.role });
-              if (scoped) focus = scoped;
+              if (scoped) { focus = scoped; soft = true; }
             }
             loops = maskOutlineFor(pg, cw, ch, focus);
             // NO-VANISH: a focused trace that comes back empty (the part swung
@@ -1466,7 +1601,7 @@ export default function TogoStage({
             if (!loops && focus) loops = maskOutlineFor(pg, cw, ch, null);
           }
         }
-        drawOutline(loops);
+        drawOutline(loops, soft);
         if (!cb) return;
         // The anchor consumers (the rotate readout, the floating fabric card)
         // take ONE polygon; a focused multi-island outline anchors on its widest.
@@ -1709,7 +1844,7 @@ export default function TogoStage({
       const recenter = () => {
         if (!api.current || l.drag || l.pinch) return;
         l.pan = null;
-        const p = poseFor(stateRef.current.mode, l.scene3d.center, l.scene3d.radius, camera.aspect, netInsetFrac());
+        const p = poseFor(stateRef.current.mode, l.scene3d.center, l.scene3d.radius, camera.aspect, netInsetFrac(), MARGIN_3D_LAYOUT, netInsetFracV());
         tweenCameraTo(l, p, stateRef.current.mode, 500);
       };
       // 3D: glide onto ONE piece (double-tap / double-click). Keeps the current
@@ -2289,10 +2424,13 @@ export default function TogoStage({
   // render, and keying on the array would refresh on every one of them; keying
   // on nothing would leave the highlight wrapping a part that just took its own
   // fabric (uid/role/groupKey all stay put while only the override set moves).
+  // `focusSoft` rides the same deps: a chip hover that names the part the
+  // picker ALREADY targets moves no field above, and without it the trace would
+  // stay at commitment weight for exactly the chip whose part is selected.
   useEffect(() => {
     const l = api.current; if (l) refreshGlow(l);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusPart?.uid, focusPart?.role, focusPart?.groupKey, focusPart?.exclude?.join('|')]);
+  }, [focusPart?.uid, focusPart?.role, focusPart?.groupKey, focusPart?.exclude?.join('|'), focusSoft]);
   // A card that stops FOLLOWING the cursor has to be re-anchored, and the
   // anchor is only recomputed inside a rendered frame — so the mode flip itself
   // asks for one. Without it, letting the pointer off a piece would leave the
@@ -2346,15 +2484,18 @@ export default function TogoStage({
   // the model flinching away from them. Skips: first mount (the mount path
   // places the camera itself), and mid-gesture — `l.pan` means the dealer has
   // the camera in hand, and only an explicit mode change outranks that.
-  const framingRef = useRef({ mode, sel: selectedUid, left: insetLeft, right: insetRight });
+  const framingRef = useRef({ mode, sel: selectedUid, left: insetLeft, right: insetRight, bottom: insetBottomFrac, top: insetTop });
   useEffect(() => {
     const prev = framingRef.current;
-    framingRef.current = { mode, sel: selectedUid, left: insetLeft, right: insetRight };
+    framingRef.current = { mode, sel: selectedUid, left: insetLeft, right: insetRight, bottom: insetBottomFrac, top: insetTop };
     const l = api.current;
     if (!l || !l.scene3d) return;
     const modeChanged = prev.mode !== mode;
     const selChanged = prev.sel !== selectedUid;
-    const insetChanged = prev.left !== insetLeft || prev.right !== insetRight;
+    // The phone's bottom sheet is an inset like any other — it just covers a
+    // different edge, and the piece has to re-centre in what it leaves visible.
+    const insetChanged = prev.left !== insetLeft || prev.right !== insetRight
+      || prev.bottom !== insetBottomFrac || prev.top !== insetTop;
     if (modeChanged) {
       // Swapping the caster changes what the shadow map holds, so it must be
       // re-rendered — otherwise the plan keeps the raking smear until something
@@ -2374,7 +2515,7 @@ export default function TogoStage({
         : undefined,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, selectedUid, insetLeft, insetRight]);
+  }, [mode, selectedUid, insetLeft, insetRight, insetBottomFrac, insetTop]);
 
   return (
     // position via INLINE STYLE, not classes: the caller passes `absolute inset-0`

@@ -54,8 +54,20 @@ export const CREASE_ANGLE = Math.PI / 3;
  * shared edges only) tore LR's T-junction tessellation apart — the gd canapé's
  * seat split into two ≥15% halves and rendered as a striped cushion. Vertex
  * welding heals those tears; per authored mesh that is the right granularity.
+ *
+ * v7 = the split is TOPOLOGY ONLY, and it finally runs on the catalogue.
+ * Through v6 `splitGeometryBySolid` bailed on any multi-material mesh, and the
+ * LR 3DS library ships every product as ONE mesh with several materials — so no
+ * LR model was ever segmented by topology at all; its "parts" were its MATERIAL
+ * GROUPS. That is why solid bodies read as broken up: a material boundary is an
+ * authoring artifact, not a body boundary. Materials now ride across the split
+ * as per-solid draw groups, and part-hood dropped its open-shell escape hatch
+ * (v5's ≥15%-of-area clause) — a part is a CLOSED body or it is dressing folded
+ * into the body it hugs. Measured on the dealer's EXCLUSIF lounge chair: eight
+ * closed bodies (frame, seat cushion, back pillow, backrest pad, four legs)
+ * where the material fallback offered five wrong ones.
  */
-export const ALCOVER_MESH_V = 6;
+export const ALCOVER_MESH_V = 7;
 
 /** The pipeline version a PARSED glTF declares — 0 for anything we didn't
  *  write (every pCon export, every catalogue GLB predating the pipeline). */

@@ -470,7 +470,12 @@ async function captureLead(
   );
   const items = rawItems
     .map((it) => {
-      const base = { modelId: String(it.modelId || ''), x: num(it.x), y: num(it.y), rot: num(it.rot) };
+      const base: Row = { modelId: String(it.modelId || ''), x: num(it.x), y: num(it.y), rot: num(it.rot) };
+      // WHICH MODE the visitor built in (pieza vs componentes). Whitelisted
+      // explicitly — this sanitizer drops unknown keys, and dropping this one
+      // made the worker replay a by-componentes build as modo pieza and quote
+      // the other price. Only a literal true survives.
+      if (it.partsMode === true) base.partsMode = true;
       const mat = it.material && typeof it.material === 'object' ? it.material as Row : null;
       // Per-part fabric picks (cushion/bolster/arm) ride alongside the base
       // material, sanitized to the same {grade, fabric, code} shape per role.
@@ -1248,6 +1253,19 @@ Deno.serve(async (req: Request) => {
           .filter(Boolean).join(','),
         ua: req.headers.get('user-agent') || '',
       };
+      // SECURITY (M2): rate-limit the unauthenticated lead submit per IP (10/min)
+      // so it can't be scripted to flood togo_requests / Storage snapshots / team
+      // push. Only the lead path is gated (not the inbox action or the deduped
+      // view pings). Fail OPEN — a limiter outage must never drop a real lead.
+      // Single-IP key: Cloudflare's edge IP, else the first XFF hop.
+      const rlIp = req.headers.get('cf-connecting-ip')
+        || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+      try {
+        const { data: allowed } = await admin.rpc('rl_hit', {
+          p_bucket: `togo-embed:${rlIp}`, p_max: 10, p_window_seconds: 60,
+        });
+        if (allowed === false) return json({ error: 'Demasiadas solicitudes, intenta más tarde' }, 429);
+      } catch (e) { console.error('[togo-embed] rate-limit check failed:', (e as Error).message); }
       return json(await captureLead(admin, body, dealer, net));
     }
     return json({ error: 'method not allowed' }, 405);

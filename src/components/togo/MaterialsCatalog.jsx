@@ -115,6 +115,13 @@ export default function MaterialsCatalog({
   swatchSrc,
   swatchFallbackSrc = null,
   onPick,
+  // DOCK the hover preview instead of floating it. Given a reporter, this pane
+  // renders NO card of its own and hands the hovered swatch up, so the host can
+  // paint it in the ONE slot it already owns. Owner, 2026-08: a floating card
+  // over the wall while the pane's own docked preview was on screen put TWO
+  // previews up at once — the exact thing «we have only one preview modal»
+  // forbids. Without the prop, the floating card is unchanged.
+  onDockPreview = null,
 }) {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
@@ -164,6 +171,13 @@ export default function MaterialsCatalog({
     closeTimer.current = setTimeout(() => { anchorRef.current = null; setPreview(null); }, 90);
   }, []);
   useEffect(() => () => clearTimeout(closeTimer.current), []);
+  // Reported through a REF: the host passes an inline arrow, and depending on
+  // its identity would re-fire this on every render of a scrolling wall.
+  const dockRef = useRef(onDockPreview);
+  dockRef.current = onDockPreview;
+  useEffect(() => { dockRef.current?.(preview); }, [preview]);
+  // …and the slot must not keep a card belonging to a pane that has closed.
+  useEffect(() => () => dockRef.current?.(null), []);
 
   // Placed before the browser paints, so the card is never seen at 0,0.
   useLayoutEffect(() => { if (preview) place(); }, [preview, place]);
@@ -404,8 +418,9 @@ export default function MaterialsCatalog({
       </div>
 
       {/* Portaled: the rail clips its own overflow (and is 320 px wide), so a
-          card rendered inside it could neither escape nor be large. */}
-      {preview && createPortal(
+          card rendered inside it could neither escape nor be large. Skipped
+          entirely when the host docks it — one preview, one place. */}
+      {preview && !onDockPreview && createPortal(
         <SwatchPreviewCard innerRef={cardRef} preview={preview} width={PREVIEW_PX} />,
         document.body,
       )}

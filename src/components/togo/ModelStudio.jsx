@@ -74,6 +74,7 @@ import { db, updateSettings } from '../../db/database.js';
 import { uploadTogoMesh, removeTogoMesh } from '../../db/togoMeshUpload.js';
 import { uploadTogoThumb, removeTogoThumb } from '../../db/togoThumbUpload.js';
 import { safeDynamicImport } from '../../lib/dynamicImport.js';
+import { sanitizeSvg } from '../../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
 import { swatchTileUrl } from '../../lib/swatchImage.js';
 import { useApp } from '../../context/AppContext.jsx';
 import { prefersReducedMotion } from '../../lib/motion.js';
@@ -2861,7 +2862,7 @@ function ModelInspector({
             </button>
           )}
         </div>
-        <div className="grid aspect-[4/3] w-24 place-items-center overflow-hidden rounded-lg bg-canvas p-2 text-ink-600 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: card.svg || '' }} />
+        <div className="grid aspect-[4/3] w-24 place-items-center overflow-hidden rounded-lg bg-canvas p-2 text-ink-600 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: sanitizeSvg(card.svg || '') }} />
         {row?.meshSourceName && (
           <p className="truncate text-[10px] text-ink-400" title={row.meshSourceName}>
             Fuente: {row.meshSourceName}

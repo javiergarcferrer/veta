@@ -1039,14 +1039,11 @@ export default function TogoStage({
     // glow — so the selected piece carries no base emissive in 3D. The
     // transient hover part-cue below still fires (it names what a click edits).
     const in3d = stateRef.current.mode === '3d';
-    // A RESTING focus (the dressable highlight a mere selection wears) is not a
-    // commitment — it IS the selection. Only a COMMITTED focus (an open picker:
-    // a part role, or an estructura group) outranks the transient hover cue;
-    // giving every focus that precedence made the hover branch unreachable on
-    // the selected piece, so hovering its legs lit nothing — and the estructura,
-    // which the resting highlight excludes by design, read as dead.
-    const fp = stateRef.current.focusPart;
-    const resting = isRestingFocus(fp);
+    // DENTRO DE LA PIEZA, EL PUNTERO MANDA — en reposo Y con un picker abierto
+    // (dueño, 2026-08-05). Antes solo cedía en reposo, así que con el picker
+    // comprometido en un componente, pasar por otro no encendía nada. Lo que
+    // permite ceder sin ambigüedad es el peso: el trazo dice firme lo elegido y
+    // suave lo mirado, y al salir el puntero todo vuelve solo a su sitio.
     // HOVER ANSWERS ONLY ON THE SELECTED PIECE while one exists (owner,
     // 2026-08: «when a model is selected hover only works on that selected
     // model») — in 3D, where hover is a dressing cue: while you are dressing
@@ -1066,7 +1063,9 @@ export default function TogoStage({
       const hi = Math.max(0.5, base + 0.15);
       // A COMMITTED part focus outranks the transient hover cue on the same
       // piece — two lit parts on one piece read as two selections.
-      if (focus && !(resting && hovering)) setMeshEmissive(pg, focus, hi, base);
+      // El glow y el trazo están pinneados a decir LO MISMO, así que ceden
+      // igual: dentro de la pieza el hover gana, en reposo o comprometido.
+      if (focus && !hovering) setMeshEmissive(pg, focus, hi, base);
       // The hovered PART outshines the rest of its piece — the cue for "a click
       // edits THIS" (cushion, bolster, arm… or the base upholstery). Scoped to
       // exactly WHAT THE CLICK OPENS: an estructura opens the merged GROUP the
@@ -1563,8 +1562,9 @@ export default function TogoStage({
         let loops = null;
         // Is this trace a PREVIEW? The rail says so from React (`focusSoft` —
         // pointing at a chip is pointing at the part, and it must not read as
-        // having picked it); the mesh-hover branch below adds its own case.
+        // having picked it); the mesh-hover branch below adds its own.
         let soft = !!stateRef.current.focusSoft;
+        const hp = l.hoverPart;
         // Compute the outline in BOTH modes: plan view strokes the gold selection
         // outline over it, and 3D does too (the outline replaces the warm colour
         // glow as the selection cue). Skipped mid-tween (a fabric crossfade doesn't
@@ -1572,28 +1572,13 @@ export default function TogoStage({
         if (uid != null && l.group && !l.tween && cw > 0 && ch > 0) {
           const pg = l.group.children.find((g) => g.userData.uid === uid);
           if (pg) {
-            let focus = focusMeshesFor(pg);
-            // At REST (the dressable mere-selection highlight) the OUTLINE
-            // yields to the hovered part exactly like the glow does: the gold
-            // trace is the owner's primary cue, and a leg hover whose outline
-            // stays wrapped around the body reads as "doesn't highlight the
-            // structure" even while the emissive flips correctly underneath.
-            // A COMMITTED focus (an open picker) still owns the trace; the
-            // body ('base') keeps the dressable promise (its click IS the
-            // whole-piece flow). 3D only — the 2D outline doubles as the drag
-            // affordance and must not jump under the pointer.
-            // …and it traces SOFT: the pipette is over the part, nothing has
-            // been chosen yet, so the line states «esto es lo que editarías»
-            // at hover weight instead of impersonating a selection.
-            const hp = l.hoverPart;
-            if (stateRef.current.mode === '3d'
-                && isRestingFocus(stateRef.current.focusPart)
-                && hp && hp.uid === uid && hp.role && hp.role !== 'base') {
-              const scoped = (hp.role === 'structure' && hp.partKey
-                ? focusMeshes(pieceMeshes(pg), { groupKey: hp.partKey })
-                : null) || focusMeshes(pieceMeshes(pg), { role: hp.role });
-              if (scoped) { focus = scoped; soft = true; }
-            }
+            // UN SOLO DUENO DEL ALCANCE: `focusPart`. El hover de malla ya
+            // llega ahi — la View lo compone desde el MISMO reporte de hover
+            // que alimenta la tarjeta —, asi que este trazo no vuelve a
+            // decidir nada por su cuenta. Antes si, y por eso el anillo de la
+            // tarjeta podia prometer un trazo suave que aqui no se dibujaba:
+            // dos respuestas para una pregunta.
+            const focus = focusMeshesFor(pg);
             loops = maskOutlineFor(pg, cw, ch, focus);
             // NO-VANISH: a focused trace that comes back empty (the part swung
             // off-frame while the piece did not) falls back to the whole piece —
@@ -2093,28 +2078,26 @@ export default function TogoStage({
           requestRender();
           return;
         }
-        // Desktop affordance — the same hover HIERARCHY as 3D: any piece under
-        // the pointer glows whole (grabbable, move cursor); a CONFIGURABLE PART
-        // of the piece glows alone under the PIPETTE cursor — a clean click
-        // there recolors exactly that part (dragging still moves the piece).
-        // The part hover also reports up (reportHover) so the parent can float
-        // its name tag beside the cursor. Deduped: one raycast per move,
-        // re-render only on change.
+        // EL PLANO COMPONE, NO VISTE (dueño, 2026-08-05: «i need the rotate
+        // piece button to show up in plan view, not the edit component
+        // pipette»). Aquí una pieza se coloca, se arrastra y se gira — el mango
+        // de rotar es la herramienta de esta vista — así que el puntero dice
+        // «mover», nunca «recolorear»: la pipeta, el resaltado por parte y el
+        // rótulo con el nombre del componente son del 3D, donde SÍ se viste.
+        // Una vista que ofrece dos oficios a la vez obliga a adivinar cuál
+        // contesta a un clic. Deduped: one raycast per move, re-render only on
+        // change.
         if (!l.pan && !e.buttons) {
           setNdc(e);
           const hit = pieceHitAt();
           const overUid = hit?.uid ?? null;
-          const isPart = hit != null && (hit.partRole || 'base') !== 'base';
           if (overUid !== l.hoverUid) {
             l.hoverUid = overUid;
             refreshGlow(l);
           }
-          setHoverPart(isPart ? { uid: hit.uid, partRole: hit.partRole, partKey: hit.partKey || null } : null);
-          if (isPart) {
-            const rct = mount.getBoundingClientRect();
-            reportHover({ uid: hit.uid, partRole: hit.partRole, x: e.clientX - rct.left, y: e.clientY - rct.top });
-          } else reportHover(null);
-          if (!l.pan) renderer.domElement.style.cursor = isPart ? PIPETTE_CURSOR : overUid != null ? 'move' : 'grab';
+          setHoverPart(null);
+          reportHover(null);
+          if (!l.pan) renderer.domElement.style.cursor = overUid != null ? 'move' : 'grab';
           return;
         }
         if (l.pan) {
@@ -2206,12 +2189,12 @@ export default function TogoStage({
             });
           }
           if (d.moved && d.next) stateRef.current.onMove?.(d.uid, d.next.x, d.next.y, !!d.snapped);
-          // A clean tap (no movement) edits what it touched: a configurable
-          // PART opens its own fabric picker on the FIRST tap (the pipette
-          // cursor promised exactly that); the piece BODY needs the piece to
-          // already be selected (first tap selects, second edits its base) so
-          // a plain select-tap never surprises with a modal.
-          else if (!d.moved && (d.partRole || 'base') !== 'base') stateRef.current.onTapPart?.(d.uid, d.partRole);
+          // Un toque limpio (sin movimiento) sobre una pieza YA seleccionada
+          // abre la tela de LA PIEZA. Y solo eso: en el plano no se abre el
+          // picker de un componente, porque aquí no hay pipeta que lo prometa
+          // — el primer toque selecciona (y saca el mango de rotar), el segundo
+          // abre la pieza entera. Vestir un componente es cosa del 3D, que es
+          // donde se ve cuál es.
           else if (!d.moved && d.wasSelected) stateRef.current.onTapPart?.(d.uid, 'base');
           // ALWAYS render on release: the screen-pos/bounds reports (rotate
           // handle, dimension lines) are suppressed while l.drag is set — the

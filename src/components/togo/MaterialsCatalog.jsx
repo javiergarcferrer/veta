@@ -125,6 +125,20 @@ export default function MaterialsCatalog({
 }) {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
+  // EL BUSCADOR NO COBRA ALTURA HASTA QUE SE USA (dueño, 2026-08-05: «collapse
+  // search into an expandable button»). En una hoja de media pantalla el campo
+  // se comía un renglón entero de muro para una función que casi nadie abre —
+  // 25 colores se miran, no se teclean. Plegado es un botón; abierto es el
+  // mismo campo de siempre en su propia fila.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+  // Abrirlo enfoca: si hay que tocar dos veces para escribir, el botón es un
+  // peaje y no un atajo.
+  useEffect(() => { if (searchOpen) searchRef.current?.focus(); }, [searchOpen]);
+  // Cerrarlo LIMPIA. Un filtro escondido que sigue quitando colores es una
+  // trampa: el muro se ve incompleto y nada en pantalla dice por qué. Por eso
+  // la fila tampoco se pliega sola mientras haya texto.
+  const closeSearch = useCallback(() => { setSearchOpen(false); setQ(''); }, []);
   // The material whose colours are on screen — null IS level 1.
   const [openId, setOpenId] = useState(null);
 
@@ -272,6 +286,25 @@ export default function MaterialsCatalog({
   const priceFor = (m) => (family && !pricesHidden && fmt
     ? productForGrade(family, String(m.grade || '').toUpperCase())?.priceUsd ?? null
     : null);
+  // Definido AQUI, no arriba con su estado: lee `open` (el material
+  // abierto) para su etiqueta, y `open` se calcula mas abajo — construirlo
+  // antes lo dejaba en la zona muerta del const y el catalogo entero moria
+  // en ReferenceError al primer render. Lo caza el arnes, no el build.
+  const searchButton = (
+    <button
+      type="button"
+      onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+      aria-label={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
+      aria-expanded={searchOpen}
+      className={`shrink-0 grid place-items-center w-7 h-7 rounded-lg border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+        searchOpen || q
+          ? 'border-brand-300 bg-brand-50 text-brand-700'
+          : 'border-ink-200 text-ink-500 hover:bg-ink-100 hover:text-ink-800'
+      }`}
+    >
+      {searchOpen ? <X size={13} aria-hidden /> : <Search size={13} aria-hidden />}
+    </button>
+  );
 
   const openMaterial = (id) => {
     tilesScroll.current = scrollerRef.current?.scrollTop || 0;
@@ -282,70 +315,91 @@ export default function MaterialsCatalog({
     <div className="h-full min-h-0 flex flex-col">
       {/* PINNED — held by the flex row, not by `position: sticky` (docblock). */}
       <div className="shrink-0 px-3 pb-2 flex flex-col gap-2">
+        {/* IDENTIDAD Y CONTROLES EN UNA SOLA FILA. Eran dos: una con el
+            «‹ Materiales» y el precio (casi vacía) y otra con el nombre y su
+            meta. En una hoja de media pantalla ese renglón de más es muro de
+            telas que no se ve, así que el volver queda en su flecha (la
+            etiqueta la dice el aria-label) y el nombre sube a su lado. El
+            precio y el grade no se van a ninguna parte — son la razón de
+            elegir esta tela y no la de al lado. */}
         {open && (
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => setOpenId(null)}
-                className="-ml-1 inline-flex items-center gap-0.5 rounded-md pl-0.5 pr-1.5 py-0.5 text-[11px] font-medium text-ink-600 hover:bg-ink-100 hover:text-ink-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              >
-                <ChevronLeft size={13} aria-hidden />
-                {t(locale, 'fabric.paneBack')}
-              </button>
-              <span className="ml-auto shrink-0 flex items-baseline gap-1.5">
-                {open.grade && <GradeBadge grade={open.grade} />}
-                {priceFor(open) != null && (
-                  <span className="text-[10px] font-medium text-ink-600 tabular-nums">
-                    {shortMoney(fmt, priceFor(open))}
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="mt-1 min-w-0" title={open.composition || open.name}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <button
+              type="button"
+              onClick={() => setOpenId(null)}
+              aria-label={t(locale, 'fabric.paneBack')}
+              className="-ml-1 shrink-0 grid place-items-center w-7 h-7 rounded-md text-ink-600 hover:bg-ink-100 hover:text-ink-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <ChevronLeft size={16} aria-hidden />
+            </button>
+            <div className="min-w-0 flex-1" title={open.composition || open.name}>
               <div className="truncate text-xs font-semibold text-ink-800">{open.name}</div>
               {/* Composition is the deciding read AND a search target, so it
                   stays visible — truncated onto the count's line, which costs
                   the header no extra height. */}
-              <div className="mt-px flex items-baseline gap-1.5 min-w-0 text-[10px] leading-snug text-ink-400">
+              <div className="flex items-baseline gap-1.5 min-w-0 text-[10px] leading-snug text-ink-400">
                 <span className="shrink-0 tabular-nums">{colorsLabel(locale, openColors.length)}</span>
                 {open.composition && <span className="min-w-0 truncate">· {open.composition}</span>}
               </div>
             </div>
+            <span className="shrink-0 flex items-baseline gap-1.5">
+              {open.grade && <GradeBadge grade={open.grade} />}
+              {priceFor(open) != null && (
+                <span className="text-[10px] font-medium text-ink-600 tabular-nums">
+                  {shortMoney(fmt, priceFor(open))}
+                </span>
+              )}
+            </span>
+            {searchButton}
           </div>
         )}
-        <div className="relative">
-          {/* type="text", not "search": the native clear glyph is a second,
-              unstyled control inside a field that already has ✕. */}
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
-            aria-label={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
-            className="w-full rounded-lg border border-ink-200 bg-surface pl-8 pr-7 py-1.5 text-xs text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-300 transition"
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => setQ('')}
-              aria-label={t(locale, 'common.close')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-        {/* Categories sort TELAS — inside one material they'd sort nothing. */}
-        {!open && cats.length > 1 && (
-          <div className="flex flex-wrap gap-1">
-            <FilterChip active={!category} onClick={() => setCategory('')}>{t(locale, 'fabric.paneAll')}</FilterChip>
-            {cats.map((c) => (
-              <FilterChip key={c.k} active={category === c.k} onClick={() => setCategory(category === c.k ? '' : c.k)}>
-                {t(locale, c.label)}
-              </FilterChip>
-            ))}
+        {/* Categories sort TELAS — inside one material they'd sort nothing. El
+            botón del buscador viaja con ellas: al nivel 1 no hay fila de
+            identidad donde ponerlo, y una fila propia para un solo botón
+            gastaría justo lo que este cambio ahorra. */}
+        {!open && (
+          <div className="flex items-center gap-1 min-w-0">
+            <div className="min-w-0 flex-1 flex flex-wrap gap-1">
+              {cats.length > 1 && (
+                <>
+                  <FilterChip active={!category} onClick={() => setCategory('')}>{t(locale, 'fabric.paneAll')}</FilterChip>
+                  {cats.map((c) => (
+                    <FilterChip key={c.k} active={category === c.k} onClick={() => setCategory(category === c.k ? '' : c.k)}>
+                      {t(locale, c.label)}
+                    </FilterChip>
+                  ))}
+                </>
+              )}
+            </div>
+            {searchButton}
+          </div>
+        )}
+        {/* El campo, solo cuando se pidió. */}
+        {searchOpen && (
+          <div className="relative">
+            {/* type="text", not "search": the native clear glyph is a second,
+                unstyled control inside a field that already has ✕. */}
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
+              placeholder={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
+              aria-label={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
+              className="w-full rounded-lg border border-ink-200 bg-surface pl-8 pr-7 py-1.5 text-xs text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-300 transition"
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => { setQ(''); searchRef.current?.focus(); }}
+                aria-label={t(locale, 'common.close')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
         )}
       </div>

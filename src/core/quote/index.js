@@ -35,10 +35,11 @@ export {
   // Los dos modos, segunda vuelta: que telas VISTEN de verdad una pieza segun
   // su modo (`effectivePartMaterials` — un pick dormido en modo pieza no la
   // viste), la vista de un componente abierto, y las piezas que solo se venden
-  // por componentes. `linkOverlap` es el solape que decide si dos piezas se
-  // encadenan; `materializedBase` y los dos `unresolved*` son lo que el escenario
-  // y el desglose ya usaban a traves de este barril.
-  effectivePartMaterials, componentViewOf, sellsByComponentsOnly,
+  // por componentes. `isWholePieceRole` desambigua el rol 'base' (pieza entera
+  // vs. componente que se llama «base»). `linkOverlap` es el solape que decide
+  // si dos piezas se encadenan; `materializedBase` y los dos `unresolved*` son
+  // lo que el escenario y el desglose ya usaban a traves de este barril.
+  effectivePartMaterials, componentViewOf, sellsByComponentsOnly, isWholePieceRole,
   materializedBase, unresolvedPartRoles, unresolvedWholePiece,
   linkOverlap, LINK_OVERLAP_CM,
   resolveTogoDxf, placementsFromPlaced, placementsFromComponents, lineHasTogoPlan,

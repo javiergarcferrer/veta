@@ -23,7 +23,7 @@ import {
   resolveTogoDxf, placementsFromPlaced, resolveTogoScene, scenePlacementsFromPlaced,
   createHistory, historyPush, historyUndo, historyRedo,
   firstWithoutFabric, placementDressed, dressableRoles, duplicatePlacement, cyclePieceUid, SNAP_GRID_CM, RELEASE_DOCK_CM,
-  placementMode, componentRoles, planModeSwitch, componentViewOf, sellsByComponentsOnly, effectivePartMaterials,
+  placementMode, componentRoles, planModeSwitch, componentViewOf, sellsByComponentsOnly, isWholePieceRole, effectivePartMaterials,
   placementTotalUsd, placementBreakdown, resolveLaunchHero, resolveCollectionMenu,
 } from '../../core/quote/index.js';
 import { mountOf, sanitizePartMaterials, sanitizePartFinishes, finishOptionOf, partRoleFor, roleLabelOf, partLabelOf, structureGroupsOf, structureGroupFor, MATERIALIZATION_ROLES, PART_ROLES } from '../../lib/togo/meshParts.js';
@@ -411,6 +411,7 @@ export default function TogoEmbed() {
   // so the policy cannot be half-applied.
   const chipHover = FINE_POINTER && hover3d && (selectedUid == null || hover3d.uid === selectedUid)
     ? hover3d : null;
+  const chipHoverSel = chipHover;
   // The piece the chip is anchored to (hover wins; else the 3D selection).
   const chipUid = view === '3d' ? (chipHover?.uid ?? null) : null;
   // ── A HOVER CARD FOLLOWS THE MOUSE — ON THE SELECTED PIECE ──────────────
@@ -1363,8 +1364,8 @@ export default function TogoEmbed() {
     // the fallback the rail would empty itself for those frames — and an empty
     // rail is an absent rail, which is exactly the flicker the note below is
     // about.
-    return byUid(chipHover?.uid) || byUid(selectedUid);
-  }, [chipHover?.uid, selectedUid, placed]);
+    return byUid(chipHoverSel?.uid) || byUid(selectedUid);
+  }, [chipHoverSel?.uid, selectedUid, placed]);
   const stripResolved = stripPiece ? resolvePlacement(stripPiece, resolvedById) : null;
   const stripEntries = useMemo(
     () => pieceSwatchEntries(
@@ -1382,16 +1383,26 @@ export default function TogoEmbed() {
   // through the same role/group pair the entries are keyed by, so the highlight
   // in the rail and the mesh under the ray can never disagree.
   const stripHoverKey = useMemo(() => {
-    if (!chipHover || !stripPiece || chipHover.uid !== stripPiece.uid) return null;
-    if (chipHover.partRole === 'structure') {
-      const g = structureGroupFor(stripResolved?.parts, chipHover.partKey || null);
+    if (!chipHoverSel || !stripPiece || chipHoverSel.uid !== stripPiece.uid) return null;
+    if (chipHoverSel.partRole === 'structure') {
+      const g = structureGroupFor(stripResolved?.parts, chipHoverSel.partKey || null);
       return g ? `structure:${g.group}` : null;
     }
-    const role = chipHover.partRole && chipHover.partRole !== 'base'
-      && dressableRoles(stripResolved).includes(chipHover.partRole)
-      ? chipHover.partRole : 'base';
-    return role;
-  }, [chipHover, stripPiece, stripResolved]);
+    if (isWholePieceRole(stripPiece, stripResolved, chipHoverSel.partRole)) return 'base';
+    return chipHoverSel.partRole && dressableRoles(stripResolved).includes(chipHoverSel.partRole)
+      ? chipHoverSel.partRole : 'base';
+  }, [chipHoverSel, stripPiece, stripResolved]);
+  // ENTRADA DEL RAIL → VOCABULARIO DE FOCO, una sola vez. El chip de la tela de
+  // la pieza apunta a lo que el clic en ella: todo lo vestible (o la pieza
+  // entera en modo pieza, vía restingRole). Un componente apunta a SU rol —
+  // incluido uno que se llame 'base', que es un componente de verdad y no el
+  // sentinela (isWholePieceRole decide, y es la misma pregunta que responde la
+  // tarjeta, para que el contorno y lo que se lee no puedan discrepar).
+  const railWholePiece = (e) => e.role !== 'structure'
+    && isWholePieceRole(stripPiece, stripResolved, e.role);
+  const railFocusOf = (e) => (railWholePiece(e)
+    ? { role: DRESSABLE_ROLE, groupKey: null }
+    : { role: e.role, groupKey: e.groupKey || null });
   // …and which swatch is the SELECTED one: the picker's live target. Read off
   // the very state that drives `focusPart`, so «picker and outline are subject
   // to the swatch selected» holds by construction rather than by syncing.
@@ -1458,17 +1469,45 @@ export default function TogoEmbed() {
   // no repinta. El «edit the pieces if I wish» de cualquiera de los dos modos
   // sigue viviendo en el hover (traza suave) y en el tap, intactos.
   const restingRole = selected && componentViewOf(selected) ? DRESSABLE_ROLE : null;
-  const hoverFocus = railHover && selectedUid != null
+  // ── UN VISTAZO: EL PUNTERO, SEA CUAL SEA SU PUERTA ────────────────────────
+  // Las dos maneras de mirar una parte sin elegirla — el chip del rail y la
+  // malla en 3D — componen el MISMO foco aquí, y de aquí salen las tres cosas
+  // que tienen que decir lo mismo: el trazo suave, el glow y el anillo de la
+  // tarjeta. El stage ya no vuelve a deducir el alcance por su cuenta (leía
+  // `hoverPart` y decidía otra vez), que es de donde salía el anillo mintiendo:
+  // prometía un trazo suave que allá abajo no se dibujaba.
+  //
+  // Requiere SELECCIÓN — sin ella no hay pieza trazada y un vistazo no tendría
+  // dónde pintarse (la regla del dueño: con algo seleccionado el hover solo
+  // contesta sobre ESO; sin nada, la tarjeta sigue saliendo por su cuenta, ya
+  // sin anillo, porque no hay trazo que prometer).
+  const chipHoverPart = chipHover && selectedUid != null && chipHover.uid === selectedUid
+    && chipHover.partRole && chipHover.partRole !== 'base'
+    ? { role: chipHover.partRole, groupKey: chipHover.partRole === 'structure' ? (chipHover.partKey || null) : null }
+    : null;
+  const railFocus = railHover && selectedUid != null
     ? {
-      uid: selectedUid,
       // El chip de la tela de la pieza apunta a lo mismo que el clic en ella.
       role: railHover.role === DRESSABLE_ROLE ? restingRole : railHover.role,
       groupKey: railHover.groupKey || null,
-      ...(railHover.role === DRESSABLE_ROLE && restingRole && dressableExclude.length ? { exclude: dressableExclude } : {}),
     }
     : null;
   const finishTarget = finishSheet || finishRail;
   const committedPart = (railOpen || matOpen) && matPart ? matPart : null;
+  // Apuntar la parte que el picker YA tiene abierta no la degrada a vistazo: se
+  // queda firme. Si no, el trazo parpadearía entre pesos cada vez que el
+  // puntero cruza justo lo que estás vistiendo.
+  const peek = railFocus || chipHoverPart;
+  const peekIsCommitted = !!peek && !!committedPart
+    && peek.role === committedPart && !peek.groupKey;
+  const hoverFocus = peek && !peekIsCommitted && selectedUid != null
+    ? {
+      uid: selectedUid,
+      role: peek.role,
+      groupKey: peek.groupKey || null,
+      ...(peek.role === DRESSABLE_ROLE && restingRole && dressableExclude.length ? { exclude: dressableExclude } : {}),
+    }
+    : null;
   const focusPart = hoverFocus || (finishTarget
     ? { uid: finishTarget.uid, role: 'structure', groupKey: finishTarget.partKey }
     : (selectedUid == null || matMode === 'all'
@@ -1496,8 +1535,52 @@ export default function TogoEmbed() {
   // What the pointer is on INSIDE the swatch wall, reported up by the picker
   // rather than floated by it. It OUTRANKS the piece/chip preview: the pointer
   // is literally on that swatch, while the other describes something it left.
-  const [swatchPreview, setSwatchPreview] = useState(null);
-  const onePreview = swatchPreview || hoverPreview;
+  const [swatchPreview, setSwatchPreviewRaw] = useState(null);
+  // EL CIERRE SE RETRASA, LA APERTURA NO (dueño, 2026-08-05: «the swatch is now
+  // flashing quickly whenever i hover over the cards»). Barrer el muro cruza
+  // los HUECOS entre fichas, y cada hueco mandaba un null: la tarjeta se
+  // desmontaba y volvía a montarse ficha tras ficha — y acoplada al pie de la
+  // hoja eso además reajustaba el alto del muro debajo del puntero. Un null
+  // espera; si antes llega otra muestra, la sustituye y no ha pasado nada.
+  // Salir del muro de verdad sí la cierra, solo que un pelo más tarde. El SET
+  // es inmediato a propósito: retrasar la aparición se sentiría como lag.
+  const swatchClearRef = useRef(null);
+  const setSwatchPreview = useCallback((p) => {
+    clearTimeout(swatchClearRef.current);
+    if (p) { setSwatchPreviewRaw(p); return; }
+    swatchClearRef.current = setTimeout(() => setSwatchPreviewRaw(null), 140);
+  }, []);
+  useEffect(() => () => clearTimeout(swatchClearRef.current), []);
+  // …y CON UN OBJETIVO COMPROMETIDO la tarjeta se queda, aunque el puntero se
+  // haya ido (dueño, 2026-08-05: «están seleccionados los cojines y debería
+  // salir el swatch de material sin outline pintado y no está»). La regla de
+  // «una sola tarjeta, y es del puntero» (2026-08-02) dejaba la pregunta
+  // «¿qué llevan puestos los cojines?» sin responder justo mientras los estás
+  // vistiendo: el contorno firme decía CUÁLES, y nada decía QUÉ. Ahora lo dice
+  // la misma tarjeta, construida por la misma función y por eso incapaz de
+  // discrepar del hover que la sustituye un segundo después.
+  //
+  // SIN ANILLO, y eso es el punto: el oro tenue marca lo que se MIRA. Una
+  // tarjeta comprometida que lo llevara prometería un trazo suave que no
+  // existe — el de esa parte es firme.
+  const committedPreview = view === '3d' && chipFocus && !hoverPreview
+    ? hoverPreviewFor({
+      railHover: { role: chipFocus.role, groupKey: chipFocus.groupKey || null },
+      selectedUid, chipHover: null, chipFocus: null, placed, resolvedById, locale,
+    })
+    : null;
+  const onePreview = swatchPreview || hoverPreview || committedPreview;
+  // EL MISMO ORO TENUE EN LA TARJETA (dueño, 2026-08-05: «cuando sale en el
+  // swatch preview también se le pone el mismo soft outline a la tarjeta»). La
+  // pieza trazada y la tarjeta que la describe son UNA cosa vista dos veces; el
+  // anillo es lo que las cose. Solo cuando lo que enseña es un hover de la
+  // escena: sobre un swatch del muro la tarjeta describe lo que el dedo toca,
+  // no una pieza trazada, y un anillo ahí prometería un contorno que no existe.
+  // …y el anillo es EXACTAMENTE «hay un trazo suave ahora mismo», que es una
+  // sola cosa y ya está derivada. Antes decía «hay tarjeta de hover», que no es
+  // lo mismo: sin pieza seleccionada la tarjeta sale igual y no hay nada
+  // trazado, y ahí el anillo prometía un contorno inexistente.
+  const previewSoft = !swatchPreview && !!hoverFocus;
 
   // Fabric pick for ONE PART of the selected piece (cushion/bolster/arm) — the
   // pick stores {grade, fabric, code} only; prices re-derive from the part's
@@ -2135,47 +2218,12 @@ export default function TogoEmbed() {
         onModelFallback={onModelFallback}
       />
 
-      {/* ── 2D pipette tag: while the cursor is on a configurable part (the part
-           itself glows in the scene), a small floating tag names it and shows
-           what it wears — "what am I about to change?" answered before the
-           click, for people who've never touched a 3D tool. ── */}
-      {view === '2d' && hover3d && hover3d.partRole && hover3d.partRole !== 'base' && (() => {
-        const p = placed.find((row) => row.uid === hover3d.uid);
-        const r = p ? resolvePlacement(p, resolvedById) : null;
-        if (!p) return null;
-        // ── THE TAG AND THE CLICK MUST AGREE ────────────────────────────────
-        // So it asks the very two tests `openPartMaterial` gates the tap on —
-        // an ESTRUCTURA resolves to its finish group (metal wears an acabado,
-        // never cloth), everything else to `editablePartRoles` — and nothing
-        // else. The old gate was `partFamilies` plus a fabric on the piece,
-        // which is neither: it went silent on the legs and on the ottomans'
-        // materialization zones (both bind no family BY DESIGN), and on an
-        // UNDRESSED piece it hid every part — while the tap opened all three
-        // regardless. A pointer that names nothing and then acts is worse than
-        // one that never lit up.
-        const finish = hover3d.partRole === 'structure'
-          ? structureGroupFor(r?.parts, hover3d.partKey || null)
-          : null;
-        if (!finish && !dressableRoles(r).includes(hover3d.partRole)) return null;
-        const name = finish
-          ? partLabelOf(r?.parts, finish.group, finish.spec.label || t(locale, 'part.structure'))
-          : roleLabelOf(r?.parts, hover3d.partRole, t(locale, `part.${hover3d.partRole}`));
-        // A finish palette ALWAYS answers (pick → colección's default → first),
-        // so the estructura tag reads its acabado rather than an invitation to
-        // pick cloth it cannot wear.
-        const wearing = finish
-          ? (finishOptionOf(finish.spec, p.partFinishes?.[finish.group])?.label || t(locale, 'part.finish'))
-          : (effectivePartMaterials(p)?.[hover3d.partRole]?.fabric || t(locale, 'part.clickToEdit'));
-        return (
-          <div className="absolute z-20 pointer-events-none -translate-x-1/2" style={{ left: hover3d.x, top: hover3d.y + 22 }}>
-            <div className="hud-panel px-2 py-1 flex items-center gap-1.5 max-w-[220px]">
-              <Pipette size={11} className="shrink-0 text-brand-600" aria-hidden />
-              <span className="text-[11px] font-semibold text-ink-900 shrink-0">{name}</span>
-              <span className="min-w-0 truncate text-[11px] text-ink-600">{wearing}</span>
-            </div>
-          </div>
-        );
-      })()}
+      {/* El RÓTULO DE PIPETA del plano se retiró con la pipeta misma: en 2D se
+           compone (mover, girar), no se viste, así que el stage ya no reporta
+           parte alguna bajo el puntero y esta etiqueta se quedaba sin datos.
+           Dejarla habría sido dejar puesta la promesa — un icono de pipeta —
+           de un gesto que esta vista ya no ofrece. Vestir un componente vive
+           en el 3D, que es donde se ve cuál es. ── */}
 
       {/* ── THE ONE PREVIEW ──────────────────────────────────────────────
            One card, one home, whatever the pointer is on — a swatch in the
@@ -2208,7 +2256,12 @@ export default function TogoEmbed() {
             left: leftColumnOffset('picker', { railOpen }),
           }}
         >
-          <div className="hud-panel w-64 p-2 animate-in fade-in zoom-in-95 duration-150">
+          <div
+            className="hud-panel w-64 p-2 animate-in fade-in zoom-in-95 duration-150 transition-shadow"
+            style={previewSoft
+              ? { boxShadow: `0 0 0 2px ${OUTLINE_GOLD}59, 0 0 0 1px ${OUTLINE_GOLD}b3` }
+              : undefined}
+          >
             <SwatchPreviewBody preview={onePreview} />
           </div>
         </div>
@@ -2456,11 +2509,7 @@ export default function TogoEmbed() {
           /* Entry → focus vocabulary, translated HERE so the rail stays a plain
              list of chips and the stage keeps one language: the piece's own
              cloth chip IS the dressable piece (never a part named "base"). */
-          onHover={(e) => setRailHover(e
-            ? (e.role === 'base'
-              ? { role: DRESSABLE_ROLE, groupKey: null }
-              : { role: e.role, groupKey: e.groupKey || null })
-            : null)}
+          onHover={(e) => setRailHover(e ? railFocusOf(e) : null)}
           modeSwitch={stripPiece ? (
             <ModeSwitch
               compact
@@ -2473,7 +2522,9 @@ export default function TogoEmbed() {
             if (!stripPiece) return;
             setRailHover(null);   // the target is COMMITTED now — the preview has nothing left to preview
             if (e.role === 'structure') openPartMaterial(stripPiece.uid, 'structure', e.groupKey);
-            else openPartMaterial(stripPiece.uid, e.role);
+            // El chip de la pieza abre SU tela (sin parte); un componente
+            // llamado 'base' abre la suya — la misma desambiguación de siempre.
+            else openPartMaterial(stripPiece.uid, railWholePiece(e) ? null : e.role);
           }}
         />
       )}
@@ -2661,18 +2712,14 @@ export default function TogoEmbed() {
                 activeKey={stripActiveKey}
                 hoverKey={stripHoverKey}
                 locale={locale}
-                onHover={(e) => setRailHover(e
-                  ? (e.role === 'base'
-                    ? { role: DRESSABLE_ROLE, groupKey: null }
-                    : { role: e.role, groupKey: e.groupKey || null })
-                  : null)}
+                onHover={(e) => setRailHover(e ? railFocusOf(e) : null)}
                 /* Idéntico al de escritorio: el mismo chip abre la misma
                    puerta, aquí y allá. */
                 onPick={(e) => {
                   if (!stripPiece) return;
                   setRailHover(null);   // the target is COMMITTED now — the preview has nothing left to preview
                   if (e.role === 'structure') openPartMaterial(stripPiece.uid, 'structure', e.groupKey);
-                  else openPartMaterial(stripPiece.uid, e.role);
+                  else openPartMaterial(stripPiece.uid, railWholePiece(e) ? null : e.role);
                 }}
                 modeSwitch={(
                   <ModeSwitch
@@ -3536,22 +3583,14 @@ function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClea
            once carried renders DARK SLATE under the embed's `togo-rams` ramp
            remap — the hard dark rail the owner retired (2026-08-01). The
            pane's presence is the signal; the header names the target. */}
-      <div className="shrink-0 px-3 pt-3 pb-2 flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="eyebrow">{t(locale, 'fabric.pickerTitle')}</span>
-          {/* Only the phone drawer gets a close: the desktop rail IS the
-              workspace and has nothing to close back to. */}
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t(locale, 'common.close')}
-              className="grid place-items-center w-8 h-8 -mr-1 rounded-full text-ink-500 hover:bg-ink-100/70 active:scale-95 transition"
-            >
-              <X size={16} aria-hidden />
-            </button>
-          )}
-        </div>
+      {/* UNA SOLA FILA DE CABECERA. Eran dos: el rótulo «ELEGIR MATERIAL» y,
+          debajo, a quién se le está eligiendo. En una hoja de media pantalla ese
+          renglón de rótulo es muro de telas que no se ve — y no dice nada que la
+          pared de telas no diga sola. El SUJETO sube a su sitio (es lo único que
+          de verdad hay que leer: qué pieza y qué parte) y la ✕ se queda a su
+          derecha. El nombre del panel sobrevive donde importa: el aria-label del
+          <aside>, que es lo que anuncia un lector de pantalla. */}
+      <div className="shrink-0 px-3 pt-3 pb-2">
         <div className="flex items-center gap-1.5 min-w-0">
           {targetLabel ? (
             <>
@@ -3578,6 +3617,18 @@ function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClea
             </>
           ) : (
             <span className="min-w-0 truncate text-xs text-ink-500">{t(locale, 'estimate.chooseFabricAll')}</span>
+          )}
+          {/* Only the phone sheet gets a close: the desktop rail IS the
+              workspace and has nothing to close back to. */}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t(locale, 'common.close')}
+              className="ml-auto shrink-0 grid place-items-center w-8 h-8 -mr-1 rounded-full text-ink-500 hover:bg-ink-100/70 active:scale-95 transition"
+            >
+              <X size={16} aria-hidden />
+            </button>
           )}
         </div>
       </div>
@@ -3634,7 +3685,9 @@ function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClea
           describing. */}
       {preview && (
         <div className="shrink-0 border-t border-ink-200/70 p-2 pointer-events-none animate-in fade-in duration-150">
-          <SwatchPreviewBody preview={preview} />
+          {/* ACOSTADA: al pie de una hoja de ancho completo, el cuadrado a todo
+              lo ancho era más alto que la hoja y se comía el muro. */}
+          <SwatchPreviewBody preview={preview} row />
         </div>
       )}
     </aside>
@@ -4042,13 +4095,24 @@ function hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed,
       partKey: railHover.groupKey || null,
     }
     : chipHover;
-  const target = hovered && chipFocus && hovered.uid === chipFocus.uid
-    ? { ...hovered, partRole: chipFocus.role, partKey: chipFocus.groupKey || null }
-    : hovered;
-  if (!target) return null;
-  const p = (placed || []).find((row) => row.uid === target.uid);
+  if (!hovered) return null;
+  const p = (placed || []).find((row) => row.uid === hovered.uid);
   if (!p) return null;
   const r = resolvePlacement(p, resolvedById);
+  // DENTRO DE LA PIEZA, EL PUNTERO MANDA (dueño, 2026-08-05: «within a selected
+  // product exhibit this behavior»). Un hover que NOMBRA una parte — el cojín,
+  // un rulo, una estructura — gana al objetivo comprometido del picker: la
+  // tarjeta habla de lo que estás mirando, que es su único trabajo. La
+  // precedencia contraria (2026-08-01) se escribió cuando el hover se pintaba
+  // igual que la selección y dos partes encendidas se leían como dos
+  // selecciones; el trazo SUAVE ya las distingue por peso, así que el objetivo
+  // comprometido no necesita silenciar al puntero para seguir siendo legible.
+  // Barrer el CUERPO con el picker abierto sí cede a lo comprometido: ahí el
+  // puntero no nombra nada más preciso que la pieza entera.
+  const namesPart = !!hovered.partRole && !isWholePieceRole(p, r, hovered.partRole);
+  const target = chipFocus && hovered.uid === chipFocus.uid && !namesPart
+    ? { ...hovered, partRole: chipFocus.role, partKey: chipFocus.groupKey || null }
+    : hovered;
   // ESTRUCTURA FIRST — the ray (or the open finish rail) is on metal, not on
   // cloth. The card used to collapse a structure hover to the whole PIECE (its
   // role has no `partFamilies` entry, by design — a finish binds no SKU), so
@@ -4064,9 +4128,16 @@ function hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed,
   // `partFamilies` alone dropped the materialization ZONES (an ottoman's
   // interior/exterior bind no family BY DESIGN — they re-grade the base SKU), so
   // the card collapsed to the piece for a part the tap happily opens.
-  const role = !finish && target.partRole && target.partRole !== 'base'
-    && dressableRoles(r).includes(target.partRole)
-    ? target.partRole : 'base';
+  // ¿La tarjeta habla de la PIEZA o de un componente? `'base'` puede ser
+  // cualquiera de las dos (isWholePieceRole), así que se decide una vez aquí y
+  // todo lo de abajo lee ESE booleano — comparar contra el string otra vez es
+  // justo como el componente Base acabó enseñando la tela de la pieza.
+  const asPiece = !finish && (
+    isWholePieceRole(p, r, target.partRole)
+    || !target.partRole
+    || !dressableRoles(r).includes(target.partRole)
+  );
+  const role = asPiece || finish ? 'base' : target.partRole;
   if (finish) {
     const opt = finishOptionOf(finish.spec, p.partFinishes?.[finish.group]);
     return {
@@ -4075,13 +4146,13 @@ function hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed,
       meta: opt?.label || t(locale, 'part.finish'),
     };
   }
-  const pick = role === 'base' ? (p.material || null) : (effectivePartMaterials(p)?.[role] || null);
-  const code = pick?.code || (role !== 'base' ? p.material?.code : '') || '';
+  const pick = asPiece ? (p.material || null) : (effectivePartMaterials(p)?.[role] || null);
+  const code = pick?.code || (!asPiece ? p.material?.code : '') || '';
   return {
     base: code ? swatchTileUrl(code, SWATCH_PX.plate) : null,
     src: code ? swatchTileUrl(code, SWATCH_PX.preview) : null,
     fallback: code ? swatchTextureUrl(code, SWATCH_PX.preview) : null,
-    title: role !== 'base'
+    title: !asPiece
       ? roleLabelOf(r?.parts, role, t(locale, `part.${role}`))
       : (r.label || t(locale, 'piece.generic')),
     // What it wears, and — when it wears it by INHERITANCE — that it does: a
@@ -4089,8 +4160,8 @@ function hoverPreviewFor({ railHover, selectedUid, chipHover, chipFocus, placed,
     // that cloth, so the card would read as a divergence the price is not
     // charging for.
     meta: [
-      pick?.fabric || (role !== 'base' && p.material?.fabric) || t(locale, 'fabric.none'),
-      role !== 'base' && !pick ? t(locale, 'parts.samePiece') : null,
+      pick?.fabric || (!asPiece && p.material?.fabric) || t(locale, 'fabric.none'),
+      !asPiece && !pick ? t(locale, 'parts.samePiece') : null,
     ].filter(Boolean).join(' \u00b7 '),
   };
 }
@@ -4151,8 +4222,16 @@ function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale,
           {t(locale, 'parts.components')}
         </span>
       )}
+      {/* EL CAMBIO DE MODO SE FUNDE, NO SALTA (dueño, 2026-08-05: «make the base
+          SKU to component toggle smoother, right now it's too abrupt»). La
+          `key` es el JUEGO de entradas, así que la lista se vuelve a montar
+          — y se funde — exactamente cuando cambia LO QUE OFRECE: al girar el
+          interruptor, o al pasar a una pieza de otro modelo. Elegir una tela no
+          la toca (las claves son los roles, no lo que visten), que es lo que
+          impide que el muro parpadee con cada pick. */}
       <div
-        className={`flex-1 min-h-0 overflow-y-auto scroll-thin px-1.5 flex flex-col gap-1.5 ${docked ? 'pt-2 pb-2' : 'pb-2'}`}
+        key={entries.map((e) => e.key).join('|')}
+        className={`flex-1 min-h-0 overflow-y-auto scroll-thin px-1.5 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200 ${docked ? 'pt-2 pb-2' : 'pb-2'}`}
         onMouseLeave={() => onHover?.(null)}
       >
         {entries.map((e) => {

@@ -965,6 +965,26 @@ export function componentViewOf(p) {
  * cambiaría un callejón por otro. Se responde sobre el MODELO resuelto, así que
  * es la misma respuesta al añadir la pieza y en cualquier lectura posterior.
  */
+/**
+ * ¿Este rol significa LA PIEZA ENTERA, o un COMPONENTE que se llama «base»?
+ *
+ * `'base'` se usa como sentinela de «toda la pieza» en media docena de sitios,
+ * y en el catálogo real hay modelos cuyo componente facturable ES 'base' (LR
+ * vende la «Base» de un modular por su propio SKU). Con los dos significados en
+ * la misma cadena, apuntar al componente Base devolvía la tela DE LA PIEZA: el
+ * dueño pasaba el puntero sobre el chip verde y la tarjeta le enseñaba el gris
+ * del Espaldar, y el contorno abrazaba la pieza entera en vez del cuerpo.
+ *
+ * Desambigua el MODO, que es lo único que puede: en modo pieza no existen chips
+ * de componente, así que 'base' solo puede ser la pieza; en modo componentes la
+ * pieza no se viste como una sola cosa, así que 'base' solo puede ser el
+ * componente — y solo si el modelo lo ofrece de verdad.
+ */
+export function isWholePieceRole(p, r, role) {
+  if (role !== 'base') return false;
+  return !(componentViewOf(p) && dressableRoles(r).includes('base'));
+}
+
 export function sellsByComponentsOnly(r) {
   if (r?.completeFamily || r?.baseFamily) return false;
   return componentRoles(r).length > 0;

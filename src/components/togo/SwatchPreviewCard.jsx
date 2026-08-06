@@ -39,7 +39,19 @@
 import { Palette } from 'lucide-react';
 
 /** The card's contents: the cloth plate, then what it is underneath. */
-export function SwatchPreviewBody({ preview }) {
+/**
+ * `row` acuesta la MISMA tarjeta: la muestra a tamaño fijo y el texto a su lado,
+ * en vez de un cuadrado a todo el ancho con el texto debajo.
+ *
+ * El cuadrado nació en una columna de 21rem, donde medía ~336 px de alto dentro
+ * de un cajón de altura completa. Acoplado al pie de la hoja del teléfono —
+ * ANCHO COMPLETO y media pantalla de alto — ese mismo `aspect-square w-full` se
+ * volvía más alto que la hoja entera y se tragaba el muro de telas que venía a
+ * explicar. Acostada ocupa un renglón, que es todo lo que una nota al pie puede
+ * cobrar. La tarjeta flotante de escritorio conserva el cuadrado: ahí el ancho
+ * es fijo y la muestra grande ES el punto.
+ */
+export function SwatchPreviewBody({ preview, row = false }) {
   if (!preview) return null;
   const src = preview.src || preview.fallback || '';
   // NOTHING TO PAINT is a real state, not an edge case: an undressed body has
@@ -50,8 +62,10 @@ export function SwatchPreviewBody({ preview }) {
   // this replaced used for the case.
   const bare = !preview.color && !src && !preview.base;
   return (
-    <>
-      <span className="relative block aspect-square w-full overflow-hidden rounded-lg bg-ink-50">
+    <div className={row ? 'flex items-center gap-2.5 min-w-0' : undefined}>
+      <span className={`relative block aspect-square overflow-hidden rounded-lg bg-ink-50 ${
+        row ? 'w-14 shrink-0' : 'w-full'
+      }`}>
         {bare && (
           <span className="absolute inset-0 grid place-items-center" aria-hidden>
             <Palette size={30} className="text-ink-300" />
@@ -85,11 +99,11 @@ export function SwatchPreviewBody({ preview }) {
             </>
           )}
       </span>
-      <div className="px-0.5 pt-1.5 pb-0.5">
+      <div className={row ? 'min-w-0 flex-1' : 'px-0.5 pt-1.5 pb-0.5'}>
         <div className="truncate text-xs font-semibold leading-tight text-ink-800">{preview.title}</div>
         {preview.meta && <div className="mt-px truncate text-[10px] leading-snug text-ink-400">{preview.meta}</div>}
       </div>
-    </>
+    </div>
   );
 }
 

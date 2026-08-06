@@ -14,7 +14,7 @@
  */
 import { togoParts, autoUnitScale, meshSeamBleed } from '../../lib/togo/togoModel.js';
 import {
-  PART_ROLES, baseKeyOf, partRoleFor, partKeysFor, hasParts, mergedKeyOf,
+  PART_ROLES, baseKeyOf, partRoleFor, partKeysFor, hasParts, mergedKeyOf, bodySignature,
   finishSpecOf, finishOptionOf,
 } from '../../lib/togo/meshParts.js';
 import { traceGridLoops } from '../../lib/togo/meshToPlan.js';
@@ -807,6 +807,17 @@ function placeRealModel(THREE, object, material, desc, pieceGroup, footprint) {
   // Z-up export exactly as the admin tagger remaps them, so both sides cluster
   // the same meshes the same way — the tagging the dealer confirmed is the
   // tagging the stage renders.
+  // A geometry's congruence signature, memoised ON the geometry: it is a pure
+  // function of buffers that never change after load, and a rebuild happens on
+  // every drag — recomputing an area/volume sweep per frame is the one way this
+  // could cost anything. Shared geometry pays once.
+  const cachedBodySignature = (g) => {
+    if (!g?.attributes?.position) return '';
+    if (typeof g.userData?.bodySig === 'string') return g.userData.bodySig;
+    const sig = bodySignature(g.attributes.position.array, g.index?.array || null);
+    try { (g.userData ||= {}).bodySig = sig; } catch { /* frozen userData — just don't cache */ }
+    return sig;
+  };
   const zUpSrc = desc?.upAxis === 'z';
   const partNodes = [];
   const boxV = new THREE.Box3();
@@ -816,7 +827,7 @@ function placeRealModel(THREE, object, material, desc, pieceGroup, footprint) {
     const nm = Array.isArray(o.material) ? o.material[0]?.name : o.material?.name;
     boxV.setFromObject(o).getSize(sizeV);
     const s = zUpSrc ? [sizeV.x, sizeV.z, sizeV.y] : [sizeV.x, sizeV.y, sizeV.z];
-    partNodes.push({ materialName: nm, size: s });
+    partNodes.push({ materialName: nm, size: s, signature: cachedBodySignature(o.geometry) });
   });
   const partKeys = partKeysFor(partNodes);
   // The FINISH material for a group, or null when the group has no finish spec

@@ -1,72 +1,105 @@
-// CUANDO UN MATERIAL LLEVA DOS CUERPOS DISTINTOS — la separación por forma.
+// CUANDO UN MATERIAL LLEVA VARIOS CUERPOS — la separación por CONGRUENCIA.
 //
-// pCon reutiliza un material para partes que NO son la misma pieza. `partKeysFor`
-// las separa comparando cajas, y la tolerancia de esa comparación es lo único
-// que decide si el dueño podrá tocarlas por separado alguna vez.
+// pCon reutiliza un material para partes que no son la misma pieza: en EXCLUSIF
+// Lounge NoArm, COL0 está hecho de varios componentes. La pregunta que hay que
+// contestar es «¿son estos dos nodos el MISMO TIPO de parte?», y su forma exacta
+// es CONGRUENCIA — el mismo cuerpo movido. No un parecido de cajas.
 //
-// Los números de EXCLUSIF Lounge NoArm salen del propio .3ds (leído del archivo:
-// 4 objetos, M1 y M5 comparten el material COL0):
+// Números leídos del propio .3ds (4 objetos; M1 y M5 comparten COL0):
 //
-//   M1  1.2 × 1.9 × 0.5   COL0   ← la base
-//   M5  1.2 × 2.1 × 0.6   COL0   ← el cojín
-//   M3  1.1 × 1.9 × 0.0   COL1
-//   M7  0.5 × 0.4 × 0.4   COL2
+//   M1  14985 v / 58958 t   COL0   ← la base
+//   M5   3936 v / 16152 t   COL0   ← el cojín
+//   M3    132 v /   480 t   COL1
+//   M7    439 v /  1748 t   COL2
 //
-// Con ±20% esas dos cajas se leían como UNA (alto 16.7%, fondo 9.5%), así que la
-// base y su cojín entraban ya fusionados y no había forma de separarlos.
+// Sus cajas coinciden dentro del 17%, así que CUALQUIER umbral lo bastante
+// ancho para agrupar cojines instanciados de verdad fusionaba también la base
+// con su cojín. Los invariantes no se solapan: cuentas, área y volumen.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { partKeysFor, partRoleFor, baseKeyOf } from '../src/lib/togo/meshParts.js';
+import { bodySignature, partKeysFor, partRoleFor, baseKeyOf } from '../src/lib/togo/meshParts.js';
 
-// El estudio pasa `size` como [ancho, ALTO, fondo] (ver ModelStudio: zUp →
-// [x, z, y]). El archivo es Z-up, así que M1 = [1.2, 0.5, 1.9].
-const M1 = { materialName: 'COL0', size: [1.2, 0.5, 1.9] };   // base
-const M5 = { materialName: 'COL0', size: [1.2, 0.6, 2.1] };   // cojín
-const M3 = { materialName: 'COL1', size: [1.1, 0.0, 1.9] };
-const M7 = { materialName: 'COL2', size: [0.5, 0.4, 0.4] };
+/** Un tetraedro unidad, escalado — geometría real para firmar. */
+function tetra(scale = 1, dx = 0) {
+  const s = scale;
+  const positions = new Float32Array([
+    dx, 0, 0, dx + s, 0, 0, dx, s, 0, dx, 0, s,
+  ]);
+  const indices = new Uint32Array([0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3]);
+  return { positions, indices };
+}
 
-test('EXCLUSIF Lounge NoArm: los 4 cuerpos del archivo son 4 partes', () => {
+test('bodySignature: invariante bajo traslación — el mismo cuerpo movido firma igual', () => {
+  const a = tetra(1, 0);
+  const b = tetra(1, 7.25);          // mismo cuerpo, otra posición
+  assert.equal(bodySignature(a.positions, a.indices), bodySignature(b.positions, b.indices));
+});
+
+test('bodySignature: un cuerpo distinto firma distinto', () => {
+  const a = tetra(1);
+  const b = tetra(2);                // misma topología, otro tamaño
+  assert.notEqual(bodySignature(a.positions, a.indices), bodySignature(b.positions, b.indices));
+});
+
+test('bodySignature: sin geometría no inventa firma', () => {
+  assert.equal(bodySignature(null, null), '');
+  assert.equal(bodySignature(new Float32Array([]), null), '');
+});
+
+test('EXCLUSIF Lounge NoArm: COL0 lleva DOS cuerpos y salen separados', () => {
+  // Las firmas reales medidas sobre el archivo (v:t:área:volumen).
+  const M1 = { materialName: 'COL0', signature: '14985:58958:12.8298:1.19992e-16' };
+  const M3 = { materialName: 'COL1', signature: '132:480:0.142661:1.84744e-17' };
+  const M5 = { materialName: 'COL0', signature: '3936:16152:15.5641:5.57424e-16' };
+  const M7 = { materialName: 'COL2', signature: '439:1748:1.05585:1.25334e-16' };
+
   const keys = partKeysFor([M1, M3, M5, M7]);
   assert.equal(new Set(keys).size, 4, `los 4 cuerpos deben quedar separados, salieron: ${JSON.stringify(keys)}`);
-  // Los dos que comparten COL0 son los que se fusionaban.
-  assert.notEqual(keys[0], keys[2], 'la base y el cojín comparten COL0 pero NO son la misma parte');
-  // El primer cúmulo conserva el nombre desnudo del material — un modelo ya
-  // etiquetado sigue leyéndose igual.
+  assert.notEqual(keys[0], keys[2], 'base y cojín comparten COL0 pero NO son la misma parte');
+  // El primer cúmulo conserva el nombre desnudo — un modelo ya etiquetado se
+  // sigue leyendo igual.
   assert.equal(keys[0], 'COL0');
+  assert.equal(keys[2], 'COL0~2');
   assert.equal(baseKeyOf(keys[2]), 'COL0', 'el segundo cúmulo pertenece al mismo material');
 });
 
-test('tres cojines iguales siguen siendo UNA parte', () => {
-  // Copias instanciadas: difieren en decimales, no en tipo. Es el caso que la
-  // tolerancia no puede romper.
-  const c = (d) => ({ materialName: 'TELA', size: [0.60 + d, 0.20, 0.60 + d] });
-  const keys = partKeysFor([c(0), c(0.005), c(-0.008)]);
-  assert.deepEqual(keys, ['TELA', 'TELA', 'TELA']);
+test('copias instanciadas siguen siendo UNA parte — la congruencia es exacta, no aproximada', () => {
+  // Tres cojines de respaldo son UNA malla dibujada tres veces: firman idéntico
+  // hasta el último dígito, así que ningún umbral puede separarlos por error.
+  const sig = bodySignature(tetra(1).positions, tetra(1).indices);
+  const other = bodySignature(tetra(3).positions, tetra(3).indices);
+  const keys = partKeysFor([
+    { materialName: 'TELA', signature: sig },
+    { materialName: 'TELA', signature: sig },
+    { materialName: 'TELA', signature: sig },
+    { materialName: 'TELA', signature: other },   // el rulo
+  ]);
+  assert.deepEqual(keys.slice(0, 3), ['TELA', 'TELA', 'TELA']);
+  assert.equal(keys[3], 'TELA~2', 'un cuerpo no congruente es su propia parte');
 });
 
-test('el caso que creó la separación: cojines de respaldo vs. rulo, un solo material', () => {
-  // Una losa y un rollo — cajas distintas de verdad.
-  const cushion = { materialName: 'TELA', size: [0.6, 0.22, 0.6] };
-  const bolster = { materialName: 'TELA', size: [1.1, 0.18, 0.18] };
-  const keys = partKeysFor([cushion, cushion, bolster]);
-  assert.equal(keys[0], 'TELA');
-  assert.equal(keys[1], 'TELA');
-  assert.notEqual(keys[2], 'TELA', 'el rulo no es un cojín de respaldo');
+test('sin firma, sigue valiendo la comparación de cajas de siempre', () => {
+  // Compatibilidad: un llamador antiguo que sólo pasa `size` agrupa como antes.
+  const a = { materialName: 'X', size: [0.6, 0.2, 0.6] };
+  const b = { materialName: 'X', size: [0.6, 0.2, 0.6] };
+  const c = { materialName: 'X', size: [1.1, 0.18, 0.18] };
+  const keys = partKeysFor([a, b, c]);
+  assert.equal(keys[0], 'X');
+  assert.equal(keys[1], 'X');
+  assert.notEqual(keys[2], 'X');
 });
 
-test('un cúmulo partido HEREDA la etiqueta de su material — separar de más no rompe nada', () => {
-  // La razón por la que apretar la tolerancia es seguro: un modelo etiquetado
-  // antes de que existieran los cúmulos se sigue leyendo igual.
+test('un cúmulo partido HEREDA la etiqueta de su material', () => {
+  // Por qué separar de más es seguro: un modelo etiquetado antes de que
+  // existieran los cúmulos se sigue leyendo igual.
   const parts = { mats: { COL0: 'cushion' } };
   assert.equal(partRoleFor(parts, 'COL0', 0, 'COL0'), 'cushion');
-  assert.equal(partRoleFor(parts, 'COL0', 2, 'COL0~2'), 'cushion', 'el cúmulo 2 hereda hasta que el dueño diga otra cosa');
-  // …y una etiqueta propia manda sobre la heredada.
+  assert.equal(partRoleFor(parts, 'COL0', 2, 'COL0~2'), 'cushion', 'hereda hasta que el dueño diga otra cosa');
   const own = { mats: { COL0: 'cushion', 'COL0~2': 'base' } };
-  assert.equal(partRoleFor(own, 'COL0', 2, 'COL0~2'), 'base');
+  assert.equal(partRoleFor(own, 'COL0', 2, 'COL0~2'), 'base', 'y una etiqueta propia manda');
 });
 
-test('sin medidas, un nodo no inventa cúmulo', () => {
-  const keys = partKeysFor([{ materialName: 'X' }, { materialName: 'X' }]);
-  assert.deepEqual(keys, ['X', 'X']);
+test('sin firma ni medidas, un nodo no inventa cúmulo', () => {
+  assert.deepEqual(partKeysFor([{ materialName: 'X' }, { materialName: 'X' }]), ['X', 'X']);
 });

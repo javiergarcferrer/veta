@@ -94,7 +94,7 @@ import { loadTogoModels, ALCOVER_MESH_V } from './togoModelLoader.js';
 import { renderTogoThumb, togoThumbStoreKey, bakedThumbUrl, TILE_THUMB } from './togoThumbnails.js';
 import { setupTogoStage, disposeGroup, maskToOutline } from './togoSceneBuilder.js';
 import {
-  PART_ROLES, MATERIALIZATION_ROLES, BILLED_ROLES, COUNT_MAX, partKeysFor, classifyPartGroups,
+  PART_ROLES, MATERIALIZATION_ROLES, BILLED_ROLES, COUNT_MAX, partKeysFor, classifyPartGroups, bodySignature,
   partCount, partMeshCount, accessoryRoleFor, mergedKeyOf, partLabelOf, partRoleFor,
   finishSpecOf, structureStarterFinish, planPartJoin, planPartSplit,
 } from '../../lib/togo/meshParts.js';
@@ -1336,6 +1336,10 @@ export default function ModelStudio({
             // line later and the fact would be gone.
             factory: mats.some((m) => m?.map?.isTexture && (m.map.image || m.map.source?.data)),
             size: zUp ? [sizeV.x, sizeV.z, sizeV.y] : [sizeV.x, sizeV.y, sizeV.z],
+            // The congruence signature the STAGE clusters by — computed from the
+            // same buffers, so the tagging the dealer confirms here is the
+            // tagging that renders (the two must never cluster differently).
+            signature: bodySignature(o.geometry?.attributes?.position?.array, o.geometry?.index?.array || null),
           });
         });
         if (!nodes.length) throw new Error('El modelo no tiene mallas.');

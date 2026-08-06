@@ -170,6 +170,62 @@ function sizeMatches(a, b, tol = 0.2) {
 }
 
 /**
+ * CONGRUENCE — are two bodies THE SAME SHAPE, moved?
+ *
+ * `partKeysFor` has to answer one question: do these two nodes, which share a
+ * material, show the same PART TYPE? The exact statement of "same part" is
+ * CONGRUENT — related by a rigid motion (rotation + translation, and a mirror
+ * for a left/right pair). So the test is a congruence invariant, not a
+ * resemblance score:
+ *
+ *   nV, nT   vertex and triangle counts — combinatorial, and identical for
+ *            instanced copies because they ARE one mesh drawn twice.
+ *   A        surface area, Σ½|(b−a)×(c−a)| — invariant under any isometry.
+ *   V        enclosed volume, Σ a·(b×c)/6 (divergence theorem) — same, and
+ *            |V| so a mirrored copy still matches its twin.
+ *
+ * Rounded to 6 significant figures, which absorbs float noise while keeping two
+ * genuinely different bodies apart: EXCLUSIF Lounge NoArm's base and its seat
+ * cushion share material COL0 and are 14985v/58958t vs 3936v/16152t — the
+ * counts alone separate them, and no tolerance has to be guessed.
+ *
+ * WHY THIS REPLACED A BOUNDING-BOX SCORE: a box is a projection, and two
+ * different bodies can share one. Those two are within 17% on every extent, so
+ * ANY threshold loose enough to group real instanced cushions also fused a base
+ * into its own cushion. Congruence has no such overlap — it asks the question
+ * that was actually meant.
+ *
+ * Pure over flat arrays, so the studio and the stage compute the same signature
+ * from the same geometry. Returns '' when there is nothing to measure, which
+ * reads as "unknown" and falls back to the box comparison below.
+ */
+export function bodySignature(positions, indices) {
+  const pos = positions;
+  if (!pos || !pos.length) return '';
+  const idx = indices && indices.length ? indices : null;
+  const nT = idx ? Math.floor(idx.length / 3) : Math.floor(pos.length / 9);
+  if (!nT) return '';
+  const nV = Math.floor(pos.length / 3);
+  let A = 0, V6 = 0;
+  const ax = [0, 0, 0], bx = [0, 0, 0], cx = [0, 0, 0];
+  for (let t = 0; t < nT; t += 1) {
+    const i0 = (idx ? idx[t * 3] : t * 3) * 3;
+    const i1 = (idx ? idx[t * 3 + 1] : t * 3 + 1) * 3;
+    const i2 = (idx ? idx[t * 3 + 2] : t * 3 + 2) * 3;
+    for (let k = 0; k < 3; k += 1) { ax[k] = pos[i0 + k]; bx[k] = pos[i1 + k]; cx[k] = pos[i2 + k]; }
+    const ux = bx[0] - ax[0], uy = bx[1] - ax[1], uz = bx[2] - ax[2];
+    const vx = cx[0] - ax[0], vy = cx[1] - ax[1], vz = cx[2] - ax[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    A += Math.hypot(nx, ny, nz);                       // ×2, constant factor — invariant either way
+    V6 += ax[0] * (bx[1] * cx[2] - bx[2] * cx[1])
+      + ax[1] * (bx[2] * cx[0] - bx[0] * cx[2])
+      + ax[2] * (bx[0] * cx[1] - bx[1] * cx[0]);
+  }
+  const sig = (x) => (Number.isFinite(x) ? Number(x).toPrecision(6) : '0');
+  return `${nV}:${nT}:${sig(A / 2)}:${sig(Math.abs(V6) / 6)}`;
+}
+
+/**
  * The part key for every mesh node of a model, in traversal order.
  *
  * A key was the material name alone, which assumes pCon gives each PART TYPE its
@@ -177,35 +233,43 @@ function sizeMatches(a, b, tol = 0.2) {
  * some exports upholster the back cushions and the bolster in ONE material, and
  * then every rule downstream is reasoning about a single box merged from both:
  * a slab and a roll averaged into a shape that is neither, so the two can never
- * be told apart and can never be tagged, priced or re-covered separately. That
- * is exactly the "not detecting back cushions and bolster separately" report.
+ * be told apart and can never be tagged, priced or re-covered separately.
  *
- * So a material splits into CLUSTERS by SHAPE, not by position: parts of one
- * type are near-identical boxes (three back cushions), while a bolster is a
- * different box entirely. Shape rather than proximity because on a real sofa the
- * bolster LEANS on the cushions — they touch, so nothing spatial separates them.
- * `sizeMatches` compares boxes to each OTHER, so it doesn't care what units
- * either side measured in — and here it runs at `SAME_PART_TOL`, tighter than
- * the cross-file fingerprint default, because two nodes of ONE material inside
- * ONE export are instanced copies when they are the same part (see the note on
- * `sizeMatches` for the base-fused-to-its-cushion case that forced it).
+ * So a material splits into CLUSTERS BY CONGRUENCE (`bodySignature`): same
+ * shape moved = same part type, anything else = its own part. That is the exact
+ * form of the question, so it needs no threshold — three instanced back
+ * cushions share a signature to the last digit, while a base and the cushion
+ * lying on it do not (different vertex counts, different area, different
+ * volume) even when their bounding boxes agree within 17%, which is what used
+ * to fuse them.
+ *
+ * The BOX comparison survives only as the fallback for a node whose geometry
+ * this layer never saw (an old caller passing `size` alone) — same behaviour as
+ * before for those, and no silent change for callers that do supply geometry.
  *
  * Cluster order is order of first appearance, and the FIRST cluster keeps the
  * bare material name — so every already-tagged model reads exactly as it did,
  * and `partRoleFor` lets later clusters inherit that tag until the dealer says
- * otherwise. `nodes` is `[{ materialName, size: [w,h,d] }]` in traversal order;
- * a node with no size joins the first cluster.
+ * otherwise. `nodes` is `[{ materialName, signature?, size? }]` in traversal
+ * order; a node with neither joins the first cluster.
  */
 export function partKeysFor(nodes) {
-  const reps = new Map();          // material key → [representative size per cluster]
+  const reps = new Map();          // material key → [{ sig, size } per cluster]
   return (nodes || []).map((n, i) => {
     const base = partKeyFor(n?.materialName, i);
     let list = reps.get(base);
     if (!list) { list = []; reps.set(base, list); }
+    const sig = typeof n?.signature === 'string' && n.signature ? n.signature : null;
     const size = Array.isArray(n?.size) && n.size.length === 3 ? n.size : null;
-    if (!size) { if (!list.length) list.push(null); return base; }
-    let at = list.findIndex((r) => r && sizeMatches(size, r, SAME_PART_TOL));
-    if (at < 0) { list.push(size); at = list.length - 1; }
+    if (!sig && !size) { if (!list.length) list.push({ sig: null, size: null }); return base; }
+    // Congruence when both sides know their geometry — exact, no tolerance.
+    // Otherwise the historical box comparison, so a caller that never had a
+    // signature keeps its old clustering.
+    let at = list.findIndex((r) => (
+      sig && r.sig ? r.sig === sig
+        : (size && r.size ? sizeMatches(size, r.size, SAME_PART_TOL) : false)
+    ));
+    if (at < 0) { list.push({ sig, size }); at = list.length - 1; }
     return at === 0 ? base : `${base}~${at + 1}`;
   });
 }

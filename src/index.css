@@ -519,23 +519,17 @@
     -webkit-touch-callout: none;
   }
 
-  /* ── Long-press selects nothing ────────────────────────────────────────────
-     Tap-and-hold anywhere in the back-office used to flash the whole screen
-     blue (iOS text selection) and pop the "Copy" callout — pure noise in an app
-     whose text is data to read, not prose to quote. Suppress selection + the
-     callout app-wide, then re-enable it exactly where it earns its keep:
-       • fields the user edits (input / textarea / contenteditable),
-       • an explicit `.select-text` opt-in for a rare copyable value,
-       • the public client surfaces (`html.is-public` — the shared quote /
-         contrato / cuenta / tienda on a CUSTOMER's device, where copying a bank
-         detail or a total is a legitimate need; those mirror the PDF).
-     Inputs MUST re-enable `-webkit-user-select` explicitly: on iOS a `none`
-     ancestor otherwise kills the caret/selection handles inside the field. */
-  body {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-  }
+  /* ── Text is copyable ──────────────────────────────────────────────────────
+     Selection stays ON app-wide (owner rule 2026-08: back-office text is DATA
+     — a reference, a phone, a total — and highlight/copy must work
+     everywhere). The old body-level `user-select: none` (an
+     anti-long-press-flash measure) is deliberately GONE — do not reintroduce
+     it. Suppression is PER-CONTROL only: the button rule above,
+     component-level `select-none` on chrome (tabs, summaries, grips),
+     `body.rs-resizing`, and `.no-select-ui` below. The re-enable list keeps
+     fields selectable on iOS even inside one of those `none` wrappers (a
+     `none` ancestor otherwise kills the caret/selection handles inside the
+     field). */
   input,
   textarea,
   [contenteditable]:not([contenteditable="false"]),

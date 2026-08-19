@@ -658,17 +658,21 @@ export default function TogoStage({
       const tx = from.tx + (to.tx - from.tx) * e, ty = from.ty + (to.ty - from.ty) * e, tz = from.tz + (to.tz - from.tz) * e;
       controls.target.set(tx, ty, tz);
       camera.lookAt(tx, ty, tz);
-      // The glide renders by hand, so it must consume shadowsDirty itself. The
-      // mode toggle just swapped the shadow CASTER (setShadowMode) — and on the
-      // first plano→vista of a session the 3D key's shadow map has never been
+      // The glide renders by hand, so it must consume shadowsDirty itself. On
+      // the first plano→vista of a session the key's shadow map has never been
       // rendered, so it is still null. Every fabric material samples it through
       // a shadow sampler, and drivers REJECT those draws (format/sampler
       // mismatch): the furniture vanished for the whole glide while the floor
       // (no shadow sampling) kept rendering, then popped back when the settle
       // frame's renderNow finally ran the shadow pass. Paying the pass on the
-      // first glide frame keeps the piece visible AND shows the right shadow
-      // (raking vs contact) through the move instead of the stale one.
-      if (l.shadowsDirty) { l.renderer.shadowMap.needsUpdate = true; l.shadowsDirty = false; }
+      // first glide frame keeps the piece visible through the move. The contact
+      // bake rides along so the ground shadow arrives with it rather than a
+      // frame later.
+      if (l.shadowsDirty) {
+        l.renderer.shadowMap.needsUpdate = true;
+        l.updateShadow?.();
+        l.shadowsDirty = false;
+      }
       l.renderer.render(l.scene, camera);
       if (p < 1) { l.tween = requestAnimationFrame(step); }
       else { l.tween = null; placeCamera(l, to, m); l.requestRender(); after?.(); }   // snap to the exact end pose + restore controls
@@ -907,14 +911,25 @@ export default function TogoStage({
         const mat = firstPieceMaterial(pg);
         if (!from || !mat?.color || mat.color.equals(from)) return;
         const to = mat.color.clone();
+        // The sheen tween ends at the BUILT material's own tint, never at the
+        // lerped base: a scan-dressed fabric renders its map at a WHITE base
+        // while its sheen carries the swatch's sampled hue, so copying
+        // sheenColor from the base left every just-dressed piece wearing a
+        // WHITE sheen lobe — the pale glaze the sheen comments war against —
+        // until the next rebuild. (Blank → dressed is exactly the case where
+        // the base colours differ, which is why the fade fires there.) On a
+        // flat-colour fabric sheenColor equals the base, so the lerp is the
+        // old locked behaviour by construction.
+        const toSheen = mat.sheenColor?.clone() ?? null;
         mat.color.copy(from);
-        mat.sheenColor?.copy(from);                    // sheen is tinted to the base — keep them locked
+        mat.sheenColor?.copy(from);
         l.addAnim?.(`fab:${uid}`, 280, (p) => {
           const g = l.group?.children.find((c) => c.userData.uid === uid);
           const m2 = g ? firstPieceMaterial(g) : null;
           if (!m2?.color) return;
-          m2.color.lerpColors(from, to, 1 - (1 - p) ** 3);
-          m2.sheenColor?.copy(m2.color);
+          const ease = 1 - (1 - p) ** 3;
+          m2.color.lerpColors(from, to, ease);
+          if (toSheen && m2.sheenColor) m2.sheenColor.lerpColors(from, toSheen, ease);
         }, undefined, false);   // colour-only — no shadow re-render
       });
     }
@@ -1602,7 +1617,16 @@ export default function TogoStage({
       const renderNow = () => {
         syncSize();
         const l2 = api.current;
-        if (l2?.shadowsDirty) { renderer.shadowMap.needsUpdate = true; l2.shadowsDirty = false; }
+        // The ground shadow is a BAKED buffer now (setupTogoStage → contact
+        // shadow), so it re-bakes on the same dirty flag that refreshes the
+        // shadow map — a drag moves a piece without moving the light rig, so
+        // retarget's own bake can't cover it. Camera-only frames still pay
+        // neither, which is what keeps orbiting free on a phone.
+        if (l2?.shadowsDirty) {
+          renderer.shadowMap.needsUpdate = true;
+          l2.updateShadow?.();
+          l2.shadowsDirty = false;
+        }
         renderer.render(scene, camera);
         reportSelPos(); drawDimensions(); reportSelContour(); reportChipAnchor();
       };
@@ -1614,7 +1638,7 @@ export default function TogoStage({
       const requestRender = () => { if (scheduled || !alive || inMotor) return; scheduled = true; raf = requestAnimationFrame(() => { scheduled = false; if (alive) renderNow(); }); };
       controls.addEventListener('change', requestRender);
 
-      const { dispose: disposeStage, retarget: retargetStage, setShadow: setShadowMode } = setupTogoStage(deps, renderer, scene, 320, { grid: true, ...(stateRef.current.ground ? { ground: stateRef.current.ground } : {}) });
+      const { dispose: disposeStage, retarget: retargetStage, setShadow: setShadowMode, updateShadow } = setupTogoStage(deps, renderer, scene, 320, { grid: true, ...(stateRef.current.ground ? { ground: stateRef.current.ground } : {}) });
       // The plan grounds the piece with a contact shadow from overhead; the
       // raking key's long shadow is a 3D-vista read (see setupTogoStage.setShadow).
       setShadowMode(stateRef.current.mode);
@@ -1623,7 +1647,7 @@ export default function TogoStage({
       });
 
       api.current = {
-        THREE, deps, renderer, scene, camera, controls, disposeStage, retargetStage, setShadowMode, quilt, grain,
+        THREE, deps, renderer, scene, camera, controls, disposeStage, retargetStage, setShadowMode, updateShadow, quilt, grain,
         group: null, scene3d: { pieces: [], center: { x: PLAN_W / 2, z: PLAN_H / 2 }, radius: 170 },
         framedCount: -1, colorCache: new Map(), requestRender, rebuildGen: 0,
         raycaster: new THREE.Raycaster(), floor: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
@@ -2129,7 +2153,7 @@ export default function TogoStage({
             const info = hoverAt(e.clientX, e.clientY, ringRadiusFor(t.pointerType));
             const now = performance.now();
             const prev = l.lastTap3d;
-            l.lastTap3d = { t: now, x: e.clientX, y: e.clientY };
+            l.lastTap3d = { t: now, x: e.clientX, y: e.clientY, uid: info?.uid ?? null };
             if (!info && prev && now - prev.t < 350 && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 24) {
               l.lastTap3d = null;
               reportHover(null);
@@ -2141,13 +2165,26 @@ export default function TogoStage({
             // (the pipette promised it); the piece body selects first, and a
             // second tap on the selected body opens its base fabric — so a 3D
             // novice discovers select → edit without ever being told.
+            //
+            // A DOUBLE-TAP on one piece is the express lane to that flow and it
+            // is decided HERE, off the stage's own tap ledger — never off
+            // `selectedUid`: the first tap's selection is a React state write,
+            // and a fast second tap raced its flush, so reading it back made
+            // double-tap open-the-picker work only for SLOW double-taps (the
+            // owner's phone: «double click … should immediately bring up the
+            // material selector», 2026-08-14). Same-piece identity is the
+            // gate, not pixel distance — tapping the seat then the back is
+            // still "this piece, NOW".
             if (info) {
+              const doubled = !!(prev && prev.uid === info.uid && now - prev.t < 350);
               const isPart = (info.partRole || 'base') !== 'base';
               // The group key rides along so the embed can open a FINISH picker
               // (metal legs etc.) for the exact part touched — role alone can't
-              // name it, since finishes attach to keys, not roles.
-              if (isPart) stateRef.current.onTapPart?.(info.uid, info.partRole, info.partKey || null);
-              else if (stateRef.current.selectedUid === info.uid) stateRef.current.onTapPart?.(info.uid, 'base', info.partKey || null);
+              // name it, since finishes attach to keys, not roles. `doubled`
+              // rides too: it lets the embed's first-click-selects gate stand
+              // aside when the second tap already said "open it".
+              if (isPart) stateRef.current.onTapPart?.(info.uid, info.partRole, info.partKey || null, doubled);
+              else if (doubled || stateRef.current.selectedUid === info.uid) stateRef.current.onTapPart?.(info.uid, 'base', info.partKey || null, doubled);
               else stateRef.current.onSelect?.(info.uid);
             } else {
               stateRef.current.onSelect?.(null);   // a clean tap on empty space = deselect (mirrors 2D)

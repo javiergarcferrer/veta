@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Inbox, MessageCircle, Mail, Send, Trash2, Loader2, FileDown, Store, Check,
+  Inbox, MessageCircle, Mail, Send, Trash2, Loader2, FileDown, Box, Store, Check,
   RotateCcw, ArrowRight, FileText,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
@@ -9,14 +9,19 @@ import { useLiveQuery } from '../db/hooks.js';
 import { db, invalidate } from '../db/database.js';
 import { formatDateTime } from '../lib/format.js';
 import { downloadText } from '../lib/csv.js';
-import { swatchUrl } from '../lib/swatchImage.js';
+import { PRODUCT_LIST_COLUMNS } from '../lib/constants.js';
+import { swatchUrl, swatchProxyUrl } from '../lib/swatchImage.js';
+import { safeDynamicImport } from '../lib/dynamicImport.js';
 import {
   resolveTogoModels, resolveTogoDxf, placementsFromPlaced, resolveRequestsBoard,
+  resolveTogoScene, scenePlacementsFromPlaced,
 } from '../core/quote/index.js';
 import EmptyState from '../components/EmptyState.jsx';
 import ImageView from '../components/ImageView.jsx';
 import CompositionView from '../components/quote/CompositionView.jsx';
 import { useMeshPlans, applyMeshPlans } from '../components/togo/useMeshPlans.js';
+import { loadTogoModels } from '../components/togo/togoModelLoader.js';
+import { disposeGroup } from '../components/togo/togoSceneBuilder.js';
 import { createQuoteFromRequest } from './quoting/api.js';
 
 /**
@@ -56,8 +61,14 @@ export default function TogoRequests() {
     () => (profileId ? db.togoModels.where('profileId').equals(profileId).toArray() : Promise.resolve([])),
     [profileId], [],
   );
+  // PROJECTED (PRODUCT_LIST_COLUMNS): resolveTogoModels only prices off the
+  // declared Product fields, and `select *` also shipped the search columns on
+  // every catalog-wide read. The Distribuidores tab projects the SAME list, so
+  // the two still share one cached corpus.
   const products = useLiveQuery(
-    () => (profileId ? db.products.where('profileId').equals(profileId).cached(300_000).toArray() : Promise.resolve([])),
+    () => (profileId
+      ? db.products.where('profileId').equals(profileId).columns(PRODUCT_LIST_COLUMNS).cached(300_000).toArray()
+      : Promise.resolve([])),
     [profileId], [],
   );
   // Dealers that route leads here → the source badge (dealerId → name; null =
@@ -205,6 +216,47 @@ function RequestCard({ row, planModels, resolvedById, svgById, busy, error, onQu
     downloadText(filename, dxf);
   }, [row, resolvedById, svgById]);
 
+  // 3D — the visitor's layout as ONE textured GLB: the same fabric-baked scene
+  // the snapshot renders (real meshes, their chosen fabrics embedded, metres),
+  // dequantized to core glTF so it opens in Twinmotion / Blender / SketchUp /
+  // the OS 3D viewers. Everything heavy loads on demand, only on tap.
+  const scene3d = useMemo(
+    () => resolveTogoScene(scenePlacementsFromPlaced(row.placed, planModels)),
+    [row.placed, planModels],
+  );
+  const [glbBusy, setGlbBusy] = useState(false);
+  const downloadGlb = useCallback(async () => {
+    if (!scene3d?.pieces?.length || glbBusy) return;
+    setGlbBusy(true);
+    try {
+      const [THREE, rbg, glbx, mod] = await Promise.all([
+        safeDynamicImport(() => import('three')),
+        safeDynamicImport(() => import('three/examples/jsm/geometries/RoundedBoxGeometry.js')),
+        safeDynamicImport(() => import('three/examples/jsm/exporters/GLTFExporter.js')),
+        safeDynamicImport(() => import('../components/togo/togoGlbExport.js')),
+      ]);
+      // A PRIVATE model cache (the second arg): this path disposes what it
+      // loads once the file is written, and the session-shared cache belongs
+      // to the card snapshots rendering around this one.
+      const { cache, modelFor } = await loadTogoModels(scene3d, new Map());
+      const { fabricTextures, colors, pbr, normals, extras } = await mod.loadSceneFabrics(
+        THREE, scene3d, {}, (code) => swatchProxyUrl(code) || swatchUrl(code),
+      );
+      const built = mod.buildArGroup({ THREE, RoundedBoxGeometry: rbg.RoundedBoxGeometry }, scene3d, {
+        fabricTextures, colors, pbr, normals, extras, modelFor,
+      });
+      const blob = await mod.exportGlbBlob({ GLTFExporter: glbx.GLTFExporter, THREE }, built.root);
+      built.dispose();
+      cache.forEach((m) => disposeGroup(m.object || m));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `togo-3d-${(row.name || 'solicitud').trim().replace(/\s+/g, '-')}.glb`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    } catch { /* export unavailable on this device */ }
+    setGlbBusy(false);
+  }, [scene3d, glbBusy, row.name]);
+
   const planItems = useMemo(
     () => (row.items || []).map((it) => ({ modelId: it.modelId, x: it.x, y: it.y, rot: it.rot })),
     [row.items],
@@ -278,9 +330,16 @@ function RequestCard({ row, planModels, resolvedById, svgById, busy, error, onQu
 
       <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
         {planItems.length > 0 && (
-          <button type="button" onClick={downloadDxf} className="btn-ghost text-xs text-ink-600 mr-auto whitespace-nowrap" title="Descargar el plano en CAD (DXF)">
-            <FileDown size={14} aria-hidden /> Plano DXF
-          </button>
+          <span className="mr-auto flex items-center gap-1">
+            {/* The TWO exports: 2D = the CAD plan, 3D = one textured GLB that
+                opens everywhere. Nothing else. */}
+            <button type="button" onClick={downloadDxf} className="btn-ghost text-xs text-ink-600 whitespace-nowrap" title="El plano en CAD (DXF) — AutoCAD y cualquier programa de planos">
+              <FileDown size={14} aria-hidden /> 2D
+            </button>
+            <button type="button" onClick={downloadGlb} disabled={glbBusy} className="btn-ghost text-xs text-ink-600 whitespace-nowrap disabled:opacity-40" title="La composición en 3D con sus telas (GLB) — Twinmotion, Blender, SketchUp, visor 3D">
+              {glbBusy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Box size={14} aria-hidden />} 3D
+            </button>
+          </span>
         )}
         {row.status.key === 'pending' && (
           <button type="button" onClick={() => onStatus('contacted')} className="btn-ghost text-xs whitespace-nowrap">

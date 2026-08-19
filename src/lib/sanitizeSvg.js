@@ -7,9 +7,12 @@
 // DOM-FREE: a pure string transform behaves identically in the browser, in the
 // node tests, and in any SSR-ish path — and it avoids a DOMParser round-trip,
 // which can silently mangle SVG namespaces/elements. It removes exactly the
-// executable content — <script> blocks, on* event-handler attributes, and
-// javascript:/vbscript:/data:text/html URLs in href/xlink:href/src — and leaves
-// ordinary <path>/<g>/<rect>/<polygon>/style markup untouched. Safe to apply
+// executable content — <script> blocks, SMIL animation (<animate>/<set>/
+// <animateTransform>/<animateMotion>, which can REWRITE an href into a
+// javascript: URL at runtime) plus <foreignObject> (it smuggles arbitrary
+// HTML), on* event-handler attributes, and javascript:/vbscript:/data:text/html
+// URLs in href/xlink:href/src/to/values — and leaves ordinary
+// <path>/<g>/<rect>/<polygon>/style markup untouched. Safe to apply
 // twice (stripping already-clean geometry is a no-op).
 
 /** Decode numeric character entities so scheme obfuscation can't hide the colon
@@ -32,7 +35,7 @@ function isDangerousUrl(value) {
  * transform (no document/DOMParser needed).
  *
  * @param {string} markup raw SVG (or SVG fragment) string
- * @returns {string} the same markup with script/event-handlers/js-URLs stripped
+ * @returns {string} the same markup with script/animation/event-handlers/js-URLs stripped
  */
 export function sanitizeSvg(markup) {
   let s = String(markup || '');
@@ -44,12 +47,24 @@ export function sanitizeSvg(markup) {
     .replace(/<script\b[^>]*\/\s*>/gi, '')
     .replace(/<script\b[^>]*>/gi, '');
 
-  // 2. on* event-handler attributes (onload/onerror/onbegin/onclick/…), any quoting.
+  // 2. SMIL animation + <foreignObject> — same three steps. SMIL is a script
+  // vector without a script tag: <set attributeName="href" to="javascript:…">
+  // inside an <a> rewrites the link when the payload fires, and the scheme
+  // rides `to`/`values`, never an href the step below would see.
+  const ACTIVE = 'animateTransform|animateMotion|animate|set|foreignObject';
+  s = s
+    .replace(new RegExp(`<(${ACTIVE})\\b[\\s\\S]*?</\\1\\s*>`, 'gi'), '')
+    .replace(new RegExp(`<(?:${ACTIVE})\\b[^>]*/\\s*>`, 'gi'), '')
+    .replace(new RegExp(`<(?:${ACTIVE})\\b[^>]*>`, 'gi'), '');
+
+  // 3. on* event-handler attributes (onload/onerror/onbegin/onclick/…), any quoting.
   s = s.replace(/\son[a-z][a-z0-9-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
 
-  // 3. Dangerous URL schemes in href / xlink:href / src → drop the whole attribute.
+  // 4. Dangerous URL schemes in href / xlink:href / src — and in the SMIL
+  // targets to / values, belt-and-braces for any animation form step 2 missed.
+  // Drop the whole attribute. Numeric `values` (feColorMatrix) never match.
   s = s.replace(
-    /\s(?:xlink:href|href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    /\s(?:xlink:href|href|src|to|values)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
     (match, dq, sq, uq) => (isDangerousUrl(dq ?? sq ?? uq) ? '' : match),
   );
 

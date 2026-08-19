@@ -1,0 +1,27 @@
+{
+  /* Typecheck the Deno Edge Functions.
+     They were never covered: the root tsconfig includes only `src`, so a
+     runner could reference an identifier its module never imported and stay
+     green through every test — which is exactly how "newId is not defined"
+     reached production on 2026-08-16.
+     Deno's URL/npm specifiers and its globals are declared in
+     supabase/functions-env.d.ts; this pass is about UNBOUND NAMES, not deep
+     types, so it stays deliberately loose otherwise. */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "allowJs": false,
+    "checkJs": false,
+    "strict": false,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["supabase/functions/**/*.ts", "supabase/functions-env.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

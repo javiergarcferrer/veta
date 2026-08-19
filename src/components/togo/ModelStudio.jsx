@@ -62,7 +62,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, ArrowLeft, Box, Check, Code2, Combine,
-  Copy, ExternalLink, Link2, Loader2, Palette, Plus, RefreshCw, Sofa,
+  Copy, ExternalLink, Link2, Loader2, Palette, Plus, RefreshCw, Scissors, Sofa,
   Sparkles, Trash2, Ungroup, UploadCloud,
 } from 'lucide-react';
 import Modal from '../Modal.jsx';
@@ -87,7 +87,11 @@ import { proposeCollectionBindings } from '../../lib/togo/autoLink.js';
 import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
 import { canonicalCollection } from '../../lib/togo/collections.js';
 import { buildSuggestQuery, suggestSkuMatch, SUGGEST_LIMIT } from '../../lib/togo/suggestSku.js';
+import { checkPartBinding, blocks, setSizeOf, planPartCount } from '../../lib/togo/partBinding.js';
+import { buildPartRefs, stampFingerprints } from '../../lib/togo/partFingerprints.js';
+import { indexProductsByRoot } from '../../lib/togo/bindingExamples.js';
 import { indexCandidates, resolveModelMatches, heroFabricOptions, planHeroPin, resolveCollectionMenu } from '../../core/quote/index.js';
+import { harvestModelGroups, buildAccessoryRefs } from './meshHarvest.js';
 import { probeMeshBinding } from './bindingProbe.js';
 import { loadSceneFile, splitScene, exportPieceGlb, optimizeGlbUrl, isOptimizableMeshUrl } from './sceneImport.js';
 import { loadTogoModels, ALCOVER_MESH_V } from './togoModelLoader.js';
@@ -647,12 +651,22 @@ export default function ModelStudio({
   // mesh separates it again). The dealer arms it once and keeps clicking.
   const [joinMode, setJoinMode] = useState(false);
   const [slotErr, setSlotErr] = useState(null);
+  // The geometry of the groups currently on the stage: key → { sig, size(cm) }.
+  // Stamped into `parts.sigs` on every commit, which is what turns this model
+  // into a TEACHER for its siblings (partFingerprints) — and what keeps its own
+  // tagging findable after a re-strip renumbers the positional `#N` keys.
+  const geomRef = useRef(new Map());
   const [saveErr, setSaveErr] = useState(null);
   const [fanoutErr, setFanoutErr] = useState(0);      // siblings the fan-out couldn't write
   const [saving, setSaving] = useState(false);
 
   const [detecting, setDetecting] = useState(false);
   const [detectErr, setDetectErr] = useState(null);
+  // What the last detection LEARNED from siblings the dealer already confirmed
+  // — and what it could not learn because two of them disagree. Both are shown:
+  // a proposal that silently used no examples reads exactly like one that used
+  // them, and a dropped conflict would leave the collection looking consistent.
+  const [taughtNote, setTaughtNote] = useState(null);
   const [meshBusy, setMeshBusy] = useState(false);
   const [meshOpErr, setMeshOpErr] = useState(null);
   const [embedOpen, setEmbedOpen] = useState(false);
@@ -662,9 +676,20 @@ export default function ModelStudio({
 
   // ── Commit the draft. Whole-object, empties pruned — the same shape the modal
   // this replaces wrote, so nothing downstream can tell the difference.
+  // Every confirmation STAMPS the geometry it confirmed. That is what makes this
+  // model teach its siblings (buildPartRefs matches on `sig`, never on a
+  // material name — measured: `COL0` is tagged base, bolster AND structure
+  // across three EXCLUSIF models), and it is also what keeps the model's OWN
+  // tagging findable: positional `#N` keys are node indices, so one strip pass
+  // that drops a shadow mesh renumbers them and orphans every stored role.
+  //
+  // Only stamps what the stage actually measured. Committing a model whose mesh
+  // failed to load leaves the previous fingerprints alone rather than erasing a
+  // corpus over a bad fetch.
   const commitParts = useCallback(async (next, id = activeIdRef.current) => {
     if (!id) return;
-    await db.togoModels.update(id, { parts: prunedParts(next), updatedAt: Date.now() });
+    const stamped = id === activeIdRef.current ? stampFingerprints(next, geomRef.current) : next;
+    await db.togoModels.update(id, { parts: prunedParts(stamped), updatedAt: Date.now() });
   }, []);
 
   // ── The finish FAN-OUT. A palette belongs to the colección, not to the model
@@ -1244,6 +1269,11 @@ export default function ModelStudio({
           eng.raf = requestAnimationFrame(tick);
           controls.update();
           if (!document.hidden) {
+            // The studio never retargets (the rig is built once at the canonical
+            // radius), so the baked ground shadow has no other cue to refresh
+            // on — and the model under it is swapped, re-split and re-posed as
+            // you work. Baking with the frame keeps it honest for every edit.
+            eng.stage?.updateShadow?.();
             renderer.render(scene, camera);
             eng.strokeOutline();
           }
@@ -1344,6 +1374,24 @@ export default function ModelStudio({
         });
         if (!nodes.length) throw new Error('El modelo no tiene mallas.');
         const keys = partKeysFor(nodes);
+        // The FINGERPRINT of every group on the stage, in cm so a size read here
+        // compares with one measured in a sibling exported at another scale.
+        // The signature itself rides the raw buffers (congruence is what it is),
+        // and the first node of a cluster represents it — `partKeysFor` only
+        // clusters bodies it proved congruent, so any member gives the same one.
+        {
+          const nativeMax = nodes.reduce((mx, n) => Math.max(mx, ...(n.size || [0])), 0);
+          const unit = autoUnitScale(nativeMax);
+          const geom = new Map();
+          keys.forEach((k, i) => {
+            if (!k || geom.has(k)) return;
+            geom.set(k, {
+              sig: nodes[i].signature || null,
+              size: Array.isArray(nodes[i].size) ? nodes[i].size.map((v) => v * unit) : null,
+            });
+          });
+          geomRef.current = geom;
+        }
         // The part keys whose meshes carry a factory finish — the inspector
         // badges them, so "why doesn't this one take the tela?" is answered on
         // the row instead of read as a bug.
@@ -1620,11 +1668,47 @@ export default function ModelStudio({
     return spec ? applyStructureToDraft(next, spec) : next;
   }), [editParts]);
 
+  // The catalog indexed by SKU root — name, subtype and cheapest grade, which is
+  // everything the portero below judges a binding on. `products` is a LAZY
+  // dependency (the 27k-row fetch only happens once something asks), so this
+  // stays null until the dealer opens a picker, and a null index simply means
+  // "nothing to check against" — never a block.
+  const productsByRoot = useMemo(() => (products ? indexProductsByRoot(products) : null), [products]);
+
   const bindSku = useCallback((members, currentRole, root) => {
     const plan = planSkuSlot(draftRef.current, members, currentRole, root);
     if (plan.error) { setSlotErr(plan.error); return; }
-    editParts((d) => writeSlot(d, members, plan.role, root));
-  }, [editParts]);
+    // EL PORTERO — what may occupy a BILLED slot. Eight of the ten slots the
+    // dealer filled by hand held a base SKU (see lib/togo/partBinding), and the
+    // quote added it on top of the piece's own price: the Ottomans billed at
+    // ~2×. Refusing writes NOTHING, so the slot stays empty and priceless
+    // rather than full of the wrong number — recoverable in the direction that
+    // matters. A `warn` rides through and is shown.
+    const baseRoot = cardRef.current?.productRoot || null;
+    const checks = checkPartBinding({
+      role: plan.role,
+      root,
+      product: productsByRoot?.get(root) || null,
+      basePrice: baseRoot ? productsByRoot?.get(baseRoot)?.fromUsd : null,
+      baseRoot,
+    });
+    if (blocks(checks)) { setSlotErr(checks.find((c) => c.level === 'blocker').message); return; }
+    setSlotErr(checks.find((c) => c.level === 'warn')?.message || null);
+    editParts((d) => {
+      const next = writeSlot(d, members, plan.role, root);
+      // «Se cobra ×» DERIVADO, no tecleado. Ligne Roset writes the set size into
+      // the SKU's own name — «S/2 BACK CUSHIONS», «S/3 BACK CUSHIONS» — so the
+      // units follow from the mesh: three back cushions against an S/3 is ONE
+      // set. That is the number `COUNT_MAX` exists to guard, and a figure read
+      // off the price list has no fat-finger mode. A SKU that declares nothing
+      // leaves the count alone, which is the 1-per-tagged-role `partCount`
+      // default the catalog already had.
+      const size = setSizeOf(productsByRoot?.get(root) || null);
+      if (!size) return next;
+      const units = planPartCount(partMeshCount(next, plan.role), size);
+      return { ...next, counts: { ...(next.counts || {}), [plan.role]: units } };
+    });
+  }, [editParts, products, productsByRoot]);
 
   // The typed count is CLAMPED to the Model's range here too, so a typo can't
   // even be staged into the draft. It SATURATES (the low end always has: a typed
@@ -1652,74 +1736,24 @@ export default function ModelStudio({
     if (!card?.mesh || detecting) return;
     setDetecting(true); setDetectErr(null);
     try {
-      const { modelFor } = await loadTogoModels({ pieces: [{ mesh: card.mesh }] });
-      const real = modelFor({ mesh: card.mesh });
-      if (!real?.object) throw new Error('No se pudo cargar el modelo 3D.');
-      const THREE = await safeDynamicImport(() => import('three'));
-      const obj = real.object;
-      obj.updateMatrixWorld(true);
-      // One group per material name (fallback: node index), boxes merged. A
-      // z-up export swaps its height axis so the classifier reads y-up boxes.
-      const zUp = (card.meshUpAxis || 'y') === 'z';
-      const remap = (v) => (zUp ? [v[0], v[2], v[1]] : v);
-      // Every mesh's box first, THEN the keys. A material that upholsters two
-      // different part types splits into shape clusters — merging its boxes
-      // before that split averaged a slab and a roll into one box that is
-      // neither. `partKeysFor` needs all the boxes to see it.
-      const meshes = [];
-      obj.traverse((o) => {
-        if (!o.isMesh) return;
-        const name = Array.isArray(o.material) ? o.material[0]?.name : o.material?.name;
-        const box = new THREE.Box3().setFromObject(o);
-        const min = remap(box.min.toArray()), max = remap(box.max.toArray());
-        meshes.push({ materialName: name, min, max, size: max.map((v, a) => v - min[a]) });
-      });
-      const keys = partKeysFor(meshes);
-      const byKey = new Map();
-      meshes.forEach((m, i) => {
-        const key = keys[i];
-        const g = byKey.get(key);
-        if (g) {
-          g.min = g.min.map((v, a) => Math.min(v, m.min[a]));
-          g.max = g.max.map((v, a) => Math.max(v, m.max[a]));
-        } else byKey.set(key, { key, min: m.min, max: m.max });
-      });
-      const found = [...byKey.values()];
-      if (!found.length) throw new Error('El modelo no tiene mallas.');
-      // FINGERPRINTS from the collection's standalone accessory models: pCon
-      // reuses ONE material id per part type across the collection, so a sofa
-      // sub-mesh sharing the loose cushion's material IS that cushion; its
-      // measured size (cm) is the second signal. Each accessory loads once (the
-      // loader caches by URL) and a broken one just contributes nothing.
-      const refs = (await Promise.all(accessories.map(async (a) => {
-        try {
-          const { modelFor: accModelFor } = await loadTogoModels({ pieces: [{ mesh: a.mesh }] });
-          const acc = accModelFor({ mesh: a.mesh });
-          if (!acc?.object) return null;
-          acc.object.updateMatrixWorld(true);
-          const accZUp = (a.meshUpAxis || 'y') === 'z';
-          const accRemap = (v) => (accZUp ? [v[0], v[2], v[1]] : v);
-          const matKeys = [];
-          const boxAll = new THREE.Box3().setFromObject(acc.object);
-          acc.object.traverse((o) => {
-            if (!o.isMesh) return;
-            const nm = Array.isArray(o.material) ? o.material[0]?.name : o.material?.name;
-            // Only NAMED materials fingerprint — positional keys ("#2") are
-            // meaningless across different exports.
-            if (nm && String(nm).trim()) matKeys.push(String(nm).trim());
-          });
-          const rawMin = accRemap(boxAll.min.toArray()), rawMax = accRemap(boxAll.max.toArray());
-          const rawSize = rawMax.map((v, i2) => v - rawMin[i2]);
-          const unit = autoUnitScale(Math.max(...rawSize));
-          return { role: accessoryRoleFor(a.name), matKeys, size: rawSize.map((v) => v * unit) };
-        } catch { return null; }
-      }))).filter((ref) => ref && ref.role);
-      // The sofa's own groups measure in ITS units — bring them to cm with the
-      // same unit guard so size fingerprints compare like for like.
-      const sofaRaw = found.reduce((m, g) => Math.max(m, ...g.max.map((v, i2) => v - g.min[i2])), 0);
-      const sofaUnit = autoUnitScale(sofaRaw);
-      const cmGroups = found.map((g) => ({ key: g.key, min: g.min.map((v) => v * sofaUnit), max: g.max.map((v) => v * sofaUnit) }));
-      const proposal = classifyPartGroups(cmGroups, refs);
+      // Groups and accessory fingerprints both come from the SHARED helpers —
+      // the colección-wide batch runs the exact same two, so a tagger and a
+      // batch can never cluster or fingerprint the same mesh differently.
+      const cmGroups = await harvestModelGroups(card.mesh, card.meshUpAxis);
+      const refs = await buildAccessoryRefs(accessories);
+      // LO QUE LOS HERMANOS YA CONFIRMADOS ENSEÑAN. Ésta es la mitad que
+      // convierte «etiqueta uno o dos y suelta la máquina» en algo real: cada
+      // grupo que el dueño nombró en otro modelo de la colección viaja por su
+      // FIRMA de congruencia, que es identidad exacta y no un umbral. Van
+      // DELANTE de las de accesorio en el arreglo, y `classifyPartGroups` mira
+      // `sig` antes que nada, así que una respuesta suya gana a toda heurística.
+      const taught = buildPartRefs(modelsRef.current, { collection: card.collection, excludeId: card.id });
+      const proposal = classifyPartGroups(cmGroups, [...taught.refs, ...refs]);
+      // Dos firmas iguales con roles distintos no enseñan nada (se descartan) —
+      // pero callarlo dejaría al dueño creyendo que la colección ya concuerda.
+      setTaughtNote(taught.refs.length || taught.conflicts.length
+        ? { learned: taught.refs.length, from: taught.taughtBy, conflicts: taught.conflicts.length }
+        : null);
       // Keep the dealer's existing choices; the proposal only fills NEW keys.
       const base = draftRef.current || {};
       const next = { ...base, mats: { ...proposal, ...(base.mats || {}) } };
@@ -2324,6 +2358,25 @@ export default function ModelStudio({
               <AlertCircle size={11} className="mt-0.5 shrink-0" /> {detectErr || meshOpErr}
             </div>
           )}
+          {/* Qué aprendió la detección de los modelos ya confirmados. Se dice
+              siempre que hubo algo que aprender: una propuesta que no usó
+              ningún ejemplo se ve idéntica a una que sí, y un conflicto
+              descartado en silencio dejaría la colección pareciendo coherente. */}
+          {taughtNote && (
+            <div className="flex items-start gap-1.5 border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-[10px] text-ink-400">
+              <Sparkles size={11} className="mt-0.5 shrink-0" />
+              <span>
+                {taughtNote.learned > 0
+                  ? `${taughtNote.learned} ${taughtNote.learned === 1 ? 'pieza reconocida' : 'piezas reconocidas'} de ${taughtNote.from} ${taughtNote.from === 1 ? 'modelo ya confirmado' : 'modelos ya confirmados'}.`
+                  : 'Ningún modelo confirmado de esta colección coincide con éste.'}
+                {taughtNote.conflicts > 0 && (
+                  <span className="text-amber-400">
+                    {' '}{taughtNote.conflicts} {taughtNote.conflicts === 1 ? 'pieza está etiquetada' : 'piezas están etiquetadas'} de dos maneras distintas entre modelos: no se usó ninguna.
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
 
           <div className="relative h-[55dvh] min-h-0 flex-1 lg:h-auto">
             {hasModels && <div ref={hostRef} className="absolute inset-0" />}
@@ -2487,7 +2540,6 @@ export default function ModelStudio({
                 collections={collections}
                 cards={cards}
                 families={families}
-                products={products}
                 candidateIndex={candidateIndex}
                 modelCtx={modelCtx}
                 fabricLinks={fabricLinks}

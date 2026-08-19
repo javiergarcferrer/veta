@@ -173,3 +173,25 @@ export const BRAND_NAMES: Record<string, string> = {
  *  value still renders something identifiable rather than a blank. */
 export const brandName = (brand: string | null | undefined): string =>
   (brand && (BRAND_NAMES[brand] || brand)) || '';
+
+/* ---------------------------------- products ------------------------------------ */
+
+/**
+ * The columns a full-catalog products read pulls — every field the Product
+ * type declares, and NOTHING more. The table also carries `search_text`
+ * (~2.3 MB across 27k rows, feeds the server-side search RPC only),
+ * `search_root` (a server-side filter key) and `important` — none consumed
+ * off rows by any client surface, yet `select *` shipped them on every
+ * catalog-wide read. After Supabase quota-restricted the shared project
+ * (2026-08-17, exceed_egress_quota), list reads project their columns.
+ *
+ * ONE shared list on purpose: the query-cache key includes the projection, so
+ * every surface using this list shares a single cached corpus — per-surface
+ * lists would fragment the cache and refetch the catalog per page.
+ */
+export const PRODUCT_LIST_COLUMNS: string[] = [
+  'id', 'profileId', 'brand', 'reference', 'name', 'subtype', 'dimensions',
+  'family', 'familyCode', 'category', 'priceUsd', 'listPriceUsd', 'cost',
+  'stockQty', 'imageId', 'imageSrc', 'imageSrcs', 'lifestyleImageSrc',
+  'extraImageIds', 'active', 'createdAt', 'updatedAt',
+];

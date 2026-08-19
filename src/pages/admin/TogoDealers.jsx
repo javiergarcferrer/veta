@@ -13,6 +13,7 @@ import ListSearchHeader from '../../components/search/ListSearchHeader.jsx';
 import useColumns from '../../components/search/useColumns.js';
 import useLocalPref from '../../components/primitives/useLocalPref.js';
 import { formatDateTime } from '../../lib/format.js';
+import { PRODUCT_LIST_COLUMNS } from '../../lib/constants.js';
 import {
   resolveTogoModels, resolveDealersList, resolveDealerDraft, resolveDealerDetail,
   dealerSlugify, dealerStoredCollections, DEALER_SORT_OPTIONS,
@@ -183,8 +184,13 @@ export default function TogoDealers() {
     () => (profileId ? db.togoModels.where('profileId').equals(profileId).toArray() : Promise.resolve([])),
     [profileId], [],
   );
+  // PROJECTED (PRODUCT_LIST_COLUMNS) — and the Solicitudes tab projects the
+  // SAME list, so the two still share one cached corpus. The egress cut,
+  // sibling of the Gmail pin.
   const products = useLiveQuery(
-    () => (profileId ? db.products.where('profileId').equals(profileId).cached(300_000).toArray() : Promise.resolve([])),
+    () => (profileId
+      ? db.products.where('profileId').equals(profileId).columns(PRODUCT_LIST_COLUMNS).cached(300_000).toArray()
+      : Promise.resolve([])),
     [profileId], [],
   );
 

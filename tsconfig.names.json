@@ -1,0 +1,31 @@
+{
+  /* UNBOUND NAMES in the browser half (src).
+
+     The root tsconfig runs `checkJs: false` on purpose — the TS migration is
+     incremental and the .js/.jsx files must keep working unmodified. But
+     "don't typecheck them" also means "don't SCOPE-check them", and a free
+     identifier in a .jsx file is not a type nit: esbuild leaves it as a global
+     read, so it ships, and the first render throws
+     `ReferenceError: Can't find variable: x` into the error boundary.
+
+     That is exactly how «Algo salió mal · Can't find variable: models» reached
+     the owner's iPhone on the Configurador (2026-08-17): a sub-component in
+     ModelStudio.jsx passed `models={models}` from a scope that had no `models`.
+     The Deno half already had this guard (tsconfig.functions.json, after
+     "newId is not defined" on 2026-08-16); this is its browser twin.
+
+     Deliberately loose about everything else: `checkJs` here surfaces plenty of
+     type noise the migration hasn't reached yet, and the npm script greps
+     TS2304 ONLY. This pass answers one question — does every name resolve? */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true
+  },
+  "include": ["src", "vite-env.d.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

@@ -88,6 +88,7 @@ import { ROW_THUMB, useTogoThumbnails } from '../../components/togo/togoThumbnai
 import CollectionSkuReview from '../../components/togo/CollectionSkuReview.jsx';
 import { PART_LABELS } from '../../lib/togo/meshParts.js';
 import { formatDateTime } from '../../lib/format.js';
+import { sanitizeSvg } from '../../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
 import Modal from '../../components/Modal.jsx';
 import ListSearchHeader from '../../components/search/ListSearchHeader.jsx';
 import useColumns from '../../components/search/useColumns.js';
@@ -234,7 +235,7 @@ const MODEL_COLUMNS: ModelColumn[] = [
           {thumb
             ? <img src={thumb} alt="" draggable={false} className="h-full w-full select-none object-contain" />
             : svg
-              ? <span className="h-full w-full p-px text-ink-400 [&>svg]:h-full [&>svg]:w-full" aria-hidden dangerouslySetInnerHTML={{ __html: svg }} />
+              ? <span className="h-full w-full p-px text-ink-400 [&>svg]:h-full [&>svg]:w-full" aria-hidden dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }} />
               : <Boxes size={14} aria-hidden />}
         </div>
       </div>

@@ -275,24 +275,53 @@ export function partKeysFor(nodes) {
 }
 
 /**
+ * How close to the floor a PLINTH sits, as a share of the model's height, and
+ * how tall it may be before it stops being one. Measured on the dealer's
+ * hand-tagged Prado: every plinth starts within 0% of the floor and stands
+ * 1–8 cm under a 40–86 cm piece (2–20% of the height). The band doubles as the
+ * seam tolerance for "the body rests on it" — the two surfaces touch, so the
+ * carried group's bottom is allowed to sit a hair below the plinth's top.
+ *
+ * 0.25 leaves headroom over the measured 0.20 worst case (the Rectangular
+ * Ottoman's foot block) without reaching the upholstered bodies, which are
+ * 37–44% of their model's height — there is no real part between the two, so
+ * the threshold sits in open space rather than on a boundary.
+ */
+const PLINTH_FLOOR_BAND = 0.05;
+const PLINTH_MAX_HEIGHT = 0.25;
+
+/**
  * Pre-classification for the admin tagger — PROPOSES a role per part group;
  * the dealer confirms/overrides, and only the confirmed map is stored. Given
  * `groups`: [{ key, min:[x,y,z], max:[x,y,z] }] for the whole model (one
  * entry per part group, boxes merged per material), returns { [key]: role }.
  *
- * `refs` are FINGERPRINTS from the dealer's standalone accessory models
- * (the loose Back Cushion / Bolster / Arm Cushion uploads):
- *   [{ role, matKeys: [names…], size: [w,h,d] cm }]
- * They outrank every rule below — pCon reuses ONE material id per part type
- * across a collection, so a sofa group sharing the loose cushion's material
- * IS that cushion (exact identity); a group matching its SIZE (±20%,
- * rotation-free) is next. The base rule still runs first: a platform can
- * never be an accessory.
+ * `refs` are FINGERPRINTS, from two sources that answer with different
+ * authority — `[{ role, sig?, matKeys?: [names…], size?: [w,h,d] cm }]`:
+ *
+ *   • CONFIRMED SIBLINGS of the collection (partFingerprints.buildPartRefs)
+ *     carry `sig`, the `bodySignature` congruence of a group the dealer already
+ *     named. Exact identity, no threshold, and it outranks EVERY rule below —
+ *     an answer the dealer gave is not up for debate with an aspect ratio.
+ *     They deliberately carry NO `matKeys`: measured on the live catalog, a
+ *     material name is not a part identity (`COL0` is tagged base, bolster AND
+ *     structure across three EXCLUSIF models), so transferring by material
+ *     would write the wrong role in silence.
+ *   • STANDALONE ACCESSORY models (the loose Back Cushion / Bolster / Arm
+ *     Cushion uploads) carry `matKeys` and `size`. Here the material IS
+ *     identity — pCon reuses one id per part type — so a sofa group sharing the
+ *     loose cushion's material IS that cushion; a group matching its SIZE
+ *     (±20%, rotation-free) is next.
+ *
+ * The base rule still runs first: a platform can never be an accessory.
  *
  * Heuristic rules (when no fingerprint decides):
  *   • base — every group whose bottom sits in the lowest quarter of the model
  *     AND whose footprint covers ≥ 40% of the total footprint (the platform).
  *     At least the largest-footprint group is always base.
+ *   • structure — the PLINTH: rests on the floor, is thin, and carries a wider
+ *     body above it. See PLINTH_* below — this is the one role the classifier
+ *     could not reach, and the one the dealer reaches for most.
  *   • armCushion — sits ABOVE the base top and hugs a lateral (x) extreme
  *     (its x-span ≤ 30% of total width, touching either side).
  *   • bolster — elongated roll: horizontal aspect ≥ 2.5 between its two floor
@@ -313,7 +342,26 @@ export function classifyPartGroups(groups, refs = []) {
   const out = {};
   let baseTop = uMin[1];
   let largest = null;
+
+  // ── LO YA RESPONDIDO, ANTES QUE NADA. A `sig` ref comes from a sibling the
+  // dealer already confirmed (partFingerprints.buildPartRefs), and
+  // `bodySignature` is exact congruence — the same mesh, moved — so a match is
+  // identity, not resemblance. It runs FIRST and nothing below may overwrite
+  // it: every rule after this is a guess, and a guess never outranks an answer.
+  // (Contradictory fingerprints never reach here — buildPartRefs drops and
+  // reports them, so a match is unambiguous by construction.)
+  const taught = new Set();
   for (const g of list) {
+    if (!g.sig) continue;
+    const ref = refs.find((r) => r.sig && r.sig === g.sig);
+    if (!ref || !PART_ROLES.includes(ref.role)) continue;
+    out[g.key] = ref.role;
+    taught.add(g.key);
+    if (ref.role === 'base') baseTop = Math.max(baseTop, g.max[1]);
+  }
+
+  for (const g of list) {
+    if (taught.has(g.key)) continue;
     const isLow = g.min[1] <= uMin[1] + totalH * 0.25;
     if (isLow && footprint(g) >= totalFp * 0.4) {
       out[g.key] = 'base';
@@ -333,7 +381,13 @@ export function classifyPartGroups(groups, refs = []) {
   // cushion to bill; it's the second fabric ZONE of the same SKU
   // (mono/bicolor): the body proposes as EXTERIOR, the plinth as INTERIOR.
   // A sofa never matches — its cushions/bolsters sit above the platform.
-  {
+  //
+  // SKIPPED ENTIRELY once anything was TAUGHT. This branch is all-or-nothing —
+  // it rewrites EVERY key on the model — so it cannot coexist with a partial
+  // answer from the dealer without overwriting it. Measured: the High Table's
+  // mid-air stretcher, taught as `structure` from a sibling, came back
+  // `interior` because this fired first and re-labelled the whole piece.
+  if (!taught.size) {
     const rest = list.filter((g) => !out[g.key]);
     const baseBottom = Math.min(...list.filter((g) => out[g.key] === 'base').map((g) => g.min[1]));
     if (rest.length && rest.every((g) => g.max[1] <= baseBottom + totalH * 0.05)) {
@@ -358,6 +412,34 @@ export function classifyPartGroups(groups, refs = []) {
       const byMat = refs.find((ref) => (ref.matKeys || []).includes(g.key));
       if (byMat && PART_ROLES.includes(byMat.role)) { out[g.key] = byMat.role; continue; }
     }
+    // THE PLINTH IS ESTRUCTURA, NOT A ROLL — and it is the reason the machine
+    // proposed to CHARGE for sofa frames. `structure` was unreachable from
+    // here (the emitted vocabulary was base/cushion/bolster/armCushion, and a
+    // ref can only carry what accessoryRoleFor names), so every plinth fell
+    // through to `bolster`: measured across the dealer's own hand-tagged Prado,
+    // that ONE gap was 8 of 12 disagreements. It is a money error in the worst
+    // direction — `structure` is UNPRICED (patas, marcos, bases: a finish
+    // choice that never changes the price) while bolster/cushion BILL, so the
+    // proposal added a phantom part SKU to a piece that has none.
+    //
+    // The signature is positional, not shaped, which is why no aspect rule
+    // could ever have caught it: measured on the five real plinths (Large Sofa
+    // 187×8×54, Settee 87×8×110, Medium Sofa 120 148×8×53, Rectangular Ottoman
+    // 72×1×62, Small Square Ottoman 52×1×62) each RESTS ON THE FLOOR, is THIN,
+    // and CARRIES a wider body above it. Their footprints are 32–37% — just
+    // under the 40% that makes a platform `base`, which is precisely how they
+    // reached the bolster rule (187/54 = 3.5 is "elongated" on any reading).
+    //
+    // All three clauses are load-bearing. Without "rests on the floor" a seat
+    // pad qualifies; without "thin" the upholstered body itself does; without
+    // "carries something wider" a lone accessory model — one group that IS the
+    // whole piece — reads as its own plinth. A real platform never reaches
+    // here at all: the base rule claimed it above.
+    const restsOnFloor = g.min[1] <= uMin[1] + totalH * PLINTH_FLOOR_BAND;
+    const carries = list.some((o) => o !== g
+      && o.min[1] >= g.max[1] - totalH * PLINTH_FLOOR_BAND
+      && footprint(o) > footprint(g));
+    if (restsOnFloor && h <= totalH * PLINTH_MAX_HEIGHT && carries) { out[g.key] = 'structure'; continue; }
     const bySize = refs.find((ref) => Array.isArray(ref.size) && sizeMatches([w, h, d], ref.size));
     if (bySize && PART_ROLES.includes(bySize.role)) { out[g.key] = bySize.role; continue; }
     const atSide = (g.min[0] <= uMin[0] + totalW * 0.05 || g.max[0] >= uMax[0] - totalW * 0.05);

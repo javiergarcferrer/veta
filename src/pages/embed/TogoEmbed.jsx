@@ -444,7 +444,6 @@ export default function TogoEmbed() {
   }, [quoteOpen]); // the quote summary sheet
   const [dlOpen, setDlOpen] = useState(false);   // the download format chooser
   const [dxfBusy, setDxfBusy] = useState(false); // building the DXF (may fetch a plan outline first)
-  const [objBusy, setObjBusy] = useState(false); // building the 3D OBJ (loads three on demand)
   const [glbBusy, setGlbBusy] = useState(false); // building the textured GLB (loads three + exporter)
   // Undo/redo over `placed` — one entry per user gesture (add, drag commit,
   // rotate, delete, fabric, clear). The stack mechanics are the pure VM helpers.
@@ -1741,41 +1740,13 @@ export default function TogoEmbed() {
     setDxfBusy(false);
   }, [placed, resolvedById, svgById, data?.storeName, dxfBusy]);
 
-  // Download the assembled sofa as a 3D OBJ — the same scene the 3D view builds
-  // (real FBX meshes where wired, else procedural), exported via three's
-  // OBJExporter. Geometry in cm, true-to-size; opens in Blender/3ds Max/SketchUp/
-  // AutoCAD and re-exports to FBX. three + the exporter load on demand (only when
-  // a visitor actually downloads), so the configurator pays nothing for it.
-  const downloadObj = useCallback(async () => {
-    if (!placed.length || objBusy) return;
-    setObjBusy(true);
-    try {
-      const [THREE, rbg, objx] = await Promise.all([
-        safeDynamicImport(() => import('three')),
-        safeDynamicImport(() => import('three/examples/jsm/geometries/RoundedBoxGeometry.js')),
-        safeDynamicImport(() => import('three/examples/jsm/exporters/OBJExporter.js')),
-      ]);
-      // Its OWN cache (the second arg), because this path DISPOSES what it
-      // loads when the file is written. The default cache is session-shared —
-      // the live stage and the thumbnail engine are holding those exact parsed
-      // meshes — so disposing it would blank the 3D behind the download dialog.
-      const { cache, modelFor } = await loadTogoModels(scene3d, new Map());
-      const group = buildTogoGroup({ THREE, RoundedBoxGeometry: rbg.RoundedBoxGeometry }, scene3d, { modelFor });
-      group.updateMatrixWorld(true);
-      const obj = new objx.OBJExporter().parse(group);
-      disposeGroup(group);
-      cache.forEach((m) => disposeGroup(m.object || m)); // free the source meshes
-      downloadText(`${(data?.storeName || 'Togo').replace(/\s+/g, '-')}-togo.obj`, obj);
-      setDlOpen(false);
-    } catch { /* export unavailable on this device */ }
-    setObjBusy(false);
-  }, [placed, scene3d, data?.storeName, objBusy]);
-
   // Textured 3D download: the SAME fabric-baked GLB the AR viewer builds —
   // real meshes, real pCon textures (base AND parts), sheen included — as a
-  // portable single file (Blender / 3ds Max / the Windows & macOS 3D viewers /
-  // any AR pipeline). Everything loads on demand; OBJ stays for CAD interop
-  // (geometry-only — the format can't embed textures).
+  // portable single file (Twinmotion / Blender / SketchUp / the Windows &
+  // macOS 3D viewers / any AR pipeline). Everything loads on demand. This is
+  // the ONE 3D export (the geometry-only cm OBJ it replaced imported into
+  // Twinmotion as an empty scene, 2026-08 — dealer report); the exporter
+  // dequantizes to core glTF and metres, so it opens everywhere.
   const downloadGlb = useCallback(async () => {
     if (!placed.length || glbBusy) return;
     setGlbBusy(true);
@@ -1786,13 +1757,15 @@ export default function TogoEmbed() {
         safeDynamicImport(() => import('three/examples/jsm/exporters/GLTFExporter.js')),
         safeDynamicImport(() => import('../../components/togo/togoGlbExport.js')),
       ]);
-      // Private cache, disposed below — see downloadObj.
+      // A PRIVATE model cache (the second arg): this path disposes what it
+      // loads once the file is written; the session-shared cache belongs to
+      // the live stage and the thumbnail engine rendering behind this dialog.
       const { cache, modelFor } = await loadTogoModels(scene3d, new Map());
       const { fabricTextures, colors, pbr, normals, extras } = await mod.loadSceneFabrics(THREE, scene3d, fabricByCode, (c) => swatchProxyUrl(c) || swatchUrl(c));
       const built = mod.buildArGroup({ THREE, RoundedBoxGeometry: rbg.RoundedBoxGeometry }, scene3d, {
         ...(material || {}), fabricTextures, colors, pbr, normals, extras, modelFor,
       });
-      const blob = await mod.exportGlbBlob({ GLTFExporter: glbx.GLTFExporter }, built.root);
+      const blob = await mod.exportGlbBlob({ GLTFExporter: glbx.GLTFExporter, THREE }, built.root);
       built.dispose();
       cache.forEach((m) => disposeGroup(m.object || m));
       const a = document.createElement('a');
@@ -1834,7 +1807,10 @@ export default function TogoEmbed() {
   // Untagged/base hits — or roles with no bound family — open the piece picker.
   // Materialization ZONES (ottoman interior/exterior) have no family of their
   // own by design (they re-grade the base SKU), so they gate on the tagging.
-  const openPartMaterial = useCallback((uid, role, partKey = null) => {
+  // `immediate` = the stage saw a DOUBLE-tap on this piece: the gesture already
+  // said "open the picker", so the first-click-selects gate below stands aside
+  // (selection still happens — in this same call, atomically).
+  const openPartMaterial = useCallback((uid, role, partKey = null, immediate = false) => {
     const p = placedRef.current.find((row) => row.uid === uid);
     if (!p) return;
     const r = resolvedById[p.pieceId];
@@ -1916,7 +1892,7 @@ export default function TogoEmbed() {
     // pieza entera antes de tocar una parte (una regla del dinero). Ésta no
     // pide elegir nada — sólo que la pieza esté seleccionada, que es el estado
     // que el propio clic acaba de crear.
-    if (part && selectedUid !== uid) {
+    if (part && selectedUid !== uid && !immediate) {
       paneUidRef.current = uid;
       setSelectedUid(uid);
       setMatMode('one');
@@ -2211,20 +2187,17 @@ export default function TogoEmbed() {
            `right-[max(0.75rem,…)]` inset (12px). The stage nets the two and
            shifts the piece into what is actually visible. */
         insetRight={designPaneOpen ? 20 * 16 + 12 : 0}
-        /* LA MITAD DE ABAJO, dicha UNA vez: la misma constante que dimensiona
-           la hoja encuadra la pieza en la mitad que queda visible. Al cerrarla
-           vuelve a 0 y la cámara recentra el conjunto por el camino que ya
-           tenía — el «dynamic response» de siempre, sin una segunda ruta. */
-        insetBottomFrac={matOpen && !desktop ? MATERIALS_SHEET_FRAC : 0}
-        /* …y el HUD flotante de arriba, que cierra la franja por el otro lado.
-           Solo mientras la hoja parte la pantalla: con ella cerrada el encuadre
-           es el que ya estaba y no se toca. */
-        insetTop={matOpen && !desktop ? 3.25 * 16 + 12 : 0}
+        /* The phone's material sheet stopped splitting the screen (it rises to
+           the toolbar line now — see MATERIALS_SHEET_SHELL), so it no longer
+           asks the camera for anything: lifting the platform under a sheet
+           that covers the view bought nothing but a visible camera bounce on
+           every close. The piece stays framed where it was and closing the
+           sheet simply uncovers it. */
         view={view} placed={placed} resolvedById={resolvedById} material={material}
         selectedUid={selectedUid} onSelect={setSelectedUid} onMove={movePiece}
         onRotateTo={rotateTo} gesturesRef={stageGestures} onHoverPiece={onHover3d}
         models={paletteModels} onAddPiece={addPiece} renderThumbById={renderThumbById}
-        collections={collections} collectionMenu={collectionMenu} collectionThumbs={collectionFabricThumbs} fabricByCode={fabricByCode} activeCollection={activeCollection} onCollection={setActiveCollection}
+        collections={collections} collectionMenu={collectionMenu} collectionThumbs={collectionFabricThumbs} activeCollection={activeCollection} onCollection={setActiveCollection}
         overallCm={vm.overallCm} hintPieceId={hoveredPieceId} rates={rates} locale={locale} fmt={fmt}
         pricesHidden={pricesHidden} fromMode={fromMode}
         onTapPart={openPartMaterial} fabricByCode={fabricByCode}
@@ -2707,10 +2680,10 @@ export default function TogoEmbed() {
            component, two shells, so «idéntica a la versión desktop» holds by
            construction and there is never a second picker to keep in step by
            hand. What differs is only WHERE it is stowed, and on a portrait
-           screen that is the BOTTOM: it rises to half the height and the piece
-           takes the other half (MATERIALS_SHEET_SHELL). It used to pull out of
-           the LEFT edge at 88vw, which spent the phone's scarce axis and
-           covered the very piece the pick was about.
+           screen that is the BOTTOM: it slides up to the toolbar's line and
+           the wall of fabrics gets the full height (MATERIALS_SHEET_SHELL).
+           It used to pull out of the LEFT edge at 88vw, which spent the
+           phone's scarce axis on a drawer.
            Mounted only while open: the swatch wall is the heaviest surface in
            the widget and a phone should not carry it stowed. ── */}
       {matOpen && !desktop && (
@@ -2796,7 +2769,7 @@ export default function TogoEmbed() {
 
       <DownloadSheet
         open={dlOpen} onClose={() => setDlOpen(false)} locale={locale}
-        onDxf={downloadDxf} dxfBusy={dxfBusy} onObj={downloadObj} objBusy={objBusy}
+        onDxf={downloadDxf} dxfBusy={dxfBusy}
         onGlb={downloadGlb} glbBusy={glbBusy}
       />
 
@@ -3578,26 +3551,22 @@ const DESIGN_PANE_SHELL = 'hud-panel hud-panel-solid togo-rise absolute z-20 rig
 const DESIGN_DRAWER_SHELL = 'hud-panel hud-panel-solid animate-in slide-in-from-right duration-200 absolute z-40 right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-[min(21rem,88vw)] flex flex-col overflow-hidden';
 
 /**
- * UNA PANTALLA VERTICAL SE DIVIDE EN VERTICAL (owner, 2026-08-05: «if I select
- * a piece it's gonna move the POV towards the top of the screen … and the
- * material picker will slide from the bottom … it takes half of the screen and
- * the other half is left for focusing on the piece»).
- *
- * El picker del teléfono deja de salir del lado IZQUIERDO. Un cajón lateral en
- * un teléfono cobra su ancho al eje que ya es el escaso: a 88vw tapaba la pieza
- * que iba a vestir, así que el gesto («cámbiale la tela a ESTO») escondía su
- * propio sujeto. Vertical el reparto es limpio — mitad de arriba la pieza,
- * mitad de abajo las telas — y ninguna de las dos le quita nada a la otra.
- *
- * La otra mitad del trato la cumple la cámara: `insetBottomFrac` (la MISMA
- * mitad, dicha una vez aquí y leída allá) desliza la plataforma para que la
- * pieza se centre en la franja visible, y al cerrar vuelve al centro por el
- * mismo camino que ya tenía. El ancho completo también es lo que le da sitio a
- * los componentes ACOSTADOS en su cabecera — en la columna de 21rem no cabían
- * sin robarle el muro a las telas.
+ * LA HOJA SUBE HASTA LA BARRA (owner, 2026-08-14: «make this slide up», con la
+ * línea del destino dibujada justo debajo de la barra de herramientas).
+ * Supersede el reparto a MEDIA pantalla de 2026-08-05: el muro de telas es la
+ * superficie que se estaba quedando corta, así que la hoja entra deslizándose
+ * desde el borde de abajo y descansa con su tope en la línea de la barra — el
+ * MISMO anclaje del que cuelgan los paneles de escritorio
+ * (`top-[calc(max(0.75rem,…)+3.25rem)]`), dicho aquí como altura porque la
+ * hoja ancla por abajo. La pieza se lee ANTES y DESPUÉS, no durante: cerrar
+ * (✕, el plano de atrás, o elegir una tela) la destapa exactamente donde
+ * estaba — por eso ya no hay `insetBottomFrac` que levante la plataforma
+ * mientras la hoja está abierta (ver el comentario en TogoStage): con la vista
+ * cubierta no hay franja donde centrar nada, y el levantón solo compraba un
+ * rebote de cámara visible en cada cierre. El ancho completo sigue siendo lo
+ * que da sitio a los componentes DE PIE a la derecha del muro.
  */
-const MATERIALS_SHEET_FRAC = 0.5;
-const MATERIALS_SHEET_SHELL = 'hud-panel hud-panel-solid animate-in slide-in-from-bottom duration-200 absolute z-40 left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] h-1/2 flex flex-col overflow-hidden';
+const MATERIALS_SHEET_SHELL = 'hud-panel hud-panel-solid animate-in slide-in-from-bottom duration-200 absolute z-40 left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] h-[calc(100%-max(0.75rem,env(safe-area-inset-top))-3.25rem-max(0.75rem,env(safe-area-inset-bottom)))] flex flex-col overflow-hidden';
 
 function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClearPart, pickerKey, materials, family, nameFilter, currentGrade, currentFabric, pricesHidden, fmt, onPick, finishSpec = null, finishCurrent = null, onPickFinish, preview = null, onSwatchPreview = null, shellClassName = MATERIALS_PANE_SHELL, onClose = null, sideSlot = null }) {
   return (
@@ -3895,6 +3864,11 @@ function DesignPane({
                       componentes, the piece's own tela is not what is being
                       bought, so it leaves the screen rather than sitting there
                       as a control that changes no money. */}
+                  {componentViewOf(p) && (
+                  <div className="flex items-center justify-end">
+                    <button type="button" onClick={onDelete} className="btn-icon-danger" title={t(locale, 'piece.remove')} aria-label={t(locale, 'piece.remove')}><Trash2 size={15} /></button>
+                  </div>
+                  )}
                   {!componentViewOf(p) && (
                   <div className="flex flex-col gap-1">
                     {/* SCOPE FIRST. The swatch alone reads as "a fabric,
@@ -4942,10 +4916,12 @@ function nameFilterOf(keys) {
   return Array.isArray(keys) && keys.length ? new Set(keys) : undefined;
 }
 
-/** The download chooser — pick the format: the 2D plan (DXF, for CAD) or the 3D
- *  model (OBJ, for Blender/3ds Max/SketchUp, re-exportable to FBX). Two clear
- *  options, no cramped dropdown. */
-function DownloadSheet({ open, onClose, onDxf, dxfBusy, onObj, objBusy, onGlb, glbBusy, locale }) {
+/** The download chooser — EXACTLY two options (owner ask 2026-08): the 3D
+ *  model (GLB — one file, real fabrics embedded, opens in Twinmotion/Blender/
+ *  SketchUp/AR) and the 2D plan (DXF, for CAD). The geometry-only OBJ that
+ *  used to sit third is gone: it carried no textures and cm units, and
+ *  imported into Twinmotion as an empty scene. */
+function DownloadSheet({ open, onClose, onDxf, dxfBusy, onGlb, glbBusy, locale }) {
   return (
     <Modal open={open} onClose={onClose} title={t(locale, 'download.title')} size="sm">
       {open && (
@@ -4967,14 +4943,6 @@ function DownloadSheet({ open, onClose, onDxf, dxfBusy, onObj, objBusy, onGlb, g
               <span className="block text-[11px] text-ink-500">{t(locale, 'download.dxfDesc')}</span>
             </span>
             {dxfBusy && <Loader2 size={16} className="animate-spin text-ink-400 shrink-0" />}
-          </button>
-          <button type="button" onClick={onObj} disabled={objBusy} className="w-full flex items-center gap-3 rounded-xl border border-ink-200 p-3 text-left hover:bg-ink-50 active:bg-ink-100 transition disabled:opacity-60">
-            <span className="shrink-0 w-10 h-10 rounded-lg bg-ink-900 text-white grid place-items-center"><Box size={18} /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-ink-900">{t(locale, 'download.objTitle')}</span>
-              <span className="block text-[11px] text-ink-500">{t(locale, 'download.objDesc')}</span>
-            </span>
-            {objBusy && <Loader2 size={16} className="animate-spin text-ink-400 shrink-0" />}
           </button>
         </div>
       )}

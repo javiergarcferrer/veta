@@ -96,6 +96,11 @@ export default function TogoTurntable({ scene3d, fabricByCode, className = '', o
     const renderFrame = (eng) => {
       if (!eng?.group) return;
       eng.turntable.rotation.y = (eng.angle * Math.PI) / 180;
+      // The PIECE turns, not the camera, so its baked ground shadow has to turn
+      // with it — re-bake after the rotation is applied and before the draw, or
+      // the piece rotates out of its own shadow. Cheap: the presentation rig
+      // bakes at 256.
+      eng.updateShadow?.();
       eng.renderer.render(eng.scene, eng.camera);
     };
 
@@ -265,7 +270,7 @@ export default function TogoTurntable({ scene3d, fabricByCode, className = '', o
         const scene = new THREE.Scene();
         // Presentation lighting — the piece turns alone on a white card, with no
         // floor or room to give it form; see setupTogoStage.
-        const { dispose: disposeStage, retarget } = setupTogoStage(deps, renderer, scene, 120, { presentation: true });
+        const { dispose: disposeStage, retarget, updateShadow } = setupTogoStage(deps, renderer, scene, 120, { presentation: true });
         scene.background = null;                        // keep the alpha (the stage set a colour)
         const { normalMap: quilt, grainMap: grain } = makeFabricMaps(THREE, {
           anisotropy: fabricAnisotropy(renderer),
@@ -278,7 +283,7 @@ export default function TogoTurntable({ scene3d, fabricByCode, className = '', o
         scene.add(turntable);
 
         eng = {
-          THREE, deps, renderer, scene, camera, turntable, quilt, grain, retarget, disposeStage,
+          THREE, deps, renderer, scene, camera, turntable, quilt, grain, retarget, updateShadow, disposeStage,
           group: null, fabricCache: makeAppearanceCache(),
           raf: 0, last: 0, angle: STILL_ANGLE, gen: 0, visible: true, sized: '',
         };

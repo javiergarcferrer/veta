@@ -1626,7 +1626,15 @@ test('buildFabricByCode: ONE descriptor, because it is part of a baked picture\'
   const materials = [{
     name: 'FESTA',
     colors: [
-      { code: '855', name: 'ANIS', rgb: '#7f9c2a', textureUrl: 'https://cdn/w.webp', normalUrl: 'https://cdn/n.webp', rough: 0.7, tileCm: 12 },
+      {
+        code: '855', name: 'ANIS', rgb: '#7f9c2a', textureUrl: 'https://cdn/w.webp',
+        // A real PBR scan is EIGHT maps, not two — the renderer binds every one
+        // it is given, so every one of them is part of the stamp.
+        normalUrl: 'https://cdn/n.webp', roughnessUrl: 'https://cdn/r.webp',
+        metalnessUrl: 'https://cdn/m.webp', displacementUrl: 'https://cdn/d.webp',
+        anisotropyUrl: 'https://cdn/a.webp',
+        rough: 0.7, tileCm: 12, dispCm: 0.35,
+      },
       { code: '4479', name: 'BLEU PAON', rgb: '#1f6f8b', rough: 0.5 },   // no scan of its own
       { code: '110', name: 'ECRU' },                                      // neither scan nor rgb
     ],
@@ -1634,9 +1642,10 @@ test('buildFabricByCode: ONE descriptor, because it is part of a baked picture\'
   const map = buildFabricByCode(materials);
   assert.deepEqual(map['855'], {
     textureUrl: 'https://cdn/w.webp', normalUrl: 'https://cdn/n.webp',
-    roughnessUrl: null, metalnessUrl: null, displacementUrl: null, anisotropyUrl: null,
+    roughnessUrl: 'https://cdn/r.webp', metalnessUrl: 'https://cdn/m.webp',
+    displacementUrl: 'https://cdn/d.webp', anisotropyUrl: 'https://cdn/a.webp',
     rgb: '#7f9c2a',
-    pbr: { dif: null, rough: 0.7, spec: null, tileCm: 12, tileCmY: null, dispCm: null },
+    pbr: { dif: null, rough: 0.7, spec: null, tileCm: 12, tileCmY: null, dispCm: 0.35 },
   });
 
   // FAMILY FALLBACK: every colour of a material shares one physical weave, so a
@@ -1650,6 +1659,15 @@ test('buildFabricByCode: ONE descriptor, because it is part of a baked picture\'
   assert.equal(map['4479'].pbr.dif, null);
   assert.equal(map['4479'].pbr.rough, 0.5, 'its own roughness wins');
   assert.equal(map['4479'].pbr.tileCm, 12, 'the family\'s tile size fills in');
+  // …and the maps travel WHOLE with the weave they describe: roughness, relief
+  // and anisotropy are properties of the physical cloth, shared across the
+  // family's colours, so a borrowed weave that arrived without them would render
+  // as a different fabric than the sibling it was borrowed from.
+  assert.equal(map['4479'].roughnessUrl, 'https://cdn/r.webp');
+  assert.equal(map['4479'].metalnessUrl, 'https://cdn/m.webp');
+  assert.equal(map['4479'].displacementUrl, 'https://cdn/d.webp');
+  assert.equal(map['4479'].anisotropyUrl, 'https://cdn/a.webp');
+  assert.equal(map['4479'].pbr.dispCm, 0.35, 'the family\'s relief depth fills in');
 
   // A colour that can be neither woven nor tinted gets NO entry: the renderer's
   // own fallback beats a descriptor that describes nothing.

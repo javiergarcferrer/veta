@@ -228,6 +228,7 @@ export class Query<T> implements PromiseLike<T[]> {
   private reversed = false;
   private predicate: ((row: T) => boolean) | null = null;
   private _limit: number | null = null;
+  private _offset: number | null = null;
   private _ttl: number | undefined = undefined;
   private _columns: string[] | null = null;
   private scoped = false;
@@ -343,6 +344,21 @@ export class Query<T> implements PromiseLike<T[]> {
     return this;
   }
   /**
+   * Dexie's `offset()` — skip the first `n` rows of the (ordered) result, so
+   * `.orderBy(f).reverse().offset(from).limit(page)` reads one WINDOW of a
+   * large table per request instead of the whole thing. The PK is appended as
+   * the final sort tiebreak at execute time (same rule as the internal
+   * no-limit pagination), so consecutive windows can't re-shuffle ties across
+   * a boundary — that determinism is what makes windowed sweeps safe.
+   */
+  offset(n: number): this {
+    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+      throw new Error(`offset() requires a non-negative integer (got ${n})`);
+    }
+    this._offset = n;
+    return this;
+  }
+  /**
    * Serve this read from the module-level cache when an identical read landed
    * within `ttlMs`. Position-independent: it only records the TTL and returns
    * `this`, so it can sit anywhere in the chain
@@ -411,6 +427,7 @@ export class Query<T> implements PromiseLike<T[]> {
           reversed: this.reversed,
           limit: this._limit,
           columns: this._columns,
+          offset: this._offset,
         })
       : null;
 
@@ -428,7 +445,16 @@ export class Query<T> implements PromiseLike<T[]> {
       };
 
       if (this._limit) {
-        const { data, error } = await build().limit(this._limit);
+        // With an offset the limit is a WINDOW of an ordered read: the PK
+        // tiebreak (same rule as the no-limit pagination below) makes the
+        // window boundaries deterministic even when the caller's orderBy has
+        // ties. A plain limit without offset keeps the old shape untouched.
+        const q = this._offset != null
+          ? build()
+              .order(snake(this.t.pk), { ascending: true })
+              .range(this._offset, this._offset + this._limit - 1)
+          : build().limit(this._limit);
+        const { data, error } = await q;
         if (error) throw error;
         raw = (data as unknown[]) || [];
       } else {
@@ -438,8 +464,9 @@ export class Query<T> implements PromiseLike<T[]> {
         // Paging needs a stable order; add the primary key when the caller
         // didn't request one so pages don't overlap or skip rows.
         const PAGE = 1000;
+        const start = this._offset ?? 0;
         let acc: unknown[] = [];
-        for (let from = 0; ; from += PAGE) {
+        for (let from = start; ; from += PAGE) {
           let q = build();
           // ALWAYS append the PK as the (secondary) sort: a caller-supplied
           // non-unique orderBy leaves ties in no stable order, so page N and
@@ -449,7 +476,7 @@ export class Query<T> implements PromiseLike<T[]> {
           const { data, error } = await q.range(from, from + PAGE - 1);
           if (error) throw error;
           const page = (data as unknown[]) || [];
-          acc = from === 0 ? page : acc.concat(page);
+          acc = from === start ? page : acc.concat(page);
           if (page.length < PAGE) break;
         }
         raw = acc;

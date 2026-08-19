@@ -22,8 +22,12 @@ export function userMessageFor(err: unknown): string {
   const code = e.code || e.status || '';
   const raw = (e.message || String(err)).toLowerCase();
 
-  // Network / offline
-  if (raw.includes('failed to fetch') || raw.includes('networkerror') || raw.includes('load failed')) {
+  // Network / offline. "failed to send a request" is supabase-js's
+  // FunctionsFetchError — functions.invoke has its OWN wording for the same
+  // dead wire ("Failed to send a request to the Edge Function"), so without
+  // this arm an offline invoke surfaced raw English instead of this sentence.
+  if (raw.includes('failed to fetch') || raw.includes('networkerror') || raw.includes('load failed')
+    || raw.includes('failed to send a request')) {
     return 'Sin conexión con el servidor. Revisa tu internet y vuelve a intentar.';
   }
   if (code === 'PGRST301' || raw.includes('jwt') || raw.includes('expired')) {

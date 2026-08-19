@@ -17,6 +17,7 @@
  * TRUE-TO-SCALE in the customer's room.
  */
 import { buildTogoGroup, makeFabricMaps, disposeGroup, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, correctScanToSwatch, loadScanExtras } from './togoSceneBuilder.js';
+import { dequantizedFloats, glbRequiredExtensions } from '../../lib/togo/interopMesh.js';
 
 const CM_TO_M = 0.01;
 
@@ -185,19 +186,81 @@ export function buildArGroup(deps, scene3d, opts = {}) {
 }
 
 /**
+ * The INTEROP pass: rewrite every quantized/normalized geometry attribute on
+ * `object` to plain float32, IN PLACE, before export.
+ *
+ * The real catalog meshes arrive from our own streaming GLBs, whose attributes
+ * are int16/int8 normalized (KHR_mesh_quantization — see lib/togo/interopMesh
+ * for the whole story). three decodes them natively, so the scene LOOKS right —
+ * and GLTFExporter faithfully re-emits them quantized, stamping the extension
+ * into `extensionsRequired`, which is exactly the file Twinmotion imported as
+ * an empty scene (measured 2026-08). Decoding here makes the exported file
+ * core glTF 2.0 that every importer reads.
+ *
+ * In place is safe: both export callers build their scene from PRIVATE model
+ * caches (`loadTogoModels(scene, new Map())`) that are disposed right after
+ * the export — nothing else holds these geometries.
+ */
+function toInteropAttributes(THREE, object) {
+  const seen = new Set();
+  object.traverse((node) => {
+    const geo = node.isMesh ? node.geometry : null;
+    if (!geo || seen.has(geo)) return;
+    seen.add(geo);
+    for (const name of Object.keys(geo.attributes)) {
+      let attr = geo.attributes[name];
+      // Interleaved storage can't be retyped in place — clone() deinterleaves
+      // into a plain BufferAttribute first (defensive: our own pipelines never
+      // interleave, but an FBX/GLB from elsewhere may).
+      if (attr.isInterleavedBufferAttribute) attr = attr.clone();
+      if (attr.array instanceof Float32Array && !attr.normalized) {
+        if (attr !== geo.attributes[name]) geo.setAttribute(name, attr);
+        continue;
+      }
+      const next = new THREE.BufferAttribute(dequantizedFloats(attr.array, attr.normalized), attr.itemSize);
+      // int8 normals carry visible quantization error once back in floats —
+      // renormalize so lighting in the target tool matches the preview.
+      if (name === 'normal' && next.itemSize === 3) {
+        const a = next.array;
+        for (let i = 0; i < a.length; i += 3) {
+          const len = Math.hypot(a[i], a[i + 1], a[i + 2]);
+          if (len > 0) { a[i] /= len; a[i + 1] /= len; a[i + 2] /= len; }
+        }
+      }
+      geo.setAttribute(name, next);
+    }
+  });
+}
+
+/**
  * Export a three.js Object3D to a binary glTF (GLB) Blob via GLTFExporter
  * (dependency-injected). Resolves to a Blob of type model/gltf-binary the View
- * wraps in an object URL for <model-viewer>.
+ * wraps in an object URL for <model-viewer> or hands out as a download.
+ *
+ * The file is the app's ONE portable 3D artifact, so it must open EVERYWHERE
+ * (Twinmotion, Blender, SketchUp, the OS viewers, AR pipelines): pass `THREE`
+ * in deps and the interop pass above runs first; either way the finished
+ * buffer's own header is checked and the export REJECTS if any extension
+ * remains in `extensionsRequired` — a failed export beats a file that imports
+ * as an empty scene.
  */
 export function exportGlbBlob(deps, object) {
-  const { GLTFExporter } = deps;
+  const { GLTFExporter, THREE } = deps;
   return new Promise((resolve, reject) => {
     try {
+      if (THREE) toInteropAttributes(THREE, object);
       const exporter = new GLTFExporter();
       exporter.parse(
         object,
         (result) => {
           const buf = result instanceof ArrayBuffer ? result : new TextEncoder().encode(JSON.stringify(result));
+          if (result instanceof ArrayBuffer) {
+            const required = glbRequiredExtensions(buf);
+            if (required.length) {
+              reject(new Error(`GLB no interoperable (extensionsRequired: ${required.join(', ')})`));
+              return;
+            }
+          }
           resolve(new Blob([buf], { type: 'model/gltf-binary' }));
         },
         (err) => reject(err instanceof Error ? err : new Error('GLB export failed')),

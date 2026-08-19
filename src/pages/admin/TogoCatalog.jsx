@@ -11,6 +11,8 @@ import {
 } from '../../components/togo/sceneImport.js';
 import { relPathOf } from '../../brands/index.js';
 import { groupFamilies } from '../../lib/catalog.js';
+import { sanitizeSvg } from '../../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
+import { PRODUCT_LIST_COLUMNS } from '../../lib/constants.js';
 import {
   resolveModelManager, resolveTogoModelCards, resolveTogoModels, togoPickerFamilies,
 } from '../../core/quote/index.js';
@@ -110,9 +112,11 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
     setSelectedId(modelId || null);
     if (modelId) setNeedCatalog(true);
   }, []);
+  // PROJECTED (PRODUCT_LIST_COLUMNS): neither the picker families nor the SKU
+  // suggestions read the table's server-side search columns — the egress cut.
   const products = useLiveQuery(
     () => (needCatalog && profileId
-      ? db.products.where('profileId').equals(profileId).cached(300_000).toArray()
+      ? db.products.where('profileId').equals(profileId).columns(PRODUCT_LIST_COLUMNS).cached(300_000).toArray()
       : Promise.resolve(null)),
     [profileId, needCatalog], null,
   );
@@ -176,7 +180,9 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
     if (!seedRows?.length) return;
     // One-off direct fetch so seed auto-binding works without making the whole
     // tab eagerly load the catalog (this only runs from the empty state).
-    const prods = await db.products.where('profileId').equals(profileId).toArray();
+    // Projected like every other catalog read — seed auto-binding only needs
+    // the family name + root.
+    const prods = await db.products.where('profileId').equals(profileId).columns(PRODUCT_LIST_COLUMNS).toArray();
     const togoFams = groupFamilies(prods).filter((f) => /togo/i.test(f.name || ''));
     const autoRoot = (seed) => {
       const keys = (seed.match || []).filter((k) => k !== 'togo');
@@ -765,7 +771,7 @@ function AddModelModal({
                     : <Loader2 size={16} className="animate-spin text-ink-400" />}
                 </div>
               )}
-              <div className="w-32 h-32 rounded-lg bg-ink-50 text-ink-700 p-2 grid place-items-center" title="Planta" dangerouslySetInnerHTML={{ __html: plan.svg }} />
+              <div className="w-32 h-32 rounded-lg bg-ink-50 text-ink-700 p-2 grid place-items-center" title="Planta" dangerouslySetInnerHTML={{ __html: sanitizeSvg(plan.svg) }} />
             </div>
             <div className="flex-1 space-y-2.5 min-w-0">
               <div className="text-[11px] text-ink-500 tabular-nums flex items-center gap-2 flex-wrap">

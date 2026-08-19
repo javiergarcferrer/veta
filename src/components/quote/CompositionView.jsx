@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { composePlanPreview } from '../../lib/togo/planPreview.js';
+import { sanitizeSvg } from '../../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
 import { resolveTogoScene, scenePlacementsFromPlaced } from '../../core/quote/index.js';
 import { useTogoSceneSnapshot } from '../togo/togoThumbnails.js';
 
@@ -55,7 +56,7 @@ export default function CompositionView({
           role="img"
           aria-label={alt}
           className="absolute inset-0 p-3 [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
-          dangerouslySetInnerHTML={{ __html: plan.svg }}
+          dangerouslySetInnerHTML={{ __html: sanitizeSvg(plan.svg) }}
         />
       ))}
     </div>

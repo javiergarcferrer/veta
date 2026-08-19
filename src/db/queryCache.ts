@@ -65,6 +65,9 @@ export interface CacheKeyParts {
   /** Projection (`.columns()`), or null for `select('*')`. Part of the key so
    *  a trimmed list read and a full read never serve each other. */
   columns?: ReadonlyArray<string> | null;
+  /** Window start (`.offset()`), or null when the read starts at row 0. Part
+   *  of the key so two pages of the same ordered read never serve each other. */
+  offset?: number | null;
 }
 
 /* Insertion-ordered Map = the LRU: oldest key is first, newest is last. */
@@ -102,7 +105,7 @@ function serializeFilters(filters: ReadonlyArray<CacheKeyFilter>): string {
  * The table is the first segment followed by `|`, so `purgeTable` can prefix
  * match it safely even if a serialized filter value contains a pipe.
  */
-export function cacheKey({ table, filters, orderField, reversed, limit, columns }: CacheKeyParts): string {
+export function cacheKey({ table, filters, orderField, reversed, limit, columns, offset }: CacheKeyParts): string {
   return [
     table,
     serializeFilters(filters),
@@ -110,6 +113,7 @@ export function cacheKey({ table, filters, orderField, reversed, limit, columns 
     reversed ? '1' : '0',
     limit ?? '',
     columns?.length ? columns.join(',') : '',
+    offset ?? '',
   ].join('|');
 }
 

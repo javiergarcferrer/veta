@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchDealerInbox, updateDealerLead } from '../lib/togoEmbed.js';
 import { t, resolveTogoLocale, piecesLabel } from '../lib/togo/i18n.js';
-import { swatchUrl } from '../lib/swatchImage.js';
+import { swatchUrl, swatchProxyUrl } from '../lib/swatchImage.js';
 import { planToDxf } from '../lib/togo/planToDxf.js';
 import { composePlanPreview, planPlacements } from '../lib/togo/planPreview.js';
+import { sanitizeSvg } from '../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
 import { resolveTogoScene, scenePlacementsFromPlaced } from '../core/quote/index.js';
 import { useTogoSceneSnapshot } from '../components/togo/togoThumbnails.js';
 import { safeDynamicImport } from '../lib/dynamicImport.js';
-import { buildTogoGroup, disposeGroup } from '../components/togo/togoSceneBuilder.js';
+import { disposeGroup } from '../components/togo/togoSceneBuilder.js';
 import { loadTogoModels } from '../components/togo/togoModelLoader.js';
 
 /**
@@ -362,29 +363,40 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
     const dxf = planToDxf(planPlacements(models, items), { label: 'Togo' });
     downloadBlob(new Blob([dxf], { type: 'application/dxf' }), `togo-plan-${idPrefix}.dxf`);
   };
-  // 3D — the assembled layout as an OBJ (the SAME scene the snapshot renders:
-  // real FBX meshes where wired, else procedural), exported via three's
-  // OBJExporter. three + the exporter load on demand — only when a dealer
-  // actually downloads — so the inbox pays nothing for it until then.
-  const [objBusy, setObjBusy] = useState(false);
-  const downloadObj = async () => {
-    if (!scene3d?.pieces?.length || objBusy) return;
-    setObjBusy(true);
+  // 3D — the assembled layout as ONE textured GLB: the same fabric-baked scene
+  // the configurator's AR/download builds (real meshes, the visitor's chosen
+  // fabrics embedded, metres), dequantized to core glTF so it opens in
+  // Twinmotion / Blender / SketchUp / the OS 3D viewers. The geometry-only cm
+  // OBJ this replaced imported into Twinmotion as an empty scene (2026-08).
+  // three + the exporter load on demand — only when a dealer actually
+  // downloads — so the inbox pays nothing for it until then.
+  const [glbBusy, setGlbBusy] = useState(false);
+  const downloadGlb = async () => {
+    if (!scene3d?.pieces?.length || glbBusy) return;
+    setGlbBusy(true);
     try {
-      const [THREE, rbg, objx] = await Promise.all([
+      const [THREE, rbg, glbx, mod] = await Promise.all([
         safeDynamicImport(() => import('three')),
         safeDynamicImport(() => import('three/examples/jsm/geometries/RoundedBoxGeometry.js')),
-        safeDynamicImport(() => import('three/examples/jsm/exporters/OBJExporter.js')),
+        safeDynamicImport(() => import('three/examples/jsm/exporters/GLTFExporter.js')),
+        safeDynamicImport(() => import('../components/togo/togoGlbExport.js')),
       ]);
-      const { cache, modelFor } = await loadTogoModels(scene3d);
-      const group = buildTogoGroup({ THREE, RoundedBoxGeometry: rbg.RoundedBoxGeometry }, scene3d, { modelFor });
-      group.updateMatrixWorld(true);
-      const obj = new objx.OBJExporter().parse(group);
-      disposeGroup(group);
+      // A PRIVATE model cache (the second arg): this path disposes what it
+      // loads once the file is written, and the session-shared cache belongs
+      // to the card snapshots rendering behind this dialog.
+      const { cache, modelFor } = await loadTogoModels(scene3d, new Map());
+      const { fabricTextures, colors, pbr, normals, extras } = await mod.loadSceneFabrics(
+        THREE, scene3d, {}, (c) => swatchProxyUrl(c) || swatchUrl(c),
+      );
+      const built = mod.buildArGroup({ THREE, RoundedBoxGeometry: rbg.RoundedBoxGeometry }, scene3d, {
+        fabricTextures, colors, pbr, normals, extras, modelFor,
+      });
+      const blob = await mod.exportGlbBlob({ GLTFExporter: glbx.GLTFExporter, THREE }, built.root);
+      built.dispose();
       cache.forEach((m) => disposeGroup(m.object || m));   // free the source meshes
-      downloadBlob(new Blob([obj], { type: 'text/plain' }), `togo-${idPrefix}.obj`);
+      downloadBlob(blob, `togo-${idPrefix}.glb`);
     } catch { /* export unavailable on this device */ }
-    setObjBusy(false);
+    setGlbBusy(false);
   };
 
   return (
@@ -488,7 +500,7 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
                   role="img"
                   aria-label={t(locale, 'inbox.plan')}
                   className="border border-neutral-200 bg-white p-4 [&>svg]:block [&>svg]:mx-auto [&>svg]:w-auto [&>svg]:h-auto [&>svg]:max-h-[34vh] [&>svg]:max-w-full"
-                  dangerouslySetInnerHTML={{ __html: plan.svg }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeSvg(plan.svg) }}
                 />
               )}
               <div className="mt-3 flex items-center gap-6">
@@ -501,8 +513,8 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
                 </button>
                 <button
                   type="button"
-                  onClick={downloadObj}
-                  disabled={objBusy}
+                  onClick={downloadGlb}
+                  disabled={glbBusy}
                   className="text-[11px] uppercase tracking-[0.15em] text-neutral-900 underline underline-offset-4 decoration-1 hover:decoration-2 disabled:opacity-40 disabled:no-underline"
                 >
                   {t(locale, 'inbox.download3d')}

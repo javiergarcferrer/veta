@@ -18,6 +18,7 @@ import {
   finishSpecOf, finishOptionOf,
 } from '../../lib/togo/meshParts.js';
 import { traceGridLoops } from '../../lib/togo/meshToPlan.js';
+import { createContactShadow } from './togoContactShadow.js';
 
 // sRGB ↔ linear-light transfer (the exact IEC 61966-2-1 curve). Used to average
 // swatch pixels in LINEAR light (gamma-correct) so the sampled colour isn't
@@ -1586,27 +1587,6 @@ export function setupTogoStage(deps, renderer, scene, radius, { grid = false, gr
   key.shadow.radius = 3.5;     // a touch crisper → the channel/contact shadows read
   scene.add(key);
   scene.add(key.target);       // in the graph so retarget can move the aim point
-  // The PLAN's own shadow caster. The key rakes in from the side to carve the
-  // folds — and from straight above that throws the piece's shadow ~90 cm ACROSS
-  // the floor: a second, blurry sofa lying beside the real one. It went unseen
-  // for as long as the plan's ground was near-white (a 0.1 catcher over #FAFAFA
-  // is nothing); the moment a client's room put a WOOD floor under it, it read
-  // as a stain. Fading the catcher further can't fix an offset — a fainter ghost
-  // is still a ghost — so the plan gets its own caster: straight overhead, at
-  // ZERO intensity, so it lights nothing (the key's raking carve, tuned on the
-  // upholstery, is untouched) and only writes a shadow map. What lands is a
-  // contact shadow UNDER the piece, which is what grounds a plan. `setShadow`
-  // hands the job between the two: overhead in 2D, the key in 3D, never both.
-  const planKey = new THREE.DirectionalLight(0xffffff, 0);
-  planKey.position.set(0, radius * 2, 0);
-  planKey.castShadow = false;
-  planKey.shadow.mapSize.set(2048, 2048);
-  Object.assign(planKey.shadow.camera, { left: -d, right: d, top: d, bottom: -d, near: 1, far: radius * 6 });
-  planKey.shadow.camera.updateProjectionMatrix();   // same constructor trap as the key's
-  planKey.shadow.bias = -0.0004;
-  planKey.shadow.radius = 3.5;
-  scene.add(planKey);
-  scene.add(planKey.target);
   // A dim, low rim from the opposite side carves the shadow-side folds (so they
   // don't go to mush) WITHOUT lifting the body — keeps the deep-crease contrast.
   const rim = new THREE.DirectionalLight(0xffffff, presentation ? 0.42 : 0.34);
@@ -1631,17 +1611,28 @@ export function setupTogoStage(deps, renderer, scene, radius, { grid = false, gr
     scene.add(back.target);
   }
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(radius * 12, radius * 12),
-    // With the frustum fix above the ground shadow renders at full strength for
-    // the first time — 0.34 (tuned against a mostly-missing shadow) reads heavy
-    // now; 0.28 keeps the grounded contact read without going graphic-novel.
-    new THREE.ShadowMaterial({ opacity: 0.28 }),
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0;
-  floor.receiveShadow = true;
-  scene.add(floor);
+  // THE GROUND SHADOW — a baked contact shadow, not the key's shadow map.
+  //
+  // The key rakes in low to carve the folds, and from that angle its map threw
+  // the piece's silhouette ~90 cm ACROSS the floor: a second, blurry sofa lying
+  // beside the real one, hard-edged and grainy (three's PCF is five jittered
+  // taps — see togoContactShadow for why no dial on it could ever soften). 2D
+  // used to dodge it with a zero-intensity overhead caster whose only job was to
+  // fake a contact shadow; that hack is gone, because this is the real thing and
+  // it is right in BOTH views.
+  //
+  // The key keeps `castShadow` — the meshes still receive it, so one module
+  // still shadows the next and the channels still self-shadow. Short-range
+  // detail is the one regime those five taps are honest in. What the key no
+  // longer does is touch the floor.
+  //
+  // 256 on the presentation surfaces: those bake per FRAME (the turntable spins
+  // the group, not the camera, so the shadow has to turn with it) and a contact
+  // shadow is blurred past the point where its buffer resolution shows.
+  const contact = createContactShadow(THREE, {
+    height: 95, blurCm: 12, falloff: 1.35, resolution: presentation ? 256 : 512,
+  });
+  scene.add(contact.plane);
 
   const retarget = (center, layoutRadius = radius) => {
     const cx = Number(center?.x) || 0, cz = Number(center?.z) || 0;
@@ -1659,12 +1650,10 @@ export function setupTogoStage(deps, renderer, scene, radius, { grid = false, gr
     const dd = Math.max(radius * 2.2, LR * 2.2);
     Object.assign(key.shadow.camera, { left: -dd, right: dd, top: dd, bottom: -dd, near: 1, far: LR * 6 });
     key.shadow.camera.updateProjectionMatrix();
-    // The plan caster rides along, straight above the same aim point.
-    planKey.position.set(cx, LR * 2, cz);
-    planKey.target.position.set(cx, 0, cz);
-    Object.assign(planKey.shadow.camera, { left: -dd, right: dd, top: dd, bottom: -dd, near: 1, far: LR * 6 });
-    planKey.shadow.camera.updateProjectionMatrix();
-    floor.position.set(cx, 0, cz);
+    // Frame the contact buffer on the layout with room for the penumbra to fade
+    // out inside it — a shadow clipped at the buffer edge smears along it
+    // (the texture clamps), which reads as a straight grey line across the floor.
+    contact.setFrame(cx, cz, LR * 2.6);
     if (gridMesh) {
       // Slide the (finite) grid plane with the rig but keep the DOTS anchored to
       // the world by counter-shifting the texture phase — the lattice reads as
@@ -1677,33 +1666,35 @@ export function setupTogoStage(deps, renderer, scene, radius, { grid = false, gr
         t.offset.y = ((-cz / 50) % 1 + 1) % 1;
       }
     }
+    // Re-bake on the spot. Every caller — the turntable, the thumbnail baker,
+    // the model studio — already calls `retarget` immediately before it renders,
+    // so hanging the bake here is what gets all three a ground shadow without a
+    // line of wiring each. The live stage additionally drives `updateShadow`
+    // off its own dirty flag, since a DRAG moves a piece without moving the rig.
+    contact.update(renderer, scene);
   };
 
-  // The ground shadow is a per-VIEW rig, not just a dial. The 3D vista wants the
-  // raking key's long directional shadow (it's what makes the piece sit in a
-  // room); the plan wants a contact shadow under the piece and nothing beside it
-  // — so the caster changes with the view, and the catcher's strength with it.
-  // Exactly one light casts at a time: two would print both shadows at once.
+  // The ground shadow no longer changes CASTER with the view — the contact
+  // buffer is right in both. Only its weight moves: the plan is read as a
+  // drawing (a heavy shadow fights the footprints and the dimension lines),
+  // while the vista is read as a photograph and wants the piece properly sat
+  // down. The key keeps carving folds and shadowing module onto module in both.
   const setShadow = (mode) => {
-    const plan = mode === '2d';
-    key.castShadow = !plan;
-    planKey.castShadow = plan;
-    floor.material.opacity = plan ? 0.16 : 0.28;
+    contact.setOpacity(mode === '2d' ? 0.34 : 0.62);
   };
 
   const dispose = () => {
     envRT.texture.dispose();
     pmrem.dispose();
     if (typeof envScene.dispose === 'function') envScene.dispose();
-    floor.geometry.dispose();
-    floor.material.dispose();
+    contact.dispose();
     if (gridMesh) {
       gridMesh.geometry.dispose();
       gridMesh.material.map?.dispose();
       gridMesh.material.dispose();
     }
   };
-  return { dispose, retarget, setShadow };
+  return { dispose, retarget, setShadow, updateShadow: () => contact.update(renderer, scene) };
 }
 
 /** Dispose every geometry/material/(swatch) texture under a group (free GPU

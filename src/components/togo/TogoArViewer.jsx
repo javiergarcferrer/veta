@@ -77,7 +77,7 @@ export default function TogoArViewer({ open, onClose, scene3d, material, storeNa
           ...DEFAULT_FINISH, ...(finishRef.current || {}), fabricTextures, colors, pbr, normals, extras, modelFor,
         });
         disposeGroup = built.dispose;
-        const blob = await exportGlbBlob({ GLTFExporter }, built.root);
+        const blob = await exportGlbBlob({ GLTFExporter, THREE }, built.root);
         built.dispose();                 // GLB is self-contained — free the scene now
         modelCache.forEach((m) => disposeModel(m.object || m)); // free the source meshes
         disposeGroup = null;

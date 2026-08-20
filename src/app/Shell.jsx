@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText, LayoutDashboard, Layers } from 'lucide-react';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText, LayoutDashboard, Layers, Armchair } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
@@ -20,6 +20,7 @@ const Dashboard = lazyPage(() => import('../pages/Dashboard.jsx'));
 const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
 const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
 const KvadratImport = lazyPage(() => import('../pages/admin/KvadratImport.jsx'));
+const FredericiaImport = lazyPage(() => import('../pages/admin/FredericiaImport.jsx'));
 const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
 const TogoRequests = lazyPage(() => import('../pages/TogoRequests.jsx'));
 const DealerInbox = lazyPage(() => import('../pages/DealerInbox.jsx'));
@@ -29,17 +30,27 @@ const RequestDetail = lazyPage(() => import('../pages/quoting/RequestDetail.jsx'
 const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
 
 /**
- * The admin shell: five destinations and nothing else.
+ * The admin shell: the destinations, and nothing else.
  *
+ *   Panel            — the dealer's own numbers              (pages/Dashboard)
  *   Modelos          — the 3D studio + model manager   (pages/admin/TogoCatalog)
  *   Distribuidores   — dealer records + install kits   (pages/admin/TogoDealers)
  *   Solicitudes      — leads out of the configurator   (pages/TogoRequests)
+ *   Cotizaciones     — the frozen quote documents      (pages/quoting/Quotes)
  *   Marcas           — the brand microenvironments     (pages/admin/Brands)
  *   Configurador     — opens the PUBLIC widget         (/configurator)
  *
+ * plus one destination per SUPPLIER IMPORT — a source that publishes its own
+ * library online, and is therefore a link to paste rather than a folder to
+ * drop. They live in the nav rather than inside a brand's ficha because the
+ * SOURCE is chosen by the page, not by the brand it fills:
+ *
+ *   Kvadrat          — a colourway collection → telas   (pages/admin/KvadratImport)
+ *   Fredericia       — Anthom's storefront → el catálogo (pages/admin/FredericiaImport)
+ *
  * EVERYTHING BELOW THE BRAND SWITCHER IS ONE BRAND'S ENVIRONMENT. The switcher
  * in the nav picks which manufacturer you are working in; the data layer filters
- * every read and stamps every write to it (db/brandScope.ts), so the three
+ * every read and stamps every write to it (db/brandScope.ts), so the
  * destinations above need no brand plumbing of their own.
  *
  * Two surfaces skip authentication entirely, because they are the product's
@@ -57,6 +68,7 @@ const NAV = [
   { to: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
   { to: '/marcas', label: 'Marcas', icon: Tags },
   { to: '/kvadrat', label: 'Kvadrat', icon: Layers },
+  { to: '/fredericia', label: 'Fredericia', icon: Armchair },
 ];
 
 function Loading({ label = 'Cargando…' }) {
@@ -264,6 +276,7 @@ function AdminApp() {
             <Route path="cotizaciones/:id" element={<QuoteDetail />} />
             <Route path="marcas" element={<Brands />} />
             <Route path="kvadrat" element={<KvadratImport />} />
+            <Route path="fredericia" element={<FredericiaImport />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

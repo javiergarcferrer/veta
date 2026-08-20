@@ -74,10 +74,13 @@ if (!PG_URL) {
       await asService(); await seed(client);
       await asUser(STAFF);
       // The whole point of shipping this before tenants exist: nobody currently
-      // signed in loses sight of anything on the day it lands. ('ligne-roset' is
-      // the brand the microenvironments migration seeds — the environment this
-      // install's own catalog already lives in.)
-      assert.deepEqual(await idsIn(client, 'brands'), ['brand-a', 'brand-b', 'ligne-roset']);
+      // signed in loses sight of anything on the day it lands. The two seeded
+      // brands are the ones the migrations create — 'ligne-roset' (the
+      // microenvironments migration; the environment this install's own catalog
+      // already lives in) and 'fredericia' (bought through Anthom Design House,
+      // whose storefront its catalog module imports). A seeded brand belongs in
+      // this list: an all-access user sees EVERY brand, seeded or not.
+      assert.deepEqual(await idsIn(client, 'brands'), ['brand-a', 'brand-b', 'fredericia', 'ligne-roset']);
       assert.deepEqual(await idsIn(client, 'togo_models'), ['m-a', 'm-b', 'm-none']);
       assert.deepEqual(await idsIn(client, 'materials'), ['mat-a', 'mat-b']);
       assert.deepEqual(await idsIn(client, 'dealers'), ['d-a', 'd-b']);

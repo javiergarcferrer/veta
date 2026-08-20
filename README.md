@@ -12,6 +12,23 @@ between manufacturers is not the configurator; it is the shape of their files.
 So a brand names which **import modules** read its data (`src/brands/modules`),
 resolved by id at runtime.
 
+Two shapes of ingest, and the second is why a module can carry a `source`:
+
+- **A DROP.** Somebody hands us files — an ARCHVIZ tree, a folder of glTF, a
+  colormass ZIP — and the adapter reads them. This is Ligne Roset, and the
+  generic set.
+- **A SOURCE.** The supplier already publishes the library, and there is nothing
+  to hand over: the adapter is handed an `invoke` and reads it. Kvadrat's
+  `materials.source` enumerates a fabric collection off kvadrat.dk; Fredericia's
+  `catalog.source` reads the whole price list off **Anthom Design House**, the
+  distributor we actually buy Fredericia from. Each has an Edge Function doing
+  the fetching (host-locked, auth-gated, pure parser beside it) and a page in the
+  nav; `src/brands/**` stays free of any network client.
+
+A brand with no such source is not degraded — it uploads a CSV, which every
+catalog adapter still reads. `source` is a capability, and its absence is
+reported honestly rather than papered over with somebody else's shop.
+
 ## Running it
 
 ```sh

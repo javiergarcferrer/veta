@@ -340,3 +340,16 @@ verify_jwt = false
 # write-only claude_config table via the service role.
 [functions.togo-match]
 verify_jwt = false
+
+# anthom-catalog reads Anthom Design House's public Shopify collection JSON
+# (the Fredericia catalog we buy from them) server-side, filters it to one
+# vendor and re-serves the ~10% of each record VETA stores — price, SKU,
+# availability, photos, product type. Read-only and locked to
+# anthomdesignhouse.com collection paths, rebuilt from a validated handle (no
+# SSRF). It verifies the caller's JWT ITSELF (auth.getUser on the Authorization
+# header) so anonymous internet traffic can't drive the multi-page supplier
+# sweep. Gateway check off (verify_jwt = false) for the same reason as
+# lr-catalog: the browser's CORS preflight carries no Authorization header, so a
+# gateway check would reject it before the function runs.
+[functions.anthom-catalog]
+verify_jwt = false

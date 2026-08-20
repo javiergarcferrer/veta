@@ -8,8 +8,8 @@
  * dropped folder of swatches or a price list would WRITE — lives here, pure and
  * testable.
  *
- * The two `plan*` functions are the same posted-money discipline the rest of the
- * app uses for imports: they compute the rows, the caller writes them in ONE
+ * The three `plan*` functions are the same posted-money discipline the rest of
+ * the app uses for imports: they compute the rows, the caller writes them in ONE
  * `bulkPut`. Nothing here touches the db, React or the network.
  */
 
@@ -207,6 +207,17 @@ export function resolveModuleCapabilities(modules) {
             value: set.catalog.grades.length ? set.catalog.grades.join(' ') : 'sin grados (un precio por SKU)',
           },
           { label: 'Lista de precios', value: set.catalog.priceColumns.join(',') },
+          // WHERE THE CATALOG COMES FROM. A brand bought through a distributor
+          // that publishes its stock online imports the whole book from there
+          // instead of from a spreadsheet somebody re-keys; one without such a
+          // source says so, because "drop a CSV" is then the only way in and a
+          // dealer needs to know that before choosing the module set.
+          {
+            label: 'Origen',
+            value: set.catalog.source?.supported
+              ? `catálogo del distribuidor (${set.catalog.source.label})`
+              : 'la lista de precios que subas',
+          },
           // A brand whose model pages publish an offered-fabric roster can be
           // linked to them; one that doesn't simply never shows the control.
           {
@@ -515,5 +526,127 @@ export function planPriceListImport({
     rows,
     sample,
     summary: { total: rows.length, created, updated, skipped },
+  };
+}
+
+/**
+ * A SOURCE-DRIVEN catalog → the `products` rows to write.
+ *
+ * The sibling of `planPriceListImport`, and the difference is the row: a CSV
+ * answers a reference and a price, while a distributor's storefront answers a
+ * reference, a price, a photo gallery, a product type, a family and whether the
+ * thing can be bought at all. Both are pure — compute the rows, the caller
+ * writes them in ONE `bulkPut` — and both keep the brand's catalog scope
+ * (`products.brand`), so one brand's catalog can never leak into another's
+ * picker.
+ *
+ * `rows` is what a catalog adapter's `source.rows(payload)` returned: the
+ * decode is the BRAND'S (its SKU grammar produced the root and the grade), and
+ * this is only the write.
+ *
+ * ── RE-IMPORTING MUST CONVERGE, NOT ACCUMULATE ──────────────────────────────
+ * An existing SKU is UPDATED IN PLACE — price, name, taxonomy, photos, stock —
+ * and a new one is created. So the second run of the same catalog changes
+ * exactly the rows the supplier changed, which is what makes it safe to re-run
+ * after a price move. The row's `id`, its `createdAt` and anything a dealer
+ * edited that the source has no opinion about (`cost`, `dimensions`) survive
+ * untouched: the supplier publishes a price list, not our margin.
+ *
+ * ── WHAT AN ABSENT ROW MEANS, AND WHY NOTHING IS DELETED ────────────────────
+ * A SKU that has disappeared from the store is NOT deleted and NOT deactivated
+ * here. It may be discontinued; it may equally be a collection that was
+ * re-handled, a vendor rename, or a page that failed to load — and a delete is
+ * the one operation a re-run can't take back. `missing` reports them so the
+ * importer can say "31 SKUs of this catalog are no longer on the store" and a
+ * human decides. It is only computed when `existing` is the WHOLE catalog scope
+ * (`fullScope`), because a chunked lookup of only the SKUs being imported
+ * cannot tell absent-from-the-store from absent-from-the-query.
+ *
+ * @returns { rows, missing, summary: { total, created, updated, skipped,
+ *            missing, photos, unavailable }, sample }
+ */
+export function planCatalogSourceImport({
+  rows: parsed, brand, profileId, existing = [], fullScope = false,
+  now = Date.now(), newId,
+} = {}) {
+  const catalogBrand = brand?.settings?.catalogBrand || brand?.slug || '';
+  const byRef = new Map();
+  for (const p of existing || []) byRef.set(String(p?.reference || '').toUpperCase(), p);
+
+  const rows = [];
+  const sample = [];
+  const seen = new Set();
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+  let photos = 0;
+  let unavailable = 0;
+
+  for (const row of parsed || []) {
+    const key = String(row?.reference || '').trim().toUpperCase();
+    // A row with no reference or no price prices nothing. It is counted, never
+    // written as a zero — a $0 SKU in a picker is a quote waiting to happen.
+    if (!key || !(Number(row?.priceUsd) > 0)) { skipped += 1; continue; }
+    if (seen.has(key)) { skipped += 1; continue; }
+    seen.add(key);
+
+    if (row.imageSrc) photos += 1;
+    if (row.stockQty === 0) unavailable += 1;
+    if (sample.length < 5) sample.push(row);
+
+    // The fields the SOURCE owns. Everything else on an existing row is the
+    // dealer's and is spread over from `current` below.
+    const fromSource = {
+      brand: catalogBrand,
+      reference: key,
+      name: row.name || row.family || key,
+      subtype: row.subtype || '',
+      family: row.family || '',
+      familyCode: row.familyCode || '',
+      category: row.category || '',
+      priceUsd: Number(row.priceUsd),
+      listPriceUsd: row.listPriceUsd ?? null,
+      stockQty: row.stockQty ?? null,
+      imageSrc: row.imageSrc || '',
+      imageSrcs: row.imageSrcs?.length ? row.imageSrcs : null,
+      active: true,
+      updatedAt: now,
+    };
+
+    const current = byRef.get(key) || null;
+    if (current) {
+      updated += 1;
+      rows.push({ ...current, ...fromSource, brand: catalogBrand || current.brand });
+    } else {
+      created += 1;
+      rows.push({
+        id: typeof newId === 'function' ? newId() : `prod_${key}_${now}`,
+        profileId,
+        ...fromSource,
+        createdAt: now,
+      });
+    }
+  }
+
+  // Only meaningful over the whole scope — see WHAT AN ABSENT ROW MEANS.
+  const missing = fullScope
+    ? (existing || [])
+      .filter((p) => p?.active !== false && !seen.has(String(p?.reference || '').toUpperCase()))
+      .map((p) => String(p.reference))
+    : [];
+
+  return {
+    rows,
+    missing,
+    sample,
+    summary: {
+      total: rows.length,
+      created,
+      updated,
+      skipped,
+      missing: missing.length,
+      photos,
+      unavailable,
+    },
   };
 }

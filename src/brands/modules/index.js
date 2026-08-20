@@ -21,9 +21,12 @@
 import { LIGNE_ROSET_MODULES } from './ligneRoset.js';
 import { GENERIC_MODULES } from './generic.js';
 import { KVADRAT_MODULES } from './kvadrat.js';
+import { FREDERICIA_MODULES } from './fredericia.js';
 
 /** Every registered set, in the order the brand admin offers them. */
-export const MODULE_SETS = Object.freeze([LIGNE_ROSET_MODULES, GENERIC_MODULES, KVADRAT_MODULES]);
+export const MODULE_SETS = Object.freeze([
+  LIGNE_ROSET_MODULES, GENERIC_MODULES, FREDERICIA_MODULES, KVADRAT_MODULES,
+]);
 
 /** The set a brand with no usable selection gets — today's behavior, exactly. */
 export const DEFAULT_MODULE_SET_ID = LIGNE_ROSET_MODULES.id;
@@ -94,4 +97,4 @@ export function modulesValue(setId, overrides = {}) {
   return out;
 }
 
-export { LIGNE_ROSET_MODULES, GENERIC_MODULES, KVADRAT_MODULES };
+export { LIGNE_ROSET_MODULES, GENERIC_MODULES, FREDERICIA_MODULES, KVADRAT_MODULES };

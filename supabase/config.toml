@@ -353,3 +353,11 @@ verify_jwt = false
 # gateway check would reject it before the function runs.
 [functions.anthom-catalog]
 verify_jwt = false
+
+# carl-hansen backs the PUBLIC, no-login Carl Hansen configurator
+# (/configurador/carl-hansen), the same way togo-embed backs the Togo one. It
+# re-serves what carlhansen.com already publishes to anyone — a product's
+# options and its LIST price — through a host lock the browser cannot rewrite.
+# No cost, no margin and no dealer identity passes through it.
+[functions.carl-hansen]
+verify_jwt = false

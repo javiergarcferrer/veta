@@ -13,6 +13,10 @@
 import { PREVIEW_VERSION } from './previewVersion.js';
 import { metaAttribution, viewSessionId, isTeamBrowser } from './metaAttribution.js';
 import { safeDynamicImport } from './dynamicImport.js';
+// The registry file, not the `brands/` barrel — `lib/*` deliberately pulls only
+// what it needs, so a public bundle resolving a URL does not also gain the
+// brand admin's view-models. Same reason `runtime.js` is imported directly.
+import { configuratorForPathname } from '../brands/configurators/index.js';
 
 const VITE_ENV = (typeof import.meta !== 'undefined' && import.meta.env) || {};
 const SUPABASE_URL = VITE_ENV.VITE_SUPABASE_URL || '';
@@ -133,23 +137,28 @@ export const TOGO_EMBED_ALLOW = 'xr-spatial-tracking; camera; gyroscope; acceler
  * dealer's catalog/branding.
  */
 /**
- * Is `pathname` one of the CLEAN configurator URLs?
+ * Is `pathname` a CLEAN configurator URL — ANY brand's?
  *
- * Two spellings are live: `/configurador` (the Spanish one the public site
- * points at) and `/configurator` (the original — links carrying it are already
- * shared, so it keeps working). Both must be recognised in three separate
- * places — the entry that mounts the standalone page (main.jsx), the page's own
- * "am I standalone?" check, and the forced-light public-route test — and when
- * this was three hand-copied regexes, adding the Spanish spelling to two of them
- * left the third behind: /configurador booted the app and then showed the
- * tap-to-open launch card instead of the configurator. One definition now.
+ * It used to be a regex over two spellings of one word, because there was one
+ * configurator. Now there is a registry (`brands/configurators`) and this asks
+ * it, so a brand that brings its own configurator becomes reachable by being
+ * REGISTERED rather than by having its slug hand-added to a pattern here and
+ * in the two other places that ask the same question.
+ *
+ * Those two others are why this is one function at all: the entry that mounts
+ * the standalone page (main.jsx), the page's own "am I standalone?" check, and
+ * the forced-light public-route test each carried a copy of the regex, and
+ * adding the Spanish spelling to two of them left the third behind —
+ * /configurador booted the app and then showed the tap-to-open launch card
+ * instead of the configurator.
  *
  * The inline anti-FOUC scripts in index.html / configurador.html carry their own
- * literal copies BY NECESSITY (they run before any module loads); they list both
- * spellings and must be updated in step with this.
+ * literal copies BY NECESSITY (they run before any module loads); they match the
+ * STEM (`/configurador…`) rather than the full set, so a new brand needs no
+ * change there.
  */
 export function isConfiguratorPathname(pathname) {
-  return /^\/(configurador|configurator)\/?$/.test(pathname || '');
+  return configuratorForPathname(pathname) != null;
 }
 
 /**

@@ -18,8 +18,7 @@
           var hash = location.hash || '';
           var path = location.pathname || '';
           var isPublic =
-            path === '/configurator' || path === '/configurator/' ||
-            path === '/configurador' || path === '/configurador/' ||
+            /^\/(configurador|configurator)(\/|$)/.test(path) ||
             hash.indexOf('#/q/') === 0 ||
             hash.indexOf('#/contrato/') === 0 ||
             hash.indexOf('#/cuenta/') === 0 ||

@@ -1,0 +1,2352 @@
+{
+ "slug": "collection,chairs,dining-chairs,ch24",
+ "ProductName": "CH24 | Wishbone Chair",
+ "ProductId": "CH24_item",
+ "ShortDescription": "The very first model Hans J. Wegner designed exclusively for Carl Hansen & Søn in 1949, the CH24 or Wishbone Chair, has been in continuous production since its introduction in 1950.",
+ "Description": "With a form that is uniquely its own, the iconic CH24 Wishbone Chair by Hans J. Wegner holds a special place in the world of modern design. \n\nWhen designing the CH24, Wegner chose to combine the back- and armrest into a single piece. To give stability to the steam-bent top and ensure comfortable support, Wegner developed the characteristic Y-shaped back that the Wishbone Chair is named after.\n\nMore than 100 steps are required to manufacture each Wishbone Chair, most of which are carried out by hand. The hand-woven seat alone takes a skilled craftsman about an hour to create, using approximately 120 meters of paper cord, the impressive durability, and stability of which make the chair both strong and long-lasting. The Wishbone Chair offers comfort and stability as well as satisfying aesthetic desires for a distinctive, elegant form. \n\nOver time, the Wishbone Chair has gained recognition as the ideal chair, capturing the essence of modern Danish design.",
+ "DescriptionHeader": "The timeless icon of modern Danish design",
+ "Designer": {
+  "Name": "Hans J. Wegner",
+  "SubTitle": null,
+  "Body": "Danish furniture designer Hans J. Wegner (1914-2007) is considered one of the most creative, innovative, and prolific designers of all times, renowned for his precision, great insight into craftsmanship and uncompromising approach to design. Wegner designed nearly 500 chairs in his lifetime and was often referred to as the master of the chair.",
+  "Link": {
+   "Title": "Get to know Hans J. Wegner",
+   "Url": "/en/en/designers/hans-j-wegner/",
+   "Target": "_self",
+   "Image": null
+  },
+  "Image": {
+   "Title": "",
+   "AlternativeText": "Billede af Hans J. Wegner",
+   "Url": "https://admincms.carlhansen.com/globalassets/designers/esigner-portraits-andscape/hans-j--wegner-portrait-landscape.jpg",
+   "Width": 3840,
+   "Height": 2160,
+   "FocalPoint": "0.5,0.5"
+  }
+ },
+ "Breadcrumb": [
+  {
+   "Title": "Products",
+   "Url": "/en/en/collection/",
+   "Target": "_self",
+   "Image": null
+  },
+  {
+   "Title": "Chairs",
+   "Url": "/en/en/collection/chairs/",
+   "Target": "_self",
+   "Image": null
+  },
+  {
+   "Title": "Dining Chairs",
+   "Url": "/en/en/collection/chairs/dining-chairs/",
+   "Target": "_self",
+   "Image": null
+  }
+ ],
+ "Specs": {
+  "OtherAssets": [
+   {
+    "Description": "CH24 (3).zip",
+    "Link": {
+     "Title": "ZIP",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-3.zip",
+     "Target": "_blank",
+     "Image": null
+    }
+   },
+   {
+    "Description": "CH24_3D (2).zip",
+    "Link": {
+     "Title": "ZIP",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24_3d-2.zip",
+     "Target": "_blank",
+     "Image": null
+    }
+   },
+   {
+    "Description": "CH24-2D (2).zip",
+    "Link": {
+     "Title": "ZIP",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-2d-2.zip",
+     "Target": "_blank",
+     "Image": null
+    }
+   }
+  ],
+  "Images": [
+   {
+    "Title": "",
+    "AlternativeText": "",
+    "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-front1.jpg",
+    "Width": 509,
+    "Height": 724,
+    "FocalPoint": "0.5,0.5"
+   },
+   {
+    "Title": "",
+    "AlternativeText": "",
+    "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-side1.jpg",
+    "Width": 748,
+    "Height": 736,
+    "FocalPoint": "0.5,0.5"
+   },
+   {
+    "Title": "",
+    "AlternativeText": "",
+    "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-top1.jpg",
+    "Width": 653,
+    "Height": 578,
+    "FocalPoint": "0.5,0.5"
+   }
+  ]
+ },
+ "MediaList": [
+  {
+   "Title": "",
+   "AlternativeText": "",
+   "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_detail.jpg",
+   "Width": 2500,
+   "Height": 1875,
+   "FocalPoint": "0.5,0.5"
+  },
+  {
+   "Title": "",
+   "AlternativeText": "",
+   "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil.jpg",
+   "Width": 7239,
+   "Height": 9652,
+   "FocalPoint": "0.5,0.5"
+  },
+  {
+   "Title": "",
+   "AlternativeText": "",
+   "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_ch327_oak_oil_v1.jpg",
+   "Width": 7239,
+   "Height": 9652,
+   "FocalPoint": "0.5,0.5"
+  },
+  {
+   "Title": "",
+   "AlternativeText": "Carl Hansen - y stolen eg - ch 24",
+   "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_ch006_oak_oil_cuch24_loke_7050_ek61_340_glass_oak_oil_relief_clay_vase.jpg",
+   "Width": 1875,
+   "Height": 2500,
+   "FocalPoint": "0.46,0.89"
+  },
+  {
+   "Title": "",
+   "AlternativeText": "",
+   "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_relief.jpg",
+   "Width": 1875,
+   "Height": 2500,
+   "FocalPoint": "0.47,0.86"
+  }
+ ],
+ "CanonicalUrl": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch24",
+ "Kind": "ProductPageModel",
+ "Variants": [
+  {
+   "Sku": "5714413946903",
+   "IsFocused": true,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_front-new.png",
+     "Width": 2133,
+     "Height": 2831,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_side-1.png",
+     "Width": 1978,
+     "Height": 2807,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_back-1.png",
+     "Width": 2135,
+     "Height": 2730,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, oil, natural paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "oil",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, oil",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-oil-fsc70-natural-cord/variant/9322",
+   "Splash": null,
+   "Stock": 3945,
+   "InRiverVariantId": 9322,
+   "Price": 0,
+   "ProductionDays": 10,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413950139",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_soap_papercord_natural_front-new.png",
+     "Width": 2212,
+     "Height": 2934,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_soap_papercord_natural_side-1.png",
+     "Width": 1969,
+     "Height": 2795,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_soap_papercord_natural_back-1.png",
+     "Width": 2152,
+     "Height": 2746,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, soap, natural paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "soap",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, soap",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-soap-fsc70-natural-cord/variant/9154",
+   "Splash": null,
+   "Stock": 3783,
+   "InRiverVariantId": 9154,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413950177",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/y-stol-eg-lak-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, lacquer, natural paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "lacquer",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, lacquer",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-lacquer-fsc70-natural-cord/variant/9816",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9816,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715230010396",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24_beech_soft_black_s9000n_black_papercord_front.png",
+     "Width": 3217,
+     "Height": 4076,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24_beech_soft_black_s9000n_black_papercord_side.png",
+     "Width": 3227,
+     "Height": 4056,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24_beech_soft_black_s9000n_black_papercord_back.png",
+     "Width": 3689,
+     "Height": 4286,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Black, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Black",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Black",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soft-black-fsc70-black-cord/variant/10878",
+   "Splash": null,
+   "Stock": 79,
+   "InRiverVariantId": 10878,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397288157",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_blue_s8010g10y_black_papercord_front.png",
+     "Width": 3091,
+     "Height": 3923,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_blue_s8010g10y_black_papercord_side.png",
+     "Width": 3083,
+     "Height": 3904,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_blue_s8010g10y_black_papercord_back.png",
+     "Width": 3591,
+     "Height": 3800,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Blue, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Blue",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Blue",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soft-blue-fsc70-black-cord/variant/10894",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 10894,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397288126",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_green_s8010g10y_black_papercord_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_green_s8010g10y_black_papercord_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_green_s8010g10y_black_papercord_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Green, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Green",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Green",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soft-green-fsc70-black-cord/variant/10896",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 10896,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397308466",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_orange_red_s2075y70r_black_papercord_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_orange_red_s2075y70r_black_papercord_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_orange_red_s2075y70r_black_papercord_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Orange Red, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Orange Red",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Orange Red",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-s.-orange-red-fsc70-black-cord/variant/10897",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 10897,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397288072",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_red_s4550y_black_papercord80r_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_red_s4550y_black_papercord80r_side.png",
+     "Width": 3301,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_red_s4550y_black_papercord80r_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Red Brown, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Red Brown",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Red Brown",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soft-red-brown-fsc70-black-cord/variant/10898",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 10898,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397308473",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_silver_gray_s3502y_black_papercord_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_silver_gray_s3502y_black_papercord_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_silver_gray_s3502y_black_papercord_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Silver Gray, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Silver Gray",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Silver Gray",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soft-silver-gray-fsc70-black-cord/variant/10899",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 10899,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397288096",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_gray_s7502b_black_papercord_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_gray_s7502b_black_papercord_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_gray_s7502b_black_papercord_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Anthracite Gray, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Anthracite Gray",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Anthracite Gray",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-s.-anthracite-gray-fsc70-black-cord/variant/10786",
+   "Splash": null,
+   "Stock": 1,
+   "InRiverVariantId": 10786,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397308459",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_orange_red_s2075y70r_papercord_natural_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_orange_red_s2075y70r_papercord_natural_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_orange_red_s2075y70r_papercord_natural_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Orange Red, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Orange Red",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Orange Red",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-s.-orange-red-fsc70-natural-cord/variant/10856",
+   "Splash": null,
+   "Stock": 27,
+   "InRiverVariantId": 10856,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397306011",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_olive_green_s6020g50y_papercord_natural_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_olive_green_s6020g50y_papercord_natural_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_olive_green_s6020g50y_papercord_natural_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Olive Green, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Olive Green",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Olive Green",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-s.-olive-green-fsc70-natural-cord/variant/10858",
+   "Splash": null,
+   "Stock": 4,
+   "InRiverVariantId": 10858,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397305779",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_silver_gray_s3502y_papercord_natural_front.png",
+     "Width": 3220,
+     "Height": 4088,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_silver_gray_s3502y_papercord_natural_side.png",
+     "Width": 3231,
+     "Height": 4091,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/ch24_beech_soft_silver_gray_s3502y_papercord_natural_back.png",
+     "Width": 3927,
+     "Height": 4156,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Silver Gray, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Silver Gray",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Silver Gray",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soft-silver-gray-fsc70-natural-cord/variant/10861",
+   "Splash": null,
+   "Stock": 61,
+   "InRiverVariantId": 10861,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413950184",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_black_s9000n_natural_papercord_front-1.png",
+     "Width": 3352,
+     "Height": 4450,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_black_s9000n_natural_papercord_side-1.png",
+     "Width": 2990,
+     "Height": 4244,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_black_s9000n_natural_papercord_back-1.png",
+     "Width": 3286,
+     "Height": 4207,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, painted, Black, natural paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "painted",
+    "Black",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, painted",
+    "Color": "Black",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-s9000-n-black-fsc70-natural-cord/variant/9762",
+   "Splash": null,
+   "Stock": 458,
+   "InRiverVariantId": 9762,
+   "Price": 0,
+   "ProductionDays": 54,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413950153",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_whiteoil_papercord_natural_front-new.png",
+     "Width": 2212,
+     "Height": 2934,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_whiteoil_papercord_natural_side-1.png",
+     "Width": 1969,
+     "Height": 2795,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_whiteoil_papercord_natural_back-1.png",
+     "Width": 2152,
+     "Height": 2746,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, white oil, natural paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "white oil",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, white oil",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-white-oil-fsc70-natural-cord/variant/9463",
+   "Splash": null,
+   "Stock": 1990,
+   "InRiverVariantId": 9463,
+   "Price": 0,
+   "ProductionDays": 10,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413713932",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/y-stol-eg-olie-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, oil, black paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "oil",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, oil",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-oil-fsc70-black-cord/variant/9323",
+   "Splash": null,
+   "Stock": 11,
+   "InRiverVariantId": 9323,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413950160",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/y-stol-eg-hvidolie-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, white oil, black paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "white oil",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, white oil",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-white-oil-fsc70-black-cord/variant/9825",
+   "Splash": null,
+   "Stock": 2,
+   "InRiverVariantId": 9825,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413731448",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/y-stol-eg-lak-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, lacquer, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "lacquer",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, lacquer",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-lacquer-fsc70-black-cord/variant/9824",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9824,
+   "Price": 0,
+   "ProductionDays": 31,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715230571071",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/smoked-oil/ch24_oak_smokedoil_papercord_natural_front2.png",
+     "Width": 3282,
+     "Height": 4401,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/smoked-oil/ch24_oak_smokedoil_papercord_natural_side2.png",
+     "Width": 3082,
+     "Height": 4374,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/smoked-oil/ch24_oak_smokedoil_papercord_natural_back2.png",
+     "Width": 3278,
+     "Height": 4220,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, smoked oil, natural paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "smoked oil",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, smoked oil",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-smoked-oil-fsc70-natural-cord/variant/10133",
+   "Splash": null,
+   "Stock": 925,
+   "InRiverVariantId": 10133,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715230592953",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/smoked-oil/ch24_oak_smokedoil_papercord_black_front-large.png",
+     "Width": 2237,
+     "Height": 3000,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/smoked-oil/ch24_oak_smokedoil_papercord_black_side-large.png",
+     "Width": 2114,
+     "Height": 3000,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/smoked-oil/ch24_oak_smokedoil_papercord_black_back-large.png",
+     "Width": 2330,
+     "Height": 3000,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, smoked oil, black paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "smoked oil",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, smoked oil",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-smoked-oil-fsc70-black-cord/variant/10134",
+   "Splash": null,
+   "Stock": 2,
+   "InRiverVariantId": 10134,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413731424",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/y-stol-boeg-olie-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, oil, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "oil",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, oil",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-oil-fsc70-black-cord/variant/9826",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9826,
+   "Price": 0,
+   "ProductionDays": 31,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413896208",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/y-stol-eg-sortmalet-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, painted, Black, black paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "painted",
+    "Black",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, painted",
+    "Color": "Black",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-s9000-n-fsc70-black-cord/variant/9291",
+   "Splash": null,
+   "Stock": 1,
+   "InRiverVariantId": 9291,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413731400",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/y-stol-boeg-saebe-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soap, black paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soap",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soap",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soap-fsc70-black-cord/variant/8183",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 8183,
+   "Price": 0,
+   "ProductionDays": 31,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413731417",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/y-stol-boeg-olie-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, oil, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "oil",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, oil",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-oil-fsc70-natural-cord/variant/8184",
+   "Splash": null,
+   "Stock": 2319,
+   "InRiverVariantId": 8184,
+   "Price": 0,
+   "ProductionDays": 31,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413731394",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/beech/y-stol-boeg-saebe-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soap, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soap",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soap",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-soap-fsc70-natural-cord/variant/8182",
+   "Splash": null,
+   "Stock": 4063,
+   "InRiverVariantId": 8182,
+   "Price": 0,
+   "ProductionDays": 31,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5710954236213",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/walnut/y-stol-valnoed-olie-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "walnut, oil, natural paper cord",
+   "Configuration": [
+    "walnut",
+    "oil",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "walnut, oil",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-walnut-oil-natural-cord/variant/6906",
+   "Splash": null,
+   "Stock": 396,
+   "InRiverVariantId": 6906,
+   "Price": 0,
+   "ProductionDays": 73,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5713018661143",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/walnut/y-stol-valnoed-lak-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "walnut, lacquer, black paper cord",
+   "Configuration": [
+    "walnut",
+    "lacquer",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "walnut, lacquer",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-walnut-lacquer-black-cord/variant/6909",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 6909,
+   "Price": 0,
+   "ProductionDays": 52,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5710954236572",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/walnut/y-stol-valnoed-lak-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "walnut, lacquer, natural paper cord",
+   "Configuration": [
+    "walnut",
+    "lacquer",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "walnut, lacquer",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-walnut-lacquer-natural-cord/variant/6908",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 6908,
+   "Price": 0,
+   "ProductionDays": 52,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5713018610912",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/walnut/y-stol-valnoed-olie-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "walnut, oil, black paper cord",
+   "Configuration": [
+    "walnut",
+    "oil",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "walnut, oil",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-walnut-oil-black-cord/variant/6907",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 6907,
+   "Price": 0,
+   "ProductionDays": 52,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397046030",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ash/y-stol-ask-sortmalet-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified ash, painted, Black, black paper cord",
+   "Configuration": [
+    "FSC™-certified ash",
+    "painted",
+    "Black",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified ash, painted",
+    "Color": "Black",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-ash-s9000-n-black-fsc70-black-cord/variant/9817",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9817,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397099906",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ash/y-stol-ask-saebe-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified ash, soap, black paper cord",
+   "Configuration": [
+    "FSC™-certified ash",
+    "soap",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified ash, soap",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-ash-soap-fsc70-black-cord/variant/9820",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9820,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397045477",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ash/y-stol-ask-sortmalet-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified ash, painted, Black, natural paper cord",
+   "Configuration": [
+    "FSC™-certified ash",
+    "painted",
+    "Black",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified ash, painted",
+    "Color": "Black",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-ash-s9000-n-black-fsc70-natural-cord/variant/9818",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9818,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5715397044357",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ash/y-stol-ask-saebe-natur-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified ash, soap, natural paper cord",
+   "Configuration": [
+    "FSC™-certified ash",
+    "soap",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified ash, soap",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-ash-soap-fsc70-natural-cord/variant/9819",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9819,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413904750",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/y-stol-eg-lak-sort-flet-1.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, lacquer, black paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "lacquer",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, lacquer",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-lacquer-fsc70-black-cord/variant/9815",
+   "Splash": null,
+   "Stock": 0,
+   "InRiverVariantId": 9815,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413950146",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/y-stol-eg-saebe-sort-flet.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified oak, soap, black paper cord",
+   "Configuration": [
+    "FSC™-certified oak",
+    "soap",
+    "black paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified oak, soap",
+    "Cord": "black paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-oak-soap-fsc70-black-cord/variant/9814",
+   "Splash": null,
+   "Stock": 47,
+   "InRiverVariantId": 9814,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413851627",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-soft-blue_front.png",
+     "Width": 2884,
+     "Height": 3827,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-soft-blue_side.png",
+     "Width": 2794,
+     "Height": 3706,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-soft-blue_back.png",
+     "Width": 2772,
+     "Height": 3678,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-soft-blue_detail.png",
+     "Width": 5000,
+     "Height": 5000,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Blue, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Blue",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Blue",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-m-s8010-r90b-fsc70-natural-cord/variant/8843",
+   "Splash": null,
+   "Stock": 148,
+   "InRiverVariantId": 8843,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413823426",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss4550-y80r-front.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss4550-y80r-side.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss4550-y80r-back.png",
+     "Width": 2470,
+     "Height": 3029,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-red-detalje2.png",
+     "Width": 4360,
+     "Height": 5720,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-red-detalje1.png",
+     "Width": 3431,
+     "Height": 3848,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Red Brown, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Red Brown",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Red Brown",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-m-s4550-y80r-fsc70-natural-cord/variant/8601",
+   "Splash": null,
+   "Stock": 145,
+   "InRiverVariantId": 8601,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413764378",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss8010-g10y-front.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss8010-g10y-side.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss8010-g10y-back.png",
+     "Width": 2470,
+     "Height": 3029,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-green-detalje1.png",
+     "Width": 3431,
+     "Height": 3848,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-green-detalje2.png",
+     "Width": 4360,
+     "Height": 5720,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Green, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Green",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Green",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-m-s8010-g10y-fsc70-natural-cord/variant/8602",
+   "Splash": null,
+   "Stock": 213,
+   "InRiverVariantId": 8602,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413823488",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss9000-n-front.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss9000-n-side.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss9000-n-back.png",
+     "Width": 2470,
+     "Height": 3029,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-black-detalje1.png",
+     "Width": 3431,
+     "Height": 3848,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-black-detalje2.png",
+     "Width": 4360,
+     "Height": 5720,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Black, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Black",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Black",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-m-s9000-n-fsc70-natural-cord/variant/8603",
+   "Splash": null,
+   "Stock": 4323,
+   "InRiverVariantId": 8603,
+   "Price": 0,
+   "ProductionDays": 10,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413823464",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss0502y-front.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss0502y-side.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss0502y-back.png",
+     "Width": 2470,
+     "Height": 3029,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-white-detalje1.png",
+     "Width": 3431,
+     "Height": 3848,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-white-detalje2.png",
+     "Width": 4360,
+     "Height": 5720,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, soft paint, Soft Natural White, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "soft paint",
+    "Soft Natural White",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, soft paint",
+    "Color": "Soft Natural White",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-m-s0502-y-fsc70-natural-cord/variant/8605",
+   "Splash": null,
+   "Stock": 318,
+   "InRiverVariantId": 8605,
+   "Price": 0,
+   "ProductionDays": 10,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  },
+  {
+   "Sku": "5714413823471",
+   "IsFocused": false,
+   "Images": [
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss7502-b-front.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss7502-b-side.png",
+     "Width": 2202,
+     "Height": 2922,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/ch24-beech-ncss7502-b-back.png",
+     "Width": 2470,
+     "Height": 3029,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-grey-detalje2.png",
+     "Width": 4360,
+     "Height": 5720,
+     "FocalPoint": "0.5,0.5"
+    },
+    {
+     "Title": "",
+     "AlternativeText": "",
+     "Url": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/soft/y-stol-soft-grey-detalje1.png",
+     "Width": 3431,
+     "Height": 3848,
+     "FocalPoint": "0.5,0.5"
+    }
+   ],
+   "FormattedConfiguration": "FSC™-certified beech, painted, Soft Anthracite Gray, natural paper cord",
+   "Configuration": [
+    "FSC™-certified beech",
+    "painted",
+    "Soft Anthracite Gray",
+    "natural paper cord"
+   ],
+   "ConfigurationDictionary": {
+    "Wood": "FSC™-certified beech, painted",
+    "Color": "Soft Anthracite Gray",
+    "Cord": "natural paper cord"
+   },
+   "FormattedShippingInformation": null,
+   "QuickShipInformation": null,
+   "FormattedPrice": "",
+   "ImageSize": "normal",
+   "PageUrl": "/en/en/collection/chairs/dining-chairs/ch24/ch24-beech-m-s7502-b-fsc70-natural-cord/variant/8606",
+   "Splash": null,
+   "Stock": 290,
+   "InRiverVariantId": 8606,
+   "Price": 0,
+   "ProductionDays": 3,
+   "ListedPrice": 0,
+   "FormattedListedPrice": "",
+   "SellWithoutStock": true,
+   "Category": "Chairs",
+   "PurchaseNotEnabled": false,
+   "ShowPriceWhenPurchaseNotEnabled": false,
+   "NotEnabledText": "Out of stock",
+   "IsPreOrder": false
+  }
+ ]
+}

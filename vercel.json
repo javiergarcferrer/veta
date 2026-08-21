@@ -3,10 +3,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/configurator", "destination": "/configurator.html" },
-    { "source": "/configurator/", "destination": "/configurator.html" },
-    { "source": "/configurador", "destination": "/configurator.html" },
-    { "source": "/configurador/", "destination": "/configurator.html" },
+    { "source": "/(configurador|configurator)", "destination": "/configurator.html" },
+    { "source": "/(configurador|configurator)/(.*)", "destination": "/configurator.html" },
     { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ],
   "headers": [

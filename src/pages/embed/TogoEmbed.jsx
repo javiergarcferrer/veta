@@ -11,7 +11,8 @@ import { prefersReducedMotion } from '../../lib/motion.js';
 import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
 import { buildTogoGroup, disposeGroup, STANDARD_TOGO_FINISH } from '../../components/togo/togoSceneBuilder.js';
 import { loadTogoModels } from '../../components/togo/togoModelLoader.js';
-import { isConfiguratorPathname, fetchTogoCatalogCached, fetchTogoPlanSvgs, submitTogoRequest, togoEmbedModalUrl, togoHandoffUrl, reportTogoView } from '../../lib/togoEmbed.js';
+import { configuratorForPathname } from '../../brands/configurators/index.js';
+import { fetchTogoCatalogCached, fetchTogoPlanSvgs, submitTogoRequest, togoEmbedModalUrl, togoHandoffUrl, reportTogoView } from '../../lib/togoEmbed.js';
 import { encodeBuild, decodeBuild, decodeRoomFromBuild } from '../../lib/togo/buildShare.js';
 import { makeRectRoom, roomSize, roomCenter, roomFit, clampRoomDim } from '../../lib/togo/room.js';
 import { t, resolveTogoLocale, piecesLabel } from '../../lib/togo/i18n.js';
@@ -204,7 +205,12 @@ function isModalContext() {
 // bounced the user out to the hash URL #/embed/togo.
 function isStandaloneConfigurator() {
   if (typeof window === 'undefined') return false;
-  return isConfiguratorPathname(window.location.pathname);
+  // MY path, not just "a configurator path". There are several now, one per
+  // brand, and this component only owns Togo's — asking the broad question
+  // would have this widget claim to be standalone on a page it is not even
+  // mounted on, which is the kind of latent wrong answer that surfaces years
+  // later as a bug nobody can place.
+  return configuratorForPathname(window.location.pathname)?.id === 'togo';
 }
 
 // Read a param that may ride EITHER the real query (/configurator?x=…, the

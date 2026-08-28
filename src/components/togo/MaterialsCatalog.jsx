@@ -337,7 +337,7 @@ export default function MaterialsCatalog({
               {/* Composition is the deciding read AND a search target, so it
                   stays visible — truncated onto the count's line, which costs
                   the header no extra height. */}
-              <div className="flex items-baseline gap-1.5 min-w-0 text-[10px] leading-snug text-ink-400">
+              <div className="flex items-baseline gap-1.5 min-w-0 text-micro leading-snug text-ink-500">
                 <span className="shrink-0 tabular-nums">{colorsLabel(locale, openColors.length)}</span>
                 {open.composition && <span className="min-w-0 truncate">· {open.composition}</span>}
               </div>
@@ -345,7 +345,7 @@ export default function MaterialsCatalog({
             <span className="shrink-0 flex items-baseline gap-1.5">
               {open.grade && <GradeBadge grade={open.grade} />}
               {priceFor(open) != null && (
-                <span className="text-[10px] font-medium text-ink-600 tabular-nums">
+                <span className="text-micro font-medium text-ink-600 tabular-nums">
                   {shortMoney(fmt, priceFor(open))}
                 </span>
               )}
@@ -379,7 +379,7 @@ export default function MaterialsCatalog({
           <div className="relative">
             {/* type="text", not "search": the native clear glyph is a second,
                 unstyled control inside a field that already has ✕. */}
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-500 pointer-events-none" />
             <input
               ref={searchRef}
               type="text"
@@ -388,14 +388,14 @@ export default function MaterialsCatalog({
               onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
               placeholder={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
               aria-label={t(locale, open ? 'fabric.paneSearchColor' : 'fabric.paneSearch')}
-              className="w-full rounded-lg border border-ink-200 bg-surface pl-8 pr-7 py-1.5 text-xs text-ink-800 placeholder:text-ink-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-300 transition"
+              className="w-full rounded-lg border border-ink-200 bg-surface pl-8 pr-7 py-1.5 text-xs text-ink-800 placeholder:text-ink-500 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-300 transition"
             />
             {q && (
               <button
                 type="button"
                 onClick={() => { setQ(''); searchRef.current?.focus(); }}
                 aria-label={t(locale, 'common.close')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center w-5 h-5 rounded-full text-ink-500 hover:bg-ink-100 hover:text-ink-600 transition"
               >
                 <X size={12} />
               </button>
@@ -563,9 +563,9 @@ function MaterialTile({
       <span className="block px-1.5 pt-1 pb-1.5">
         {/* Truncate, never wrap — "ANTHR ACITE" mid-word breaks are the bug
             this pane replaced. */}
-        <span className="block truncate text-[11px] font-semibold leading-tight text-ink-800">{material.name}</span>
-        <span className="mt-px flex items-baseline gap-1 min-w-0 text-[10px] leading-snug">
-          <span className={`min-w-0 truncate tabular-nums ${hits ? 'font-medium text-brand-600' : 'text-ink-400'}`}>
+        <span className="block truncate text-micro font-semibold leading-tight text-ink-800">{material.name}</span>
+        <span className="mt-px flex items-baseline gap-1 min-w-0 text-micro leading-snug">
+          <span className={`min-w-0 truncate tabular-nums ${hits ? 'font-medium text-brand-600' : 'text-ink-500'}`}>
             {hits
               ? t(locale, hits === 1 ? 'fabric.paneMatchOne' : 'fabric.paneMatchOther', { n: hits })
               : colorsLabel(locale, colors.length)}
@@ -613,8 +613,8 @@ function ColorTile({ innerRef, label, color, active, swatchSrc, swatchFallbackSr
           />
         </span>
         <span className="block px-1 pt-0.5 pb-1">
-          <span className="block truncate text-[10px] font-medium leading-tight text-ink-800">{color.name}</span>
-          {color.code && <span className="block text-[9px] text-ink-400 tabular-nums">#{color.code}</span>}
+          <span className="block truncate text-micro font-medium leading-tight text-ink-800">{color.name}</span>
+          {color.code && <span className="block text-micro text-ink-500 tabular-nums">#{color.code}</span>}
         </span>
       </button>
       {active && (
@@ -683,7 +683,7 @@ function Empty({ locale }) {
  *  affordance uses rather than the ink chip the header can afford. */
 function GradeBadge({ grade, overlay = false }) {
   return (
-    <span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide ${
+    <span className={`shrink-0 rounded-full px-1.5 py-px text-micro font-semibold uppercase tracking-wide ${
       overlay ? 'bg-black/55 text-white' : 'bg-ink-100 text-ink-600'
     }`}
     >
@@ -698,7 +698,7 @@ function FilterChip({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+      className={`rounded-full border px-2.5 py-1 text-micro font-medium transition-colors ${
         active
           ? 'bg-ink-900 border-ink-900 text-ink-50'
           : 'bg-surface border-ink-200 text-ink-600 hover:bg-ink-50 active:bg-ink-100'

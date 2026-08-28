@@ -36,6 +36,34 @@ export function splitSkuGrade(sku: string | null | undefined): { root: string; g
   return activeCatalogModule().splitSku(sku) || { root: '', grade: '' };
 }
 
+/**
+ * The MODEL KEY exactly as Postgres generates `products.search_root`
+ * (supabase/migrations 20261127000000 + 20270111000000).
+ *
+ * NOT the same question as `splitSkuGrade`, and deliberately so. The column is
+ * LOOSER on the Ligne Roset side — it accepts any trailing letter where the app
+ * accepts only real grade letters, so `15420000T` groups here and does not
+ * there. Over-grouping costs a few extra rows; under-grouping would drop grades
+ * off a model, so the looseness only ever errs safe.
+ *
+ * It lives here, exported, because THREE implementations of one rule is two too
+ * many: the SQL generated column, and this. `db/database.ts` imports it to
+ * re-group the rows it hydrates by the same key the server ranked them under —
+ * a mismatch there silently sorts a model to the end of its own search.
+ *
+ * Pinned against the migration's SQL, byte for byte, in tests/fredericia.test.js.
+ */
+export function searchRootOf(reference: string | null | undefined): string {
+  const ref = String(reference ?? '');
+  // Fredericia: the SKU with its FIRST material segment emptied. Mirrors
+  // `public.rs_fredericia_root` — case folded, whole-segment anchored, first
+  // match only (no `g` flag, exactly like regexp_replace without one).
+  if (/^(FRE|EJ)-/i.test(ref)) {
+    return ref.toUpperCase().replace(/(^|-)(FG[1-9]|LG[1-9]|FB5|COM|COL)(-|$)/, '$1$3');
+  }
+  return /^[0-9]{8}[A-Za-z]$/.test(ref) ? ref.slice(0, 8) : ref;
+}
+
 export interface CatalogFamily {
   /** Family root — the 8-digit SKU prefix (or the whole SKU when ungraded). */
   root: string;
@@ -86,6 +114,59 @@ export function groupFamilies(products: readonly Product[] | null | undefined): 
 function priceOf(p: Product | undefined): number {
   const n = Number(p?.priceUsd);
   return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * The maker's technical LINE DRAWING for a model (`images.id`), or null.
+ *
+ * The only picture a Ligne Roset article has. Roset publishes an outline per
+ * article and no photograph, so an LR row's `imageId` is always null and every
+ * surface that draws a piece — the model picker, the quote line, the printed
+ * proposal — had nothing to show but a placeholder glyph. The drawings are
+ * mirrored into our own storage and hung off the SKU by the `lr-etiquette`
+ * function; the /etiquetas tag has printed them since, and now so does the rest
+ * of the app.
+ *
+ * ANY GRADE ANSWERS FOR THE MODEL. A grade variant is the same piece in a
+ * different cloth — one drawing serves them all — so the first member that
+ * carries one wins, exactly as the label module reads a model's words.
+ */
+export function specImageOf(family: CatalogFamily | null | undefined): string | null {
+  for (const product of family?.byGrade.values() || []) {
+    const spec = specImageOfProduct(product);
+    if (spec) return spec;
+  }
+  return null;
+}
+
+/** One row's drawing. Narrowed here rather than declared on `Product`: this
+ *  file is the column's one reader in the app (the label module reads the same
+ *  field off its own row), so the concept keeps one home. */
+function specImageOfProduct(product: Product | null | undefined): string | null {
+  return (product as { specImageId?: string | null } | undefined)?.specImageId || null;
+}
+
+/**
+ * THE PICTURE A CATALOG ROW BRINGS TO A QUOTE LINE — the product's own photo,
+ * and failing that its line drawing. What every picker stamps on the line it
+ * seeds, so the piece lands illustrated instead of blank.
+ *
+ * The photo leads and the drawing FILLS: an LSG row arrives with the store's
+ * packshot, a Ligne Roset row (which has no photograph at all) arrives with the
+ * maker's outline. It becomes the line's FIRST image — `imageId` is the cover
+ * slot the dealer sees, with `extraImageIds` the strip beside it — so a dealer
+ * who later photographs the real piece replaces or reorders from something,
+ * never from nothing.
+ *
+ * `family` is the fallback for a row whose own link hasn't been written yet;
+ * the linking statement sets every grade of a model in one pass, so in practice
+ * either both answer or neither does.
+ */
+export function coverImageOf(
+  product: Product | null | undefined,
+  family?: CatalogFamily | null,
+): string | null {
+  return product?.imageId || specImageOfProduct(product) || specImageOf(family) || null;
 }
 
 /** The grade letters a model offers — what the fabric picker filters to. */

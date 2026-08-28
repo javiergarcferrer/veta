@@ -8,6 +8,12 @@
  * modelos que el dueño ligó a mano, 8 estaban mal, todos vivos (`active`), y
  * todos con la misma forma: UN SKU BASE METIDO EN UNA RANURA DE COMPONENTE.
  *
+ * SIETE de esos ocho los DICE el catálogo (subtipo de elemento completo, subtipo
+ * de zona, o ligarse a la propia base) y son los que este módulo frena. El
+ * octavo —EXCLUSIF, abajo— sólo se distinguía por precio, y el precio resultó
+ * no distinguir nada: en esa colección un componente puede ser la base y costar
+ * ~70% de la pieza. Ver la nota del umbral más abajo.
+ *
  *   Noka Left-Arm Loveseat   base $10,700  + `cushion` → NOKA RIGHT-ARM LOVES
  *                                            (COMP. ELEMENT, $10,700)   +100%
  *   Ottoman Armchair         base  $3,030  + $2,550 + $640              +105%
@@ -15,7 +21,7 @@
  *   Ottoman Ottoman          base  $1,830  + $1,445 + $575              +110%
  *   Ottoman Sofa             base  $6,550  + $5,500 + $1,280            +104%
  *   EXCLUSIF gd canapé A     base  $9,560  + `bolster` → EXCLUSIF SOFA
- *                                            ($7,885)                    +82%
+ *                                            ($7,885)   +82%  ← YA NO SE FRENA
  *   Prado Medium Sofa 100    base  $7,890  + `bolster` → …subtype BASE
  *                                            ($5,105)                    +65%
  *   Prado Medium Sofa 120    base  $7,890  + `armCushion` → …BASE ($5,665) +72%
@@ -39,21 +45,25 @@
 import { UNPRICED_ROLES } from './meshParts.js';
 
 /**
- * El precio de un componente REAL frente al de su base, medido sobre las
- * ligaduras que el dueño confirmó y que el catálogo respalda:
+ * NO HAY UMBRAL DE PRECIO, y la ausencia es la regla.
  *
- *   EXCLUSIF armCushion  $450 / $9,560   4.7%      Prado bolster   5.7%
- *   Noka bolster         $565 / $10,700  5.3%      Prado armCush   7.3%
- *   EXCLUSIF cushion   $1,355 / $9,560   14%       Prado cushion    24%
- *   Prado S/3 back cushions $3,535 / $10,395       34%  ← el más caro real
+ * Hubo uno: 50% de la base frenaba, 35% avisaba. Salió de medir las diez
+ * ligaduras que el dueño había hecho a mano — las legítimas caían entre 4.7% y
+ * 34%, las equivocadas entre 65% y 100%, y el corte parecía vivir cómodo en el
+ * hueco. No vivía: diez casos no son el catálogo. En EXCLUSIF un componente
+ * PUEDE SER la base, y cuesta del orden del 70% de la pieza — perfectamente
+ * legítimo y frenado por un número que nadie había medido contra esa colección.
  *
- * y las ocho equivocadas caen en 65–100%. El umbral vive en el hueco: 50% deja
- * 16 puntos de margen sobre el componente legítimo más caro y sigue muy por
- * debajo de cualquier base. La banda 35–50% avisa sin frenar, porque ahí no hay
- * medición todavía y un juego de 3 cojines sobre una pieza chica podría llegar.
+ * Lo que queda son los tres motivos que el catálogo DICE con todas sus letras:
+ * el subtipo declara un elemento completo, el subtipo declara una zona de
+ * tapizado, o la ranura se liga a su propia base. Son hechos del dato. El
+ * precio era una inferencia sobre el dato, y la lente ontológica de este repo
+ * ya lo nombra: nunca inventes un hecho que el dominio no tiene.
+ *
+ * Si algún día hace falta volver a atrapar «una pieza entera metida en una
+ * ranura», que sea por lo que la pieza ES —su root es el `product_root` de otro
+ * modelo— y no por lo que cuesta.
  */
-export const COMPONENT_MAX_SHARE = 0.5;
-export const COMPONENT_WARN_SHARE = 0.35;
 
 /** Subtipos con los que la lista de precios NOMBRA un elemento completo. Son
  *  literales del catálogo, no heurística: 'COMP. ELEMENT' y 'BASE'. */
@@ -66,8 +76,8 @@ const ZONE_SUBTYPE = /\bPART\s*([AB])\s*\/\s*(INTERIOR|EXTERIOR)\b/i;
 /**
  * Qué ES esta fila del catálogo, según lo que la propia lista de precios dice
  * de ella: 'base' (elemento completo), 'zone' (zona de tapizado, con cuál) o
- * null cuando el subtipo no lo declara — que es la mayoría y se resuelve por
- * precio más abajo. Nunca inventa: si el catálogo calla, esto calla.
+ * null cuando el subtipo no lo declara. Nunca inventa: si el catálogo calla,
+ * esto calla — y entonces la ligadura pasa.
  */
 export function catalogKindOf(product) {
   const subtype = String(product?.subtype || '').trim();
@@ -156,25 +166,9 @@ export function checkPartBinding({ role, root, product, basePrice, baseRoot } = 
     });
   }
 
-  // `priceUsd` on a raw catalog row, `fromUsd` on an indexed family
-  // (`indexProductsByRoot` keeps the cheapest grade). Either is the same
-  // question — what this SKU costs — so the caller never has to remap.
-  const price = Number(product?.priceUsd ?? product?.fromUsd);
-  const base = Number(basePrice);
-  if (Number.isFinite(price) && price > 0 && Number.isFinite(base) && base > 0) {
-    const share = price / base;
-    if (share >= COMPONENT_MAX_SHARE) {
-      checks.push({
-        code: 'component-costs-like-a-base', level: 'blocker', field: role,
-        message: `Cuesta ${Math.round(share * 100)}% de la base (US$${Math.round(price).toLocaleString('en-US')} sobre US$${Math.round(base).toLocaleString('en-US')}). Un componente real de este catálogo va del 5% al 34%.`,
-      });
-    } else if (share >= COMPONENT_WARN_SHARE) {
-      checks.push({
-        code: 'component-price-high', level: 'warn', field: role,
-        message: `Cuesta ${Math.round(share * 100)}% de la base — alto para un componente. Verifica que sea la parte y no la pieza.`,
-      });
-    }
-  }
+  // NO HAY REGLA DE PRECIO. Ver la nota al inicio del archivo: el precio de un
+  // componente frente al de su base no distingue una ligadura buena de una
+  // mala, y fingir que sí frenaba trabajo legítimo.
   return checks;
 }
 

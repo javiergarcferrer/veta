@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useContext, useEffect, useLayoutEffect, createContext } from 'react';
 import { createPortal } from 'react-dom';
-import { Sofa, RotateCw, Trash2, Loader2, Eraser, ArrowRight, ArrowLeft, Check, AlertCircle, Palette, Layers, X, FileDown, Box, Square, View, Receipt, Undo2, Redo2, CopyPlus, Lightbulb, ZoomIn, ZoomOut, Maximize, Pencil, Pipette, Plus, MoreHorizontal, ChevronRight, ChevronLeft, ChevronDown, Undo, Frame } from 'lucide-react';
+import { Sofa, RotateCw, Trash2, Loader2, Eraser, ArrowRight, ArrowLeft, Check, AlertCircle, Palette, Layers, X, FileDown, Box, Square, View, Receipt, Undo2, Redo2, CopyPlus, Lightbulb, ZoomIn, ZoomOut, Maximize, Pencil, Pipette, Plus, ChevronRight, ChevronLeft, ChevronDown, Undo, Frame, Share2 } from 'lucide-react';
 import { formatMoney } from '../../lib/format.js';
 import { swatchUrl, swatchProxyUrl, swatchTileUrl, swatchTextureUrl } from '../../lib/swatchImage.js';
 import { productForGrade } from '../../lib/catalog.js';
@@ -10,6 +10,7 @@ import { safeDynamicImport } from '../../lib/dynamicImport.js';
 import { prefersReducedMotion } from '../../lib/motion.js';
 import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
 import { buildTogoGroup, disposeGroup, STANDARD_TOGO_FINISH } from '../../components/togo/togoSceneBuilder.js';
+import { FINE_POINTER, useToolbarFit, HudIcon, HudMenu } from '../../components/togo/HudControls.jsx';
 import { loadTogoModels } from '../../components/togo/togoModelLoader.js';
 import { configuratorForPathname } from '../../brands/configurators/index.js';
 import { fetchTogoCatalogCached, fetchTogoPlanSvgs, submitTogoRequest, togoEmbedModalUrl, togoHandoffUrl, reportTogoView } from '../../lib/togoEmbed.js';
@@ -84,8 +85,8 @@ const COMPONENTS_RAIL_REM = 5.5;
 //
 // Set in VERLAG, Ligne Roset's own face — the whole configurator is (see the
 // `.togo-rams` skin), so these inherit it and name no family of their own.
-const EYEBROW = 'text-[11px] uppercase tracking-[0.08em] text-ink-500';
-const EYEBROW_INK = 'text-[11px] uppercase tracking-[0.08em]';
+const EYEBROW = 'text-micro uppercase tracking-[0.08em] text-ink-500';
+const EYEBROW_INK = 'text-micro uppercase tracking-[0.08em]';
 
 // NO LINE DRAWING STANDS IN FOR A PIECE (owner, 2026-07-31: "I don't want to
 // see the svg drawings anymore … the models seem to just appear"). Every picker
@@ -140,10 +141,35 @@ const CONFETTI_COLORS = ['#e2725b', '#2f6f6b', '#d9a441', '#3b5f8a', '#b8553f', 
 const HINTS_KEY = 'togo:hints:v2';
 const HINTS3D_KEY = 'togo:hints3d:v1';
 
-// Fine pointer (mouse/trackpad) → keyboard hints are worth screen space. A
-// device doesn't change pointer class mid-session, so this is computed once.
-const FINE_POINTER = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches;
 
+/**
+ * Copy `text`, resolving to whether it actually landed. The async Clipboard
+ * API is the happy path, but it is denied outright in a cross-origin iframe
+ * without `clipboard-write` (the widget is DISTRIBUTABLE — some host will embed
+ * it) and in any non-secure context, so the hidden-textarea `execCommand` route
+ * stays as the fallback. Same two-step the quote's ClientPreview uses.
+ *
+ * Returns false only when BOTH routes fail — the one case worth telling the
+ * visitor about, since a silent no-op looks like a broken button.
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { /* denied / unavailable → the legacy route below */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch { return false; }
+}
 
 // Live min-width media query (unlike FINE_POINTER, a window CAN cross this
 // mid-session — resize/rotate). Drives WHERE the two workspace panes hang: at
@@ -870,14 +896,60 @@ export default function TogoEmbed() {
 
   const vm = useMemo(() => resolveConfigurator(placed, resolvedById, { scale: SCALE }), [placed, resolvedById]);
   const scene3d = useMemo(() => resolveTogoScene(scenePlacementsFromPlaced(placed, resolvedById)), [placed, resolvedById]);
-  // The phone-handoff URL the AR viewer renders as a QR (desktop only — a
-  // fine-pointer device can't do WebAR). Carries the current plan so the phone
-  // opens the exact same build, ready to place life-size. Null on touch devices
-  // (they get AR directly) or an empty plan.
-  const handoffUrl = useMemo(
-    () => (FINE_POINTER ? (togoHandoffUrl(dealerSlug, encodeBuild(placed, room)) || null) : null),
-    [placed, room, dealerSlug],
+  // THE DESIGN LINK — the current build encoded into a URL that reopens it
+  // exactly (lib/togo/buildShare + lib/togoEmbed). ONE url, two exits:
+  //   • the desktop AR QR (`handoffUrl`) — the phone restores the plan and
+  //     places it life-size, since WebAR needs a camera a laptop hasn't got;
+  //   • "Compartir mi diseño" (`shareDesign`) — on EVERY device, because the
+  //     person who builds the sofa is rarely the only person who decides. A
+  //     design that can only be rebuilt from scratch dies in the tab it was
+  //     made in.
+  // Carries `locale` so the recipient lands in the sender's language instead of
+  // the dealer's default. '' (→ null) while the plan is empty.
+  const designUrl = useMemo(
+    () => togoHandoffUrl(dealerSlug, encodeBuild(placed, room), { lang: locale }) || null,
+    [placed, room, dealerSlug, locale],
   );
+  const handoffUrl = FINE_POINTER ? designUrl : null;
+
+  // The two top clusters share one row; `useToolbarFit` measures whether the
+  // right one can afford its words (see the hook).
+  const leftBarRef = useRef(null);
+  const toolsBarRef = useRef(null);
+
+  // Share/copy the design link. `navigator.share` where the OS offers it (the
+  // phone's own sheet — WhatsApp is one tap in), clipboard everywhere else. A
+  // dismissed share sheet (AbortError) is a non-event, never an error toast.
+  const [shareToast, setShareToast] = useState('');
+  const shareTimer = useRef(0);
+  useEffect(() => () => clearTimeout(shareTimer.current), []);
+  const flashShare = useCallback((msg) => {
+    clearTimeout(shareTimer.current);
+    setShareToast(msg);
+    shareTimer.current = setTimeout(() => setShareToast(''), 3200);
+  }, []);
+  const shareDesign = useCallback(async () => {
+    if (!designUrl) return;
+    const text = tr('share.text', {
+      pieces: piecesTxt(vm.count),
+      size: `${vm.overallCm.widthCm}×${vm.overallCm.depthCm}`,
+    });
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: tr('share.title'), text, url: designUrl });
+        return;
+      } catch (e) {
+        if (e?.name === 'AbortError') return; // the visitor closed the sheet
+        // Any other share failure falls through to the clipboard below.
+      }
+    }
+    if (await copyToClipboard(designUrl)) {
+      flashShare(tr('share.copied'));
+      announce(tr('share.copied'));
+    } else {
+      flashShare(tr('share.failed'));
+    }
+  }, [designUrl, tr, piecesTxt, vm.count, vm.overallCm, flashShare, announce]);
   // Fit readout (visual reference): how far the assembled design pokes past the
   // room, if a room is drawn. Never blocks — just tells the customer/dealer.
   const roomFitInfo = useMemo(() => roomFit(room, vm.boundsCm), [room, vm.boundsCm]);
@@ -2088,6 +2160,12 @@ export default function TogoEmbed() {
   // is built around. Resolved unconditionally: this sits above the only early
   // return, so the hook order can't shift between the card and the build.
   const launchHero = useMemo(() => resolveLaunchHero(models, materials), [models, materials]);
+  // Re-measure the top row whenever anything that changes either cluster's WIDTH
+  // changes: the locale (label lengths), the collection name, the piece count
+  // (the whole chrome appears at 1), the undo cluster coming and going, the room
+  // chip gaining its cm readout, and the 2D/3D switch. Not on every drag — those
+  // move nothing in the bar.
+  useToolbarFit(leftBarRef, toolsBarRef, [locale, activeCollection, vm.count, canUndo, canRedo, !!room, view]);
   if (!launched) {
     return (
       <EmbedLaunchCard
@@ -2100,7 +2178,7 @@ export default function TogoEmbed() {
   }
 
   if (cat.status === 'loading') {
-    return <Centered><Loader2 size={20} className="animate-spin text-ink-400" /></Centered>;
+    return <Centered><Loader2 size={20} className="animate-spin text-ink-500" /></Centered>;
   }
   if (cat.status === 'error' || !data?.configured) {
     // An unknown dealer slug 404s → a minimal, friendly "not available" (no
@@ -2112,7 +2190,7 @@ export default function TogoEmbed() {
     return (
       <Centered>
         <div role="status" className="text-center text-ink-600 text-sm flex flex-col items-center gap-2">
-          <Sofa size={24} className="text-ink-300" aria-hidden />
+          <Sofa size={24} className="text-ink-400" aria-hidden />
           {msg}
           {cat.status === 'error' && !dealerUnavailable && (
             <button type="button" onClick={loadCatalog} className="btn-secondary text-xs mt-1">{t(locale, 'action.retry')}</button>
@@ -2276,7 +2354,7 @@ export default function TogoEmbed() {
       )}
 
       {/* ── Top-left: brand + 2D/3D toggle + undo/redo ── */}
-      <div className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-[max(0.75rem,env(safe-area-inset-left))] z-30 flex items-center gap-2">
+      <div ref={leftBarRef} className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-[max(0.75rem,env(safe-area-inset-left))] z-30 flex items-center gap-2">
         {/* Where you are in the catalogue. The BRAND MARK belongs on the splash
             masthead (EmptyPlanStart), not here — putting it here left the splash
             still reading "Colecciones" and spent the toolbar on a second logo. */}
@@ -2298,8 +2376,8 @@ export default function TogoEmbed() {
         )}
         {vm.count > 0 && view === '2d' && (canUndo || canRedo) && (
           <div className="hud-panel inline-flex items-center gap-0.5 p-1">
-            <button type="button" onClick={undo} disabled={!canUndo} title={t(locale, 'action.undo')} aria-label={t(locale, 'action.undo')} className="rounded-full px-2.5 py-1.5 text-ink-700 transition-colors hover:bg-ink-900/5 active:scale-90 disabled:opacity-25 disabled:active:scale-100"><Undo2 size={15} /></button>
-            <button type="button" onClick={redo} disabled={!canRedo} title={t(locale, 'action.redo')} aria-label={t(locale, 'action.redo')} className="rounded-full px-2.5 py-1.5 text-ink-700 transition-colors hover:bg-ink-900/5 active:scale-90 disabled:opacity-25 disabled:active:scale-100"><Redo2 size={15} /></button>
+            <button type="button" onClick={undo} disabled={!canUndo} aria-label={t(locale, 'action.undo')} className="rounded-full px-2.5 py-1.5 text-ink-700 transition-colors hover:bg-ink-900/5 active:scale-90 disabled:opacity-25 disabled:active:scale-100"><Undo2 size={15} /></button>
+            <button type="button" onClick={redo} disabled={!canRedo} aria-label={t(locale, 'action.redo')} className="rounded-full px-2.5 py-1.5 text-ink-700 transition-colors hover:bg-ink-900/5 active:scale-90 disabled:opacity-25 disabled:active:scale-100"><Redo2 size={15} /></button>
           </div>
         )}
         {/* The space/room tool. It used to stay visible on an empty plan (the
@@ -2316,11 +2394,10 @@ export default function TogoEmbed() {
           onClick={() => setRoomOpen((o) => !o)}
           aria-pressed={roomOpen}
           aria-label={t(locale, 'room.tool')}
-          title={t(locale, 'room.tool')}
           className={`hud-panel inline-flex items-center gap-1 px-2.5 py-2 transition active:scale-90 ${room ? 'text-brand-600' : 'text-ink-700 hover:bg-ink-100/60'}`}
         >
           <Frame size={15} />
-          {room && (() => { const s = roomSize(room); return s ? <span className="hidden sm:inline text-[11px] font-medium tabular-nums leading-none">{s.widthCm}×{s.depthCm}</span> : null; })()}
+          {room && (() => { const s = roomSize(room); return s ? <span className="hidden sm:inline text-micro font-medium tabular-nums leading-none">{s.widthCm}×{s.depthCm}</span> : null; })()}
         </button>
         )}
       </div>
@@ -2336,8 +2413,8 @@ export default function TogoEmbed() {
           className="pointer-events-auto absolute z-20 right-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 py-3 pr-1.5 pl-2 rounded-l-2xl bg-surface/95 backdrop-blur border border-r-0 border-ink-200 text-ink-700 shadow-md active:scale-95 transition"
         >
           <Receipt size={18} className="text-ink-500" />
-          <span className="text-[11px] font-medium tracking-wide [writing-mode:vertical-rl] rotate-180">{t(locale, 'panel.summary')}</span>
-          <ChevronLeft size={14} className="text-ink-400" />
+          <span className="text-micro font-medium tracking-wide [writing-mode:vertical-rl] rotate-180">{t(locale, 'panel.summary')}</span>
+          <ChevronLeft size={14} className="text-ink-500" />
         </button>
       )}
 
@@ -2362,21 +2439,44 @@ export default function TogoEmbed() {
            glyph. ── */}
       {vm.count > 0 && (
         <div className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] z-30 flex items-center justify-end gap-1.5">
-          <div className="hidden sm:flex items-center gap-1.5">
-            <HudIcon title={t(locale, 'tools.oneFabricAll')} onClick={() => openMaterial('all')}><Layers size={15} /></HudIcon>
-            <HudIcon title={t(locale, 'tools.ar')} onClick={() => setArOpen(true)}><View size={15} /></HudIcon>
-            <HudIcon title={t(locale, 'tools.download')} onClick={() => setDlOpen(true)}><FileDown size={15} /></HudIcon>
-            <HudIcon title={t(locale, 'tools.clear')} danger onClick={clearPlan}><Eraser size={15} /></HudIcon>
+          {/* Each tool wears its word while the row has room for it (the fold is
+              measured — useToolbarFit), and answers a real tooltip either way.
+              The hairline before "Vaciar" is the same separation the phone menu
+              makes with its divider: the one destructive control in the row
+              should never sit flush against Descargar. */}
+          <div ref={toolsBarRef} className="hidden sm:flex items-center gap-1.5">
+            <HudIcon
+              title={t(locale, 'tools.oneFabricAll')}
+              label={t(locale, 'tools.oneFabricAllShort')} onClick={() => openMaterial('all')}
+            ><Layers size={15} /></HudIcon>
+            <HudIcon
+              title={t(locale, 'tools.ar')}
+              label={t(locale, 'tools.arShort')} onClick={() => setArOpen(true)}
+            ><View size={15} /></HudIcon>
+            <HudIcon
+              title={t(locale, 'tools.share')}
+              label={t(locale, 'tools.shareShort')} onClick={shareDesign}
+            ><Share2 size={15} /></HudIcon>
+            <HudIcon
+              title={t(locale, 'tools.download')}
+              label={t(locale, 'tools.downloadShort')} onClick={() => setDlOpen(true)}
+            ><FileDown size={15} /></HudIcon>
+            <span className="hud-tool-sep" aria-hidden />
+            <HudIcon
+              title={t(locale, 'tools.clear')}
+              label={t(locale, 'tools.clearShort')} danger onClick={clearPlan}
+            ><Eraser size={15} /></HudIcon>
           </div>
           <div className="sm:hidden">
             <HudMenu
               label={t(locale, 'tools.menu')}
               items={[
-                { icon: <Layers size={17} />, label: t(locale, 'tools.oneFabricAll'), onClick: () => openMaterial('all') },
-                { icon: <View size={17} />, label: t(locale, 'tools.ar'), onClick: () => setArOpen(true) },
-                { icon: <FileDown size={17} />, label: t(locale, 'tools.downloadMenu'), onClick: () => setDlOpen(true) },
+                { icon: <Layers size={17} />, label: t(locale, 'tools.oneFabricAll'), hint: t(locale, 'tools.oneFabricAllHint'), onClick: () => openMaterial('all') },
+                { icon: <View size={17} />, label: t(locale, 'tools.ar'), hint: t(locale, 'tools.arHint'), onClick: () => setArOpen(true) },
+                { icon: <Share2 size={17} />, label: t(locale, 'tools.share'), hint: t(locale, 'tools.shareHint'), onClick: shareDesign },
+                { icon: <FileDown size={17} />, label: t(locale, 'tools.downloadMenu'), hint: t(locale, 'tools.downloadHint'), onClick: () => setDlOpen(true) },
                 { divider: true },
-                { icon: <Eraser size={17} />, label: t(locale, 'tools.clear'), danger: true, onClick: clearPlan },
+                { icon: <Eraser size={17} />, label: t(locale, 'tools.clear'), hint: t(locale, 'tools.clearHint'), danger: true, onClick: clearPlan },
               ]}
             />
           </div>
@@ -2592,12 +2692,20 @@ export default function TogoEmbed() {
             </div>
           )}
 
+          {/* Design-link confirmation — the clipboard is silent, so say it. */}
+          {shareToast && (
+            <div role="status" className="hud-panel pointer-events-auto self-center flex items-center gap-2 px-3 py-1.5 togo-rise">
+              <Share2 size={13} className="shrink-0 text-ink-500" aria-hidden />
+              <span className="text-xs text-ink-700">{shareToast}</span>
+            </div>
+          )}
+
           {/* First-run coach line — how to work the plan, one dismiss, remembered.
               Desktop (fine pointer) also learns the keyboard verbs. */}
           {view === '2d' && hintsOpen && vm.count > 0 && (
             <div className="hud-panel pointer-events-auto self-center flex items-center gap-2 pl-2 pr-1.5 py-1.5 max-w-md togo-rise">
               <span className="shrink-0 w-7 h-7 rounded-full bg-brand-50 grid place-items-center" aria-hidden><Lightbulb size={14} className="text-brand-600" /></span>
-              <span className="text-[11px] text-ink-600 leading-snug">
+              <span className="text-micro text-ink-600 leading-snug">
                 {t(locale, 'hint.build')}
                 {FINE_POINTER && ` ${t(locale, 'hint.buildKeyboard')}`}
               </span>
@@ -2609,7 +2717,7 @@ export default function TogoEmbed() {
           {view === '3d' && hints3dOpen && vm.count > 0 && (
             <div className="hud-panel pointer-events-auto self-center flex items-center gap-2 pl-2 pr-1.5 py-1.5 max-w-md togo-rise">
               <span className="shrink-0 w-7 h-7 rounded-full bg-brand-50 grid place-items-center" aria-hidden><Lightbulb size={14} className="text-brand-600" /></span>
-              <span className="text-[11px] text-ink-600 leading-snug">{t(locale, 'hint.view3d')}</span>
+              <span className="text-micro text-ink-600 leading-snug">{t(locale, 'hint.view3d')}</span>
               <button type="button" onClick={dismissHints3d} aria-label={t(locale, 'hint.dismiss')} className="shrink-0 w-8 h-8 grid place-items-center rounded-lg text-ink-500 hover:bg-ink-100/60 hover:text-ink-700 transition"><X size={14} /></button>
             </div>
           )}
@@ -2641,11 +2749,11 @@ export default function TogoEmbed() {
           {!desktop && vm.count > 0 && (
             <div className="hud-panel pointer-events-auto flex items-center justify-between gap-3 px-4 py-2.5">
               <div className="min-w-0">
-                <div className="text-[11px] text-ink-500 flex items-center gap-1.5 flex-wrap">
+                <div className="text-micro text-ink-500 flex items-center gap-1.5 flex-wrap">
                   {/* Hidden pricing → no "Estimado" register, just the piece count. */}
                   <span>{pricesHidden ? piecesLabel(locale, vm.count) : `${t(locale, 'estimate.label')} · ${piecesLabel(locale, vm.count)}`}</span>
                   {!pricesHidden && pendingFabric > 0 && pricedUsd > 0 && (
-                    <button type="button" onClick={fixPendingFabric} className="inline-flex items-center gap-0.5 border border-ink-900 text-ink-900 px-1.5 py-0.5 text-[11px] tracking-wide hover:bg-ink-900 hover:text-white transition-colors">
+                    <button type="button" onClick={fixPendingFabric} className="inline-flex items-center gap-0.5 border border-ink-900 text-ink-900 px-1.5 py-0.5 text-micro tracking-wide hover:bg-ink-900 hover:text-white transition-colors">
                       {t(locale, 'estimate.pendingFabric', { count: pendingFabric })} <ArrowRight size={10} aria-hidden />
                     </button>
                   )}
@@ -2667,11 +2775,11 @@ export default function TogoEmbed() {
                     // ONE fabric and it lands on EVERY piece at once (each
                     // repriced by its own model). Per-piece changes live in the
                     // Resumen drawer and on the 3D chip's pencil.
-                    <button type="button" onClick={() => openMaterial('all')} className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 px-3 py-1 text-[13px] font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition">
+                    <button type="button" onClick={() => openMaterial('all')} className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 px-3 py-1 text-sm font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition">
                       <Palette size={13} className="shrink-0" aria-hidden /> {t(locale, 'estimate.chooseFabricAll')}
                     </button>
                   ))}
-                {vm.overallCm.widthCm > 0 && <div className="text-[11px] text-ink-500 tabular-nums mt-0.5">{t(locale, 'dims.set', { w: vm.overallCm.widthCm, d: vm.overallCm.depthCm })}</div>}
+                {vm.overallCm.widthCm > 0 && <div className="text-micro text-ink-500 tabular-nums mt-0.5">{t(locale, 'dims.set', { w: vm.overallCm.widthCm, d: vm.overallCm.depthCm })}</div>}
               </div>
               <button type="button" onClick={() => { buzz(9); setStep('form'); }} className="btn-brand text-sm shrink-0">
                 {t(locale, 'estimate.cta')} <ArrowRight size={15} />
@@ -2923,19 +3031,19 @@ function RoomPanel({ room, fitInfo, locale, onApply, onClear, onClose, onDraft }
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-ink-600">{t(locale, 'room.width')}</span>
+          <span className="eyebrow text-ink-600">{t(locale, 'room.width')}</span>
           <div className="relative">
             <input type="number" inputMode="numeric" min="50" max="3000" value={w} onChange={(e) => setW(e.target.value)}
               className="w-full rounded-lg border border-ink-200 bg-surface pl-2 pr-7 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-ink-500 pointer-events-none">cm</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-micro text-ink-500 pointer-events-none">cm</span>
           </div>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-ink-600">{t(locale, 'room.depth')}</span>
+          <span className="eyebrow text-ink-600">{t(locale, 'room.depth')}</span>
           <div className="relative">
             <input type="number" inputMode="numeric" min="50" max="3000" value={d} onChange={(e) => setD(e.target.value)}
               className="w-full rounded-lg border border-ink-200 bg-surface pl-2 pr-7 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-ink-500 pointer-events-none">cm</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-micro text-ink-500 pointer-events-none">cm</span>
           </div>
         </label>
       </div>
@@ -2943,13 +3051,13 @@ function RoomPanel({ room, fitInfo, locale, onApply, onClear, onClose, onDraft }
         {ROOM_PRESETS_M.map(([pw, pd]) => (
           <button key={`${pw}x${pd}`} type="button"
             onClick={() => { setW(pw * 100); setD(pd * 100); onApply(pw * 100, pd * 100); }}
-            className="px-2 py-1 rounded-full border border-ink-200 text-[11px] text-ink-600 tabular-nums hover:bg-ink-100/60 active:scale-95 transition">
+            className="px-2 py-1 rounded-full border border-ink-200 text-micro text-ink-600 tabular-nums hover:bg-ink-100/60 active:scale-95 transition">
             {pw}×{pd} m
           </button>
         ))}
       </div>
       {room && fitInfo && (
-        <div className={`flex items-center gap-1.5 text-[11px] font-medium ${fitInfo.fits ? 'text-ink-500' : 'text-ink-900'}`}>
+        <div className={`flex items-center gap-1.5 text-micro font-medium ${fitInfo.fits ? 'text-ink-500' : 'text-ink-900'}`}>
           {fitInfo.fits
             ? <><Check size={13} aria-hidden />{t(locale, 'room.fits')}</>
             : <><AlertCircle size={13} aria-hidden />{t(locale, 'room.overflow', { cm: fitInfo.overflowCm })}</>}
@@ -2978,69 +3086,6 @@ function RoomPanel({ room, fitInfo, locale, onApply, onClear, onClose, onDraft }
   );
 }
 
-function HudIcon({ title, onClick, danger = false, active = false, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      aria-pressed={active || undefined}
-      className={`hud-panel rounded-full w-10 h-10 coarse:w-11 coarse:h-11 grid place-items-center transition active:scale-90 hover:bg-ink-900/5 ${danger ? 'text-red-600 ring-1 ring-inset ring-red-600/40 hover:!bg-red-600 hover:text-white' : active ? 'text-brand-700 ring-1 ring-inset ring-brand-500/60' : 'text-ink-700'}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** The mobile tools menu — one glass button that opens a labelled dropdown, so a
- *  phone shows a single tidy affordance instead of a wrapping row of look-alike
- *  icon squares. Each item is icon + words; a divider sets the destructive
- *  "Vaciar el plano" apart. Closes on pick, outside tap, or Escape. */
-function HudMenu({ items = [], label = 'Herramientas' }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={label}
-        className="hud-panel w-11 h-11 grid place-items-center transition active:scale-90 hover:bg-ink-100/60 text-ink-700"
-      >
-        <MoreHorizontal size={17} />
-      </button>
-      {open && (
-        <div role="menu" className="hud-panel absolute top-full right-0 mt-1.5 w-60 p-1.5 flex flex-col togo-rise">
-          {items.map((it, i) => (it.divider ? (
-            <div key={`d${i}`} className="my-1 mx-2 border-t border-ink-200/60" />
-          ) : (
-            <button
-              key={it.label}
-              type="button"
-              role="menuitem"
-              onClick={() => { setOpen(false); it.onClick?.(); }}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition active:scale-[0.98] ${it.danger ? 'text-red-600 hover:bg-red-50' : 'text-ink-700 hover:bg-ink-100/70'}`}
-            >
-              <span className="shrink-0 grid place-items-center w-5">{it.icon}</span>
-              <span className="min-w-0 flex-1">{it.label}</span>
-            </button>
-          )))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /**
  * THE CASCADE every picker surface enters with — the configurator's half of the
@@ -3260,7 +3305,7 @@ function PieceCard({ model: m, index = null, renderThumbById = {}, onAdd, onHove
           the caption at the fold. */}
       <span ref={thumbRef} className={`relative block aspect-[4/3] max-h-[38svh] rounded-2xl bg-white overflow-hidden transition-colors${flash ? ' togo-added' : ''}`}>
         {index != null && (
-          <span className="absolute top-2.5 left-3 z-[1] text-[11px] tabular-nums tracking-[0.08em] text-ink-300 group-hover:text-ink-900 transition-colors">
+          <span className="absolute top-2.5 left-3 z-[1] text-micro tabular-nums tracking-[0.08em] text-ink-500 group-hover:text-ink-900 transition-colors">
             {String(index + 1).padStart(2, '0')}
           </span>
         )}
@@ -3269,9 +3314,9 @@ function PieceCard({ model: m, index = null, renderThumbById = {}, onAdd, onHove
           <Plus size={16} className="transition-transform group-hover:rotate-90" />
         </span>
       </span>
-      <span className="mt-3 block px-0.5 text-[15px] font-light tracking-tight text-ink-900 leading-tight">{m.name}</span>
+      <span className="mt-3 block px-0.5 text-base font-light tracking-tight text-ink-900 leading-tight">{m.name}</span>
       {(price || dims) && (
-        <span className={`block px-0.5 ${EYEBROW} text-ink-400 mt-1 tabular-nums`}>
+        <span className={`block px-0.5 ${EYEBROW} text-ink-500 mt-1 tabular-nums`}>
           {[price, dims].filter(Boolean).join(' · ')}
         </span>
       )}
@@ -3337,14 +3382,14 @@ function CollectionCard({ entry: e, renderThumbById = {}, fabricThumbs = {}, fab
           truncated it to "Kash…" / "Sapa…" / "Prad…" in a phone column, and the
           one thing a collection tile has to do is say which collection it is
           (Prado vs Prado 2). The price joins the count on the meta line. */}
-      <span className="mt-3 flex items-center gap-1 px-0.5 text-[15px] font-light tracking-tight text-ink-900 leading-tight">
+      <span className="mt-3 flex items-center gap-1 px-0.5 text-base font-light tracking-tight text-ink-900 leading-tight">
         <span className="min-w-0 truncate">{e.collection}</span>
-        <ChevronRight size={15} className="shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        <ChevronRight size={15} className="shrink-0 text-ink-500 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </span>
       {/* WRAPS, never truncates: at two columns on a 375px phone
           "2 piezas · Desde $2,600" overruns its cell, and clipping it drops the
           price — the half a shopper cares about. */}
-      <span className={`block px-0.5 ${EYEBROW} text-ink-400 mt-1`}>
+      <span className={`block px-0.5 ${EYEBROW} text-ink-500 mt-1`}>
         {piecesLabel(locale, e.count)}
         {e.fromUsd != null ? ` · ${fmt?.(e.fromUsd, { from: true })?.replace(/\.\d\d$/, '') || ''}` : ''}
       </span>
@@ -3390,8 +3435,8 @@ function CatalogDrawer({ open, onOpen, onClose, models, renderThumbById = {}, on
           className="pointer-events-auto absolute z-20 left-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 py-3 pl-1.5 pr-2 rounded-r-2xl bg-surface/95 backdrop-blur border border-l-0 border-ink-200 text-ink-700 shadow-md active:scale-95 transition"
         >
           <Sofa size={18} className="text-brand-500" />
-          <span className="text-[11px] font-medium tracking-wide [writing-mode:vertical-rl] rotate-180">{t(locale, 'panel.pieces')}</span>
-          <ChevronRight size={14} className="text-ink-400" />
+          <span className="text-micro font-medium tracking-wide [writing-mode:vertical-rl] rotate-180">{t(locale, 'panel.pieces')}</span>
+          <ChevronRight size={14} className="text-ink-500" />
         </button>
       )}
 
@@ -3440,7 +3485,7 @@ function CatalogDrawer({ open, onOpen, onClose, models, renderThumbById = {}, on
           {/* Step two's header: which collection you're inside, and the way out. */}
           {collections.length > 1 && !atIndex && (
             <div className="shrink-0 px-3 py-2 border-b border-ink-100 flex items-baseline justify-between gap-2">
-              <span className="min-w-0 truncate text-[15px] font-light tracking-tight text-ink-900">{activeCollection}</span>
+              <span className="min-w-0 truncate text-base font-light tracking-tight text-ink-900">{activeCollection}</span>
               <CollectionBack locale={locale} onBack={onCollection} className="shrink-0" />
             </div>
           )}
@@ -3515,7 +3560,7 @@ function PiecesPane({ models, renderThumbById = {}, onAdd, hoveredPieceId, onHov
           ? <CollectionBack locale={locale} onBack={onCollection} />
           : <span className="eyebrow">{t(locale, 'panel.pieces')}</span>}
         {collections.length > 1 && (
-          <span className="block text-[15px] font-light tracking-tight text-ink-900 leading-tight">{activeCollection}</span>
+          <span className="block text-base font-light tracking-tight text-ink-900 leading-tight">{activeCollection}</span>
         )}
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2">
@@ -3603,10 +3648,10 @@ function MaterialsPane({ locale, targetLabel, partRole, partLabel = null, onClea
                   piece — that is step 1 and the cheaper answer, so the pane says
                   so rather than leaving the visitor to infer it from a bare name. */}
               {!partRole && (
-                <span className="shrink-0 text-[11px] text-ink-500">· {t(locale, 'parts.wholePiece')}</span>
+                <span className="shrink-0 text-micro text-ink-500">· {t(locale, 'parts.wholePiece')}</span>
               )}
               {partRole && (
-                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 pl-2 pr-1 py-0.5 text-[11px] font-semibold">
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 pl-2 pr-1 py-0.5 text-micro font-semibold">
                   {partLabel || t(locale, `part.${partRole}`)}
                   <button
                     type="button"
@@ -3728,7 +3773,7 @@ function FinishPlates({ locale, spec, current, onPick }) {
                 }`}
               >
                 <span className="block aspect-[4/3] w-full bg-ink-50" style={{ background: o.rgb || undefined }} aria-hidden />
-                <span className="block truncate px-1.5 pt-1 pb-1.5 text-[11px] font-medium leading-tight text-ink-800">{o.label}</span>
+                <span className="block truncate px-1.5 pt-1 pb-1.5 text-micro font-medium leading-tight text-ink-800">{o.label}</span>
                 {active && (
                   <span className="absolute right-1 top-1 grid place-items-center w-[18px] h-[18px] rounded-full bg-brand-600 text-white shadow-sm pointer-events-none">
                     <Check size={11} strokeWidth={3} aria-hidden />
@@ -3739,7 +3784,7 @@ function FinishPlates({ locale, spec, current, onPick }) {
           })}
         </div>
       </div>
-      <p className="shrink-0 px-3 pb-3 pt-1 text-[11px] leading-snug text-ink-500">{t(locale, 'parts.finishNeutral')}</p>
+      <p className="shrink-0 px-3 pb-3 pt-1 text-micro leading-snug text-ink-500">{t(locale, 'parts.finishNeutral')}</p>
     </div>
   );
 }
@@ -3795,7 +3840,7 @@ function DesignPane({
       <div className="shrink-0 px-3 pt-3 pb-2 flex items-center justify-between gap-2">
         <span className="eyebrow">{t(locale, 'panel.design')}</span>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-ink-500 tabular-nums">{piecesLabel(locale, rows.length)}</span>
+          <span className="text-micro text-ink-500 tabular-nums">{piecesLabel(locale, rows.length)}</span>
           {/* Only the phone drawer gets a close: on desktop this pane IS the
               workspace's right column and has nothing to close back to. */}
           {onClose && (
@@ -3840,20 +3885,20 @@ function DesignPane({
                 <ModelThumb id={p.uid} render={{ [p.uid]: fabricThumbs[p.uid] || renderThumbById[p.pieceId] }} alt="" className="shrink-0 w-12 h-12 rounded-lg bg-ink-50/60" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-medium text-ink-800 leading-tight">{r.label}</span>
-                  <span className={`block truncate text-[11px] mt-0.5 ${rowDressed ? 'text-ink-600' : 'text-ink-900'}`}>
+                  <span className={`block truncate text-micro mt-0.5 ${rowDressed ? 'text-ink-600' : 'text-ink-900'}`}>
                     {p.material?.fabric
                       || (rowDressed ? t(locale, 'fabric.byComponents') : t(locale, 'fabric.choose'))}
                   </span>
                 </span>
                 {priceTxt && (
-                  <span className={`shrink-0 tabular-nums ${rowDressed ? 'text-sm text-ink-900' : 'text-[11px] text-ink-500'}`}>{priceTxt}</span>
+                  <span className={`shrink-0 tabular-nums ${rowDressed ? 'text-sm text-ink-900' : 'text-micro text-ink-500'}`}>{priceTxt}</span>
                 )}
                 {/* Dressed but unpriceable — a part is wearing cloth its own SKU
                     ladder doesn't sell (placementTotalUsd → null). The row used
                     to render NOTHING there, which reads as a piece still waiting
                     for a fabric it already has; it says so instead. */}
                 {!pricesHidden && !priceTxt && rowDressed && rowUsd == null && (
-                  <span className="shrink-0 text-[11px] text-ink-500">{t(locale, 'summary.noPrice')}</span>
+                  <span className="shrink-0 text-micro text-ink-500">{t(locale, 'summary.noPrice')}</span>
                 )}
               </button>
               {sel && (
@@ -3883,7 +3928,7 @@ function DesignPane({
                         what separates it from the part rows below. Same words
                         the material rail's header and the phone's picker title
                         use for this exact target. */}
-                    <span className="text-[10px] uppercase tracking-[0.08em] text-ink-400">{t(locale, 'parts.wholePiece')}</span>
+                    <span className="eyebrow">{t(locale, 'parts.wholePiece')}</span>
                     <div className="flex items-center gap-1">
                       {p.material ? (
                         /* Waiting on this piece ⇒ the SAME element goes active
@@ -3894,20 +3939,20 @@ function DesignPane({
                           <button type="button" onClick={() => onPickFabricFor?.(p.uid)} title={t(locale, 'fabric.change')} className="min-w-0 inline-flex items-center gap-1.5 pl-1 pr-1.5 py-1 hover:bg-ink-100/60 active:bg-ink-100 transition">
                             {p.material.code
                               ? <ImageView id={null} fallbackUrl={swatchTileUrl(p.material.code, SWATCH_PX.pill)} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
-                              : <span className="w-5 h-5 rounded-full bg-ink-100 grid place-items-center shrink-0"><Palette size={11} className="text-ink-400" aria-hidden /></span>}
-                            <span className="min-w-0 truncate text-[11px] font-medium text-ink-700">{p.material.fabric || t(locale, 'fabric.generic')}</span>
-                            <Pencil size={11} className="shrink-0 text-ink-400" aria-hidden />
+                              : <span className="w-5 h-5 rounded-full bg-ink-100 grid place-items-center shrink-0"><Palette size={11} className="text-ink-500" aria-hidden /></span>}
+                            <span className="min-w-0 truncate text-micro font-medium text-ink-700">{p.material.fabric || t(locale, 'fabric.generic')}</span>
+                            <Pencil size={11} className="shrink-0 text-ink-500" aria-hidden />
                           </button>
-                          <button type="button" onClick={onClearFabric} title={t(locale, 'fabric.remove')} aria-label={t(locale, 'fabric.remove')} className="shrink-0 inline-flex items-center px-1.5 border-l border-ink-200/70 text-ink-400 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition">
+                          <button type="button" onClick={onClearFabric} title={t(locale, 'fabric.remove')} aria-label={t(locale, 'fabric.remove')} className="shrink-0 inline-flex items-center px-1.5 border-l border-ink-200/70 text-ink-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 transition">
                             <X size={11} aria-hidden />
                           </button>
                         </div>
                       ) : selectedFamily ? (
-                        <button type="button" onClick={() => onPickFabricFor?.(p.uid)} className={`inline-flex items-center gap-1.5 rounded-full border text-brand-700 pl-2 pr-2.5 py-1 text-[11px] font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition ${waitPiece ? 'bg-brand-100 border-brand-400 ring-1 ring-brand-300' : 'bg-brand-50 border-brand-200'}`}>
+                        <button type="button" onClick={() => onPickFabricFor?.(p.uid)} className={`inline-flex items-center gap-1.5 rounded-full border text-brand-700 pl-2 pr-2.5 py-1 text-micro font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition ${waitPiece ? 'bg-brand-100 border-brand-400 ring-1 ring-brand-300' : 'bg-brand-50 border-brand-200'}`}>
                           <Palette size={12} aria-hidden /> {t(locale, 'fabric.choose')}
                         </button>
                       ) : (
-                        <span className="text-[11px] text-ink-400 px-1">{t(locale, 'fabric.noOptions')}</span>
+                        <span className="text-micro text-ink-500 px-1">{t(locale, 'fabric.noOptions')}</span>
                       )}
                       <div className="flex-1" />
                       <button type="button" onClick={onDuplicate} className="btn-icon" title={t(locale, 'piece.duplicate')} aria-label={t(locale, 'piece.duplicate')}><CopyPlus size={15} /></button>
@@ -3949,7 +3994,7 @@ function DesignPane({
       </div>
       <div className="shrink-0 border-t border-ink-200/70 px-3 py-3 flex flex-col gap-2">
         {!pricesHidden && pendingFabric > 0 && pricedUsd > 0 && (
-          <button type="button" onClick={onFixPending} className="self-start inline-flex items-center gap-0.5 border border-ink-900 text-ink-900 px-1.5 py-0.5 text-[11px] tracking-wide hover:bg-ink-900 hover:text-white transition-colors">
+          <button type="button" onClick={onFixPending} className="self-start inline-flex items-center gap-0.5 border border-ink-900 text-ink-900 px-1.5 py-0.5 text-micro tracking-wide hover:bg-ink-900 hover:text-white transition-colors">
             {t(locale, 'estimate.pendingFabric', { count: pendingFabric })} <ArrowRight size={10} aria-hidden />
           </button>
         )}
@@ -3958,13 +4003,13 @@ function DesignPane({
             The row above names which piece. */}
         {!pricesHidden && unpriced > 0 && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px] text-ink-500">{t(locale, 'estimate.label')}</span>
+            <span className="text-micro text-ink-500">{t(locale, 'estimate.label')}</span>
             <span className="text-xl font-display font-semibold tracking-tight leading-none text-ink-500">{t(locale, 'summary.noPrice')}</span>
           </div>
         )}
         {!pricesHidden && unpriced === 0 && (pricedUsd > 0 ? (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px] text-ink-500">{t(locale, 'estimate.label')}</span>
+            <span className="text-micro text-ink-500">{t(locale, 'estimate.label')}</span>
             {/* Keyed by the TARGET price: a reprice replays the score-pop, same as the deck. */}
             <span key={Math.round(pricedUsd)} className="togo-score text-xl font-display font-semibold tabular-nums tracking-tight leading-none">{fmt(Math.round(animatedUsd), { from: fromMode })}</span>
           </div>
@@ -3972,12 +4017,12 @@ function DesignPane({
           /* The third target the rail can wait on: no piece selected, one
              cloth for the whole design. Same active treatment as the per-piece
              pills — one visual language for "we're waiting on you here". */
-          <button type="button" onClick={onFabricAll} className={`self-start inline-flex items-center gap-1.5 rounded-full border text-brand-700 px-3 py-1 text-[13px] font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition ${waiting?.kind === 'all' ? 'bg-brand-100 border-brand-400 ring-1 ring-brand-300' : 'bg-brand-50 border-brand-200'}`}>
+          <button type="button" onClick={onFabricAll} className={`self-start inline-flex items-center gap-1.5 rounded-full border text-brand-700 px-3 py-1 text-sm font-medium hover:bg-brand-100 hover:border-brand-300 active:scale-95 transition ${waiting?.kind === 'all' ? 'bg-brand-100 border-brand-400 ring-1 ring-brand-300' : 'bg-brand-50 border-brand-200'}`}>
             <Palette size={13} className="shrink-0" aria-hidden /> {t(locale, 'estimate.chooseFabricAll')}
           </button>
         ))}
         {overallCm?.widthCm > 0 && (
-          <span className="text-[11px] text-ink-500 tabular-nums">{t(locale, 'dims.set', { w: overallCm.widthCm, d: overallCm.depthCm })}</span>
+          <span className="text-micro text-ink-500 tabular-nums">{t(locale, 'dims.set', { w: overallCm.widthCm, d: overallCm.depthCm })}</span>
         )}
         <button type="button" onClick={onQuote} className="btn-brand text-sm w-full justify-center">
           {t(locale, 'estimate.cta')} <ArrowRight size={15} />
@@ -4227,7 +4272,7 @@ function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale,
           Acoplada el título sobra: la columna vive bajo una cabecera que ya
           nombra la pieza, y ese renglón es alto de swatch en media pantalla. */}
       {!docked && (
-        <span className="shrink-0 px-1 pt-2 pb-1.5 text-center text-[9px] uppercase leading-tight text-ink-400">
+        <span className="shrink-0 px-1 pt-2 pb-1.5 text-center text-micro uppercase leading-tight text-ink-500">
           {t(locale, 'parts.components')}
         </span>
       )}
@@ -4273,9 +4318,9 @@ function ComponentsRail({ entries, activeKey, hoverKey, onPick, onHover, locale,
                   ? <span className="absolute inset-0 block" style={{ background: e.color }} aria-hidden />
                   : e.code
                     ? <img src={swatchTileUrl(e.code, SWATCH_PX.strip)} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-                    : <span className="absolute inset-0 grid place-items-center" aria-hidden><Palette size={14} className="text-ink-300" /></span>}
+                    : <span className="absolute inset-0 grid place-items-center" aria-hidden><Palette size={14} className="text-ink-400" /></span>}
               </span>
-              <span className="mt-0.5 block truncate text-center text-[9px] leading-tight text-ink-600">{e.shortLabel || e.label}</span>
+              <span className="mt-0.5 block truncate text-center text-micro leading-tight text-ink-600">{e.shortLabel || e.label}</span>
             </button>
           );
         })}
@@ -4388,7 +4433,7 @@ function ModeSwitch({ piece, r, resolvedById, locale, fmt, fromMode = false, pri
       title={label}
       onClick={() => { if (!active) onSwitch?.(mode); }}
       className={`grid place-items-center w-7 h-6 rounded-full transition ${
-        active ? 'bg-ink-900 text-white' : 'text-ink-400 hover:text-ink-700 hover:bg-ink-100/70'
+        active ? 'bg-ink-900 text-white' : 'text-ink-500 hover:text-ink-700 hover:bg-ink-100/70'
       }`}
     >
       {icon}
@@ -4410,7 +4455,7 @@ function ModeSwitch({ piece, r, resolvedById, locale, fmt, fromMode = false, pri
       {pair}
       {/* What you are in, and what the other one costs — the whole reason the
           switch is worth looking at. */}
-      <span className="min-w-0 flex-1 truncate text-[10px] leading-tight text-ink-400">
+      <span className="min-w-0 flex-1 truncate text-micro leading-tight text-ink-500">
         <span className="text-ink-600">{on ? t(locale, 'mode.parts') : t(locale, 'mode.whole')}</span>
         {!pricesHidden && (
           <>
@@ -4452,7 +4497,7 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
   // counts here.
   const diverged = fabricRoles.filter((role) => r?.partFamilies?.[role] && partDivergence(piece, role));
   const rowBtn = 'min-w-0 w-full inline-flex items-center gap-1.5 rounded-lg pl-1 pr-1.5 py-1 text-left hover:bg-ink-100/60 active:bg-ink-100 transition group';
-  const rowName = 'min-w-0 shrink-0 max-w-[7rem] truncate text-[11px] font-medium text-ink-700';
+  const rowName = 'min-w-0 shrink-0 max-w-[7rem] truncate text-micro font-medium text-ink-700';
   // ── THE WAY BACK, AS A CONTROL ────────────────────────────────────────────
   // Owner, 2026-08-01: «I need the ability to delete the components so that they
   // go back to being a part of the base». It EXISTED — but as a bare 24-px glyph
@@ -4471,7 +4516,7 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
         type="button"
         onClick={onToggle}
         aria-expanded={!!open}
-        className="self-start inline-flex items-center gap-1 py-0.5 text-[11px] text-ink-500 hover:text-ink-900 transition-colors"
+        className="self-start inline-flex items-center gap-1 py-0.5 text-micro text-ink-500 hover:text-ink-900 transition-colors"
       >
         <Pipette size={11} className="shrink-0" aria-hidden />
         <span>{t(locale, 'parts.customize')}</span>
@@ -4489,7 +4534,7 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
               fabric rows above it read as the unnamed default rather than as
               the other half of a pair. Two kinds, two headings: what wears
               cloth, and what wears an acabado. */}
-          <span className="text-[10px] uppercase tracking-[0.08em] text-ink-400">{t(locale, 'parts.components')}</span>
+          <span className="eyebrow">{t(locale, 'parts.components')}</span>
           <ul className="list-none m-0 p-0 flex flex-col gap-0.5">
             {fabricRoles.map((role) => {
               const pick = partDivergence(piece, role);
@@ -4515,14 +4560,14 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
                   >
                     {code
                       ? <ImageView id={null} fallbackUrl={swatchTileUrl(code, SWATCH_PX.row)} alt="" className={`w-4 h-4 rounded-full object-cover shrink-0${pick ? '' : ' opacity-50'}`} />
-                      : <span className="w-4 h-4 rounded-full bg-ink-100 grid place-items-center shrink-0"><Palette size={9} className="text-ink-400" aria-hidden /></span>}
+                      : <span className="w-4 h-4 rounded-full bg-ink-100 grid place-items-center shrink-0"><Palette size={9} className="text-ink-500" aria-hidden /></span>}
                     <span className={rowName}>{name}</span>
-                    <span className={`min-w-0 flex-1 truncate text-[11px] ${pick ? 'text-ink-600' : 'text-ink-400'}`}>
+                    <span className={`min-w-0 flex-1 truncate text-micro ${pick ? 'text-ink-600' : 'text-ink-500'}`}>
                       {pick?.fabric || t(locale, 'parts.samePiece')}
                     </span>
                     {/* The pipette IS the "pick one" verb — lit while that pick
                         is the one outstanding. */}
-                    <Pipette size={11} className={`shrink-0 transition-colors ${waiting ? 'text-brand-700' : 'text-ink-300 group-hover:text-ink-600'}`} aria-hidden />
+                    <Pipette size={11} className={`shrink-0 transition-colors ${waiting ? 'text-brand-700' : 'text-ink-400 group-hover:text-ink-600'}`} aria-hidden />
                   </button>
                   {pick && (
                     <button
@@ -4557,7 +4602,7 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
            for what is the very same "pick one" verb. */}
       {open && structures.length > 0 && (
         <div className={`flex flex-col gap-0.5${fabricRoles.length ? ' mt-1 pt-1.5 border-t border-dashed border-ink-200/70' : ''}`}>
-          <span className="text-[10px] uppercase tracking-[0.08em] text-ink-400">{t(locale, 'part.structure')}</span>
+          <span className="eyebrow">{t(locale, 'part.structure')}</span>
           {structures.map(({ group, spec }) => {
             const name = partLabelOf(r?.parts, group, spec.label || t(locale, 'part.structure'));
             // A palette ALWAYS answers with something (the pick, else the
@@ -4586,8 +4631,8 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
                 >
                   <span className="w-4 h-4 rounded-full border border-ink-200/70 shrink-0" style={{ background: opt?.rgb || 'transparent' }} aria-hidden />
                   <span className={rowName}>{name}</span>
-                  <span className="min-w-0 flex-1 truncate text-[11px] text-ink-600">{opt?.label || ''}</span>
-                  <Pipette size={11} className={`shrink-0 transition-colors ${waiting ? 'text-brand-700' : 'text-ink-300 group-hover:text-ink-600'}`} aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-micro text-ink-600">{opt?.label || ''}</span>
+                  <Pipette size={11} className={`shrink-0 transition-colors ${waiting ? 'text-brand-700' : 'text-ink-400 group-hover:text-ink-600'}`} aria-hidden />
                 </button>
                 {picked && (
                   <button
@@ -4610,7 +4655,7 @@ function PartsSection({ piece, r, locale, open, onToggle, waitingRole = null, wa
           number: the live estimate above already recomputes. Only a piece with
           billable componentes has this trade-off to make. */}
       {fabricRoles.length > 0 && (diverged.length > 0 || open) && (
-        <p className="text-[11px] leading-snug text-ink-500">
+        <p className="text-micro leading-snug text-ink-500">
           {t(locale, diverged.length > 0 ? 'parts.byParts' : 'parts.oneElement')}
         </p>
       )}
@@ -4739,7 +4784,7 @@ function EmptyPlanStart({ models = [], renderThumbById = {}, onAddPiece, collect
           )}
           {!pricesHidden && !fromMode && (
             <p
-              className="togo-rise text-[11px] text-ink-400 mt-6"
+              className="togo-rise text-micro text-ink-500 mt-6"
               style={{ animationDelay: afterTileRise(atIndex ? collectionMenu.length : models.length, SPLASH_TILES_IN) }}
             >
               {t(locale, 'start.priceNote')}
@@ -4883,7 +4928,7 @@ function CanvasArea({
           style={{ left: `${contourTop.x}px`, top: `${contourTop.y - 8}px` }}
           aria-hidden
         >
-          <span className={`hud-panel inline-block px-2 py-1 text-[11px] tabular-nums text-ink-800 ${rotDeg % 15 === 0 ? 'font-semibold' : ''}`}>
+          <span className={`hud-panel inline-block px-2 py-1 text-micro tabular-nums text-ink-800 ${rotDeg % 15 === 0 ? 'font-semibold' : ''}`}>
             {rotDeg}°
           </span>
         </div>
@@ -4938,17 +4983,17 @@ function DownloadSheet({ open, onClose, onDxf, dxfBusy, onGlb, glbBusy, locale }
             <span className="shrink-0 w-10 h-10 rounded-lg bg-brand-600 text-white grid place-items-center"><View size={18} /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-ink-900">{t(locale, 'download.glbTitle')}</span>
-              <span className="block text-[11px] text-ink-500">{t(locale, 'download.glbDesc')}</span>
+              <span className="block text-micro text-ink-500">{t(locale, 'download.glbDesc')}</span>
             </span>
-            {glbBusy && <Loader2 size={16} className="animate-spin text-ink-400 shrink-0" />}
+            {glbBusy && <Loader2 size={16} className="animate-spin text-ink-500 shrink-0" />}
           </button>
           <button type="button" onClick={onDxf} disabled={dxfBusy} className="w-full flex items-center gap-3 rounded-xl border border-ink-200 p-3 text-left hover:bg-ink-50 active:bg-ink-100 transition disabled:opacity-60">
             <span className="shrink-0 w-10 h-10 rounded-lg bg-ink-900 text-white grid place-items-center"><FileDown size={18} /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-ink-900">{t(locale, 'download.dxfTitle')}</span>
-              <span className="block text-[11px] text-ink-500">{t(locale, 'download.dxfDesc')}</span>
+              <span className="block text-micro text-ink-500">{t(locale, 'download.dxfDesc')}</span>
             </span>
-            {dxfBusy && <Loader2 size={16} className="animate-spin text-ink-400 shrink-0" />}
+            {dxfBusy && <Loader2 size={16} className="animate-spin text-ink-500 shrink-0" />}
           </button>
         </div>
       )}
@@ -5192,29 +5237,29 @@ function RequestForm({ storeName, items, estimateUsd, total, onBack, onDone, loc
             </div>
           )}
         </div>
-        <div>
-          <label className="label">{t(locale, 'form.name')} *</label>
+        <label className="block">
+          <span className="label">{t(locale, 'form.name')} *</span>
           <input className="input" value={form.name} onChange={set('name')} placeholder={t(locale, 'form.namePlaceholder')} autoComplete="name" autoFocus />
-        </div>
+        </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="label">{t(locale, 'form.phone')}</label>
+          <label className="block">
+            <span className="label">{t(locale, 'form.phone')}</span>
             <input className="input" value={form.phone} onChange={set('phone')} placeholder={t(locale, 'form.phonePlaceholder')} inputMode="tel" autoComplete="tel" />
-          </div>
-          <div>
-            <label className="label">{t(locale, 'form.email')}</label>
+          </label>
+          <label className="block">
+            <span className="label">{t(locale, 'form.email')}</span>
             <input className="input" value={form.email} onChange={set('email')} placeholder={t(locale, 'form.emailPlaceholder')} inputMode="email" autoComplete="email" />
-            {!emailOk && <p className="mt-1 text-[11px] text-amber-700">{t(locale, 'form.emailInvalid')}</p>}
-          </div>
+            {!emailOk && <p className="mt-1 text-micro text-status-warning-ink">{t(locale, 'form.emailInvalid')}</p>}
+          </label>
         </div>
-        <div>
-          <label className="label">{t(locale, 'form.note')}</label>
+        <label className="block">
+          <span className="label">{t(locale, 'form.note')}</span>
           <textarea className="input min-h-[72px]" value={form.note} onChange={set('note')} placeholder={t(locale, 'form.notePlaceholder')} />
-        </div>
+        </label>
         {/* The one place colour survives the monochrome rule: an error must not
             be a shade of grey among greys. Kept to the ink border + red text,
             no filled panel. */}
-        {error && <div role="alert" className="border border-red-300 px-3 py-2 text-xs text-red-700 flex items-start gap-2"><AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> {error}</div>}
+        {error && <div role="alert" className="border border-red-300 px-3 py-2 text-xs text-status-critical-ink flex items-start gap-2"><AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> {error}</div>}
         <p className={`${EYEBROW} normal-case tracking-normal leading-relaxed`}>{t(locale, 'form.contactHint')}</p>
         <button type="submit" disabled={!valid || busy} className="btn-primary w-full justify-center disabled:opacity-50">
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} {t(locale, 'form.submit')}

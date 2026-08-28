@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PART_ROLES, PART_LABELS, MATERIALIZATION_ROLES, UNPRICED_ROLES, COUNT_MAX, partKeyFor, partRoleFor, hasParts,
+  PART_KINDS, partKind, rolesOfKind, billsMoney, takesMaterial,
   classifyPartGroups, partCount, partMeshCount, piecePartsTotal, sanitizePartMaterials, mountOf,
   isGroundShadowBox, accessoryRoleFor, partKeysFor, baseKeyOf,
   mergedKeyOf, partLabelOf, finishSpecOf, finishOptionOf, sanitizePartFinishes,
@@ -29,6 +30,7 @@ test('isGroundShadowBox: only a degenerate-flat floor decal matches — real par
 });
 import {
   PART_ROLES as DENO_PART_ROLES,
+  PART_KINDS as DENO_PART_KINDS,
   MATERIALIZATION_ROLES as DENO_MATERIALIZATION_ROLES,
   COUNT_MAX as DENO_COUNT_MAX,
   partCount as denoPartCount,
@@ -983,4 +985,70 @@ test('regrouping never strips a tag the dealer already put there', () => {
   const untagged = planPartJoin({ mats: { COL0: 'base' } }, 'COL0', ['nogal']);
   assert.equal('nogal' in untagged.mats, false);
   assert.equal(partRoleFor(untagged, null, -1, 'nogal'), 'base');
+});
+
+
+/* ---------------------- the slot KINDS (slice 5) -------------------------- */
+
+/**
+ * THE IDENTITY PIN. `PART_ROLES`, `MATERIALIZATION_ROLES`, `UNPRICED_ROLES` and
+ * `BILLED_ROLES` are now DERIVED from `PART_KINDS` instead of written out. This
+ * asserts they came out byte-identical to the literals they replaced — which is
+ * what makes naming the classification a rename of a concept and provably not a
+ * change to any price. If a kind is edited wrongly, this is what goes red,
+ * before any money moves.
+ */
+test('meshParts: the derived role lists are identical to the retired literals', () => {
+  assert.deepEqual([...PART_ROLES],
+    ['base', 'structure', 'exterior', 'interior', 'cushion', 'bolster', 'armCushion']);
+  assert.deepEqual([...MATERIALIZATION_ROLES], ['exterior', 'interior']);
+  assert.deepEqual([...UNPRICED_ROLES], ['exterior', 'interior', 'structure']);
+  assert.deepEqual([...BILLED_ROLES], ['cushion', 'bolster', 'armCushion']);
+});
+
+test('meshParts: every role has a kind, and every kind is one of the four', () => {
+  const KINDS = new Set(['body', 'component', 'zone', 'finish']);
+  for (const role of PART_ROLES) {
+    assert.ok(KINDS.has(partKind(role)), `${role} must carry one of the four kinds`);
+    assert.equal(PART_KINDS[role], partKind(role));
+  }
+  // EXACTLY ONE body: it carries the base price, and two would make "what does
+  // this piece cost" depend on iteration order.
+  assert.deepEqual(rolesOfKind('body'), ['base']);
+});
+
+test('meshParts: an unknown role has NO kind, and therefore never bills', () => {
+  // Null, not a default. Guessing 'component' would make an unrecognised role
+  // BILL, and inventing a charge is the one thing this file must never do.
+  for (const junk of ['respaldo', '', null, undefined, 'BASE', 'component']) {
+    assert.equal(partKind(junk), null, `${JSON.stringify(junk)} is not a known role`);
+    assert.equal(billsMoney(junk), false);
+    assert.equal(takesMaterial(junk), false);
+  }
+});
+
+test('meshParts: billsMoney agrees with BILLED_ROLES on every role', () => {
+  // The two answers must never disagree — one is the list the studio reads, the
+  // other the question the money path asks.
+  for (const role of PART_ROLES) {
+    assert.equal(billsMoney(role), BILLED_ROLES.includes(role), `${role}`);
+    // …and the complement: a zone or a finish never bills, for its own reason.
+    if (partKind(role) === 'zone' || partKind(role) === 'finish') {
+      assert.equal(billsMoney(role), false);
+      assert.equal(partCount({ mats: { m: role } }, role), 0,
+        `${role} must count 0 — it is already inside the base SKU, or it is free`);
+    }
+  }
+  // `body` carries the base price but is not an ADDITION to it.
+  assert.equal(billsMoney('base'), false);
+  assert.ok(!BILLED_ROLES.includes('base'));
+});
+
+test('meshParts: the Deno mirror carries the same kinds', () => {
+  // The wall forbids the import, so the classification lives at two layers and
+  // this is what welds them. A mirror that drifts prices a piece differently in
+  // the widget than in the app. (Upstream additionally pins a quote-worker
+  // mirror this deploy does not carry.)
+  assert.deepEqual({ ...DENO_PART_KINDS }, { ...PART_KINDS },
+    "dealer's PART_KINDS must match the app's");
 });

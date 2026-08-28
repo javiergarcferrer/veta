@@ -6,7 +6,9 @@
  * reading; line and quote-level margin/discount layer on top of that.
  *
  * ITBIS (Dominican Republic value-added tax) is fixed at 18% and applied to
- * every quote — there is no per-quote override.
+ * every quote — there is no per-quote override. A single LINE can be taken out
+ * of the tax (`lineTaxExempt`), but only a PRODUCTO PERSONALIZADO may be: see
+ * that function.
  */
 
 import { isPricedLine, isPricedComponent, LINE_KIND_SECTION } from './constants.js';
@@ -19,6 +21,7 @@ import type {
   MaterialOptions,
 } from '../types/domain.ts';
 import { productForGrade } from './catalog.js';
+import { isCustomLine } from './quoteKind.js';
 import type { CatalogFamily } from './catalog.ts';
 
 export const ITBIS_PCT = 18;
@@ -247,7 +250,8 @@ export function viewerCompanySettings(
  *   afterMargin   = subtotal × (1 + marginPct/100)            // margin lifts the bill
  *   afterDiscount = afterMargin × (1 − discountPct/100)       // discount eats into the lifted total
  *   afterCourtesy = afterDiscount × (1 − courtesyDiscountPct/100)  // friends & family, on top
- *   taxAmt        = afterCourtesy × (ITBIS/100)
+ *   exemptBase    = afterCourtesy × (exempt lines' share of the subtotal)
+ *   taxAmt        = (afterCourtesy − exemptBase + shipping) × (ITBIS/100)
  *   grandTotal    = afterCourtesy + taxAmt + shipping
  *
  * The TWO discounts are independent and stack, but settle DIFFERENTLY against
@@ -283,6 +287,8 @@ function quoteScalarPipeline(
   subtotal: number,
   quote: PricingQuote | null | undefined,
   taxExempt: boolean,
+  itbisPct: number = ITBIS_PCT,
+  exemptSubtotal: number = 0,
 ) {
   // A null quote reads as an empty one (the `= {}` default only covers
   // `undefined`). Callers on the money path hand the quote straight through —
@@ -306,27 +312,52 @@ function quoteScalarPipeline(
   // fiscal gravado (taxableBase + shipping) is reassembled downstream (the
   // bridge) rather than folded in here, which would over-pay commission on the
   // delivery charge.
-  const taxAmt = taxExempt ? 0 : (taxableBase + shipping) * (ITBIS_PCT / 100);
+  // SIN ITBIS lines come out of the tax, not out of the bill. Every quote-level
+  // adjustment (margin, discount, courtesy) is proportional, so the exempt share
+  // of the post-courtesy base is exactly its share of the SUBTOTAL — no second
+  // pipeline to keep in step. Envío stays GRAVADO even on an all-exempt quote:
+  // the delivery charge is a taxable service the house renders, not the exempt
+  // merchandise (it is also why the fiscal split can't be derived from the line
+  // weights alone downstream — see core/bridge:quoteToSale).
+  const exemptShare = subtotal > 0
+    ? Math.min(1, Math.max(0, safeNum(exemptSubtotal, 0) / subtotal))
+    : 0;
+  const exemptBase = taxableBase * exemptShare;
+  const gravadoBase = taxableBase - exemptBase;
+  const taxAmt = taxExempt ? 0 : (gravadoBase + shipping) * (itbisPct / 100);
   const grandTotal = taxableBase + taxAmt + shipping;
-  return { marginAmt, discountAmt, courtesyDiscountAmt, taxableBase, taxAmt, shipping, grandTotal };
+  // `exemptBase` reports the LINE-level exemption only — the part of the base
+  // that pays no ITBIS because a producto personalizado was marked sin ITBIS. A
+  // company-account quote (taxExempt) is exempt as a WHOLE DOCUMENT by a
+  // different rule, declared downstream from `taxAmt === 0`; it does not restate
+  // itself here, so the two exemptions never double-count.
+  return {
+    marginAmt, discountAmt, courtesyDiscountAmt, taxableBase, exemptBase,
+    taxAmt, shipping, grandTotal,
+  };
 }
 
 export function computeTotals(
   lines: readonly PricingLine[] | null | undefined,
   quote: PricingQuote | null | undefined = {},
-  opts: { taxExempt?: boolean } = {},
+  opts: { taxExempt?: boolean; itbisPct?: number } = {},
 ): Totals {
-  const subtotal = (lines || []).reduce((acc, l) => {
+  let subtotal = 0;
+  let exemptSubtotal = 0;
+  for (const l of lines || []) {
     const unit = applyLineAdjustments(l?.basePrice, l?.lineMarginPct, l?.lineDiscountPct);
-    return acc + unit * safeNum(l?.qty, 0);
-  }, 0);
+    const total = unit * safeNum(l?.qty, 0);
+    subtotal += total;
+    if (l?.taxExempt) exemptSubtotal += total;
+  }
 
   // A company-account quote is an internal cost / order document, not a taxable
   // customer sale → ITBIS is suppressed (opts.taxExempt). Every other quote
   // taxes the post-courtesy base at the fixed ITBIS rate.
   const taxExempt = !!opts.taxExempt;
-  const { marginAmt, discountAmt, courtesyDiscountAmt, taxableBase, taxAmt, shipping, grandTotal } =
-    quoteScalarPipeline(subtotal, quote, taxExempt);
+  const itbisPct = resolveItbisPct(opts.itbisPct);
+  const { marginAmt, discountAmt, courtesyDiscountAmt, taxableBase, exemptBase, taxAmt, shipping, grandTotal } =
+    quoteScalarPipeline(subtotal, quote, taxExempt, itbisPct, exemptSubtotal);
 
   return {
     subtotal: safeNum(subtotal),
@@ -334,11 +365,19 @@ export function computeTotals(
     discountAmt: safeNum(discountAmt),
     courtesyDiscountAmt: safeNum(courtesyDiscountAmt),
     taxableBase: safeNum(taxableBase),
+    exemptBase: safeNum(exemptBase),
     taxAmt: safeNum(taxAmt),
     shipping,
     grandTotal: safeNum(grandTotal),
-    taxPct: taxExempt ? 0 : ITBIS_PCT,
+    taxPct: taxExempt ? 0 : itbisPct,
   };
+}
+
+/** Clamp an optional ITBIS override to a sane percentage; anything absent or
+ *  unusable falls back to the historic fixed rate. */
+function resolveItbisPct(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : ITBIS_PCT;
 }
 
 export function applyLineAdjustments(
@@ -422,7 +461,31 @@ export function lineForTotals(line: QuoteLine | null | undefined): PricingLine {
     basePrice: lineBasePrice(line),
     lineMarginPct: line?.lineMarginPct,
     lineDiscountPct: line?.lineDiscountPct,
+    // Resolved HERE, through the guard — so every surface that totals a quote
+    // reads the same exemption, and a catalog line carrying a stale flag can
+    // never reach the tax math with it.
+    taxExempt: lineTaxExempt(line),
   };
+}
+
+/**
+ * Is this line SIN ITBIS — taken out of the tax?
+ *
+ * The flag the dealer sets (`line.taxExempt`) AND the rule that governs it: only
+ * a PRODUCTO PERSONALIZADO (lib/quoteKind:isCustomLine — a hand-written line
+ * with no catalog reference and no stock mark) may be exempt. Brand merchandise
+ * is sold at 18%, so a catalog or inventory line reads as taxed no matter what
+ * its row says.
+ *
+ * The guard lives HERE, on the money path, not only in the UI that hides the
+ * toggle: a line can become a catalog line AFTER being marked (the dealer picks
+ * a reference into it, or a picker fills the blank row), and the exemption must
+ * lapse the moment it does. Otherwise the quote would keep showing a discount
+ * the books would then have to charge — the screen ≠ books split this whole
+ * path exists to prevent. Pure.
+ */
+export function lineTaxExempt(line: QuoteLine | null | undefined): boolean {
+  return !!line?.taxExempt && isCustomLine(line);
 }
 
 /**
@@ -581,84 +644,36 @@ export function setGroupInfo(
   return groupPositionInfo(lines, (l) => l.setGroup);
 }
 
-/**
- * Per-line "Alternativa N de M" position info, keyed by line id — the
- * alternative-group twin of setGroupInfo. Single source of truth shared by
- * the editor (LineItemList) and the customer surfaces (ClientPreview / PDF)
- * so the caption reads identically everywhere instead of each surface
- * hand-rolling the same scan. Lines with no `alternativeGroup` are absent.
- *
- * @param {Array} lines  all quote lines
- * @returns {Map<string, { index: number, total: number }>}
- */
-export function alternativeGroupInfo(
-  lines: readonly QuoteLine[] | null | undefined,
-): Map<string, { index: number; total: number }> {
-  return groupPositionInfo(lines, (l) => l.alternativeGroup);
-}
-
-/* --------------------------- alternativas (alternatives) --------------------------- */
-
-/**
- * The SELECTED member of an alternative group — the one line that counts
- * toward the quote total and whose price the group's footer shows.
- *
- * Within a well-formed group exactly one member carries
- * `isSelectedAlternative`; this returns that line. As a defensive
- * fallback (a group momentarily left with 0 selected after an edit) it
- * returns the FIRST member of the group as it appears in `lines`, so a
- * footer / total never reads as empty. Returns null for a falsy group
- * id or when the group has no members.
- *
- * @param lines    all quote lines (the full list — this filters)
- * @param groupId  the alternative group's id
- */
-export function selectedAlternative(
-  lines: readonly QuoteLine[] | null | undefined,
-  groupId: string | null | undefined,
-): QuoteLine | null {
-  if (!groupId) return null;
-  const members = (lines || []).filter((l) => l?.alternativeGroup === groupId);
-  if (members.length === 0) return null;
-  return members.find((l) => l?.isSelectedAlternative) || members[0];
-}
-
-/**
- * "Total" of an alternative group — the SELECTED member's own line total.
- *
- * Unlike a Conjunto (sum of ALL members), an alternative group bills only
- * the one option the customer picks, so its footer/total equals
- * `lineTotal(selectedAlternative(...))`. Returns 0 for a falsy group id or
- * an empty group.
- *
- * @param lines    all quote lines (the full list — this filters)
- * @param groupId  the alternative group's id
- */
-export function alternativeSubtotal(
-  lines: readonly QuoteLine[] | null | undefined,
-  groupId: string | null | undefined,
-): number {
-  const sel = selectedAlternative(lines, groupId);
-  return sel ? lineTotal(sel) : 0;
-}
-
 /* ------------------------------ group runs (sets + alternatives) ------------------------------ */
 
 /**
  * A contiguous "run" of adjacent lines sharing the same grouping key —
  * either a Conjunto (`setGroup`) or an Alternativa (`alternativeGroup`).
  *
- *   type    'set' | 'alternative' for grouped runs; 'single' for a lone
- *           ungrouped line (or a section) that isn't part of any run.
- *   groupId the shared setGroup / alternativeGroup string ('single' → null).
- *   lineIds the member line ids, in list order.
- *   start   index in `lines` of the run's first member.
+ *   type     'set' | 'alternative' for grouped runs; 'single' for a lone
+ *            ungrouped line (or a section) that isn't part of any run.
+ *   groupId  the shared setGroup / alternativeGroup string ('single' → null).
+ *   lineIds  the member line ids, in list order.
+ *   start    index in `lines` of the run's first member.
+ *   packages an ALTERNATIVA's options — see below. Absent on the other types.
  */
 export interface GroupRun {
   type: 'set' | 'alternative' | 'single';
   groupId: string | null;
   lineIds: string[];
   start: number;
+  packages?: GroupPackage[];
+}
+
+/**
+ * ONE OPTION of an Alternativa. An alternativa is a container of options, and
+ * an option is a PACKAGE — one line, or a whole Conjunto of them. `setGroup` is
+ * what tells the two apart: null for a lone line, the set's id for a Conjunto
+ * whose pieces are offered (and billed) together as a single choice.
+ */
+export interface GroupPackage {
+  setGroup: string | null;
+  lineIds: string[];
 }
 
 /**
@@ -673,9 +688,15 @@ export interface GroupRun {
  * Because runs are detected by adjacency, a reorder that splits a group
  * simply yields two separate runs of the same groupId — the renderer
  * reflects the new contiguous reality without any group-level bookkeeping.
- * A line is never simultaneously in a set and an alternative (the type's
- * exclusivity rule + a DB CHECK guarantee it), so the two keys never
- * compete for the same run.
+ *
+ * THE TWO KEYS DO COMPETE, and the ALTERNATIVA WINS. A line may carry both:
+ * that is a Conjunto offered as one option of a pick-one, and it is the only
+ * shape in which both appear (the writer materializes the alternativa's group
+ * id and its selected flag onto every member of the set — the same move an
+ * OPTIONAL Conjunto already makes with `is_optional`, and for the same reason:
+ * `isPricedLine` stays line-local and every total surface stays correct with no
+ * group lookup anywhere). Reading the alternativa first is what makes the
+ * OUTER container the card; the set then reads as one package INSIDE it.
  *
  * @param lines  ordered quote lines
  * @returns the runs, in list order; concatenating their lineIds
@@ -694,22 +715,33 @@ export function groupRuns(
     if (!l) continue;
     const setG = l.setGroup || null;
     const altG = l.alternativeGroup || null;
-    const key = setG || altG;
+    // Alternativa first: a line carrying both is a Conjunto that IS one option.
+    const key = altG || setG;
     const prev = runs[runs.length - 1];
     if (key && prev && prev.groupId === key && (
-      (setG && prev.type === 'set') || (altG && prev.type === 'alternative')
+      (altG && prev.type === 'alternative') || (!altG && setG && prev.type === 'set')
     )) {
       prev.lineIds.push(l.id);
+      if (prev.packages) pushToPackage(prev.packages, l.id, setG);
       continue;
     }
     runs.push({
-      type: setG ? 'set' : altG ? 'alternative' : 'single',
+      type: altG ? 'alternative' : setG ? 'set' : 'single',
       groupId: key,
       lineIds: [l.id],
       start: i,
+      ...(altG ? { packages: [{ setGroup: setG, lineIds: [l.id] }] } : {}),
     });
   }
   return runs;
+}
+
+/** Extend the run's last package, or open a new one — a package is itself a
+ *  maximal stretch of adjacent lines sharing a `setGroup` (null never joins). */
+function pushToPackage(packages: GroupPackage[], lineId: string, setG: string | null): void {
+  const last = packages[packages.length - 1];
+  if (setG && last && last.setGroup === setG) last.lineIds.push(lineId);
+  else packages.push({ setGroup: setG, lineIds: [lineId] });
 }
 
 /* ------------------------------ price ranges (material-less lines) ------------------------------ */
@@ -881,23 +913,33 @@ export function quoteHasRange(lines: readonly QuoteLine[] | null | undefined): b
 export function computeTotalsRange(
   lines: readonly QuoteLine[] | null | undefined,
   quote: PricingQuote | null | undefined = {},
-  opts: { taxExempt?: boolean } = {},
+  opts: { taxExempt?: boolean; itbisPct?: number } = {},
 ): MoneyRange {
   let subMin = 0;
   let subMax = 0;
+  let exemptMin = 0;
+  let exemptMax = 0;
   for (const l of lines || []) {
     if (!isPricedLine(l)) continue;
     const r = lineTotalRange(l);
     subMin += r.min;
     subMax += r.max;
+    // A sin-ITBIS line is exempt at BOTH ends of its own range, so each end runs
+    // the pipeline with its own exempt subtotal — a range whose cheap and dear
+    // grades tax differently would be the drift the parity test exists to catch.
+    if (lineTaxExempt(l)) {
+      exemptMin += r.min;
+      exemptMax += r.max;
+    }
   }
   // Run the SAME scalar pipeline computeTotals uses, once per range end — so a
   // single-point range collapses to exactly computeTotals.grandTotal (parity is
   // pinned). Reusing the one helper is what keeps them from drifting by float-op
   // ordering, not just by formula.
   const taxExempt = !!opts.taxExempt;
-  const grand = (subtotal: number): number =>
-    quoteScalarPipeline(subtotal, quote, taxExempt).grandTotal;
-  return { min: safeNum(grand(subMin)), max: safeNum(grand(subMax)) };
+  const itbisPct = resolveItbisPct(opts.itbisPct);
+  const grand = (subtotal: number, exemptSubtotal: number): number =>
+    quoteScalarPipeline(subtotal, quote, taxExempt, itbisPct, exemptSubtotal).grandTotal;
+  return { min: safeNum(grand(subMin, exemptMin)), max: safeNum(grand(subMax, exemptMax)) };
 }
 

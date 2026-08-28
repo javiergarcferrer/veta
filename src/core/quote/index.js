@@ -15,6 +15,9 @@
 
 // ---- derivations: pricing + grouping (totals, ranges, group runs, positions)
 export * from '../../lib/pricing.js';
+// ---- alternativas: the pick-one container and what it holds (an OPTION is a
+//      package — one line, or a whole Conjunto offered together)
+export * from '../../lib/alternatives.js';
 
 // ---- predicates (what counts toward the total)
 export { isPricedLine, isPricedComponent } from '../../lib/constants.js';

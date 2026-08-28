@@ -6,19 +6,43 @@
  * into and back out of. They are one grid now, and nothing is hidden behind
  * anything — SELECTING A ROW *IS* OPENING IT:
  *
- *   • LEFT   — the model TABLE (pages/admin/ModelManager, handed in whole as
- *              `table`): search, colección, orden, the estado tabs, the KPI
- *              strip, multi-select and the bulk bar. It replaced the plan-tile
- *              rail this file used to own; its «Colección» filter pill is the
- *              rail's chips, and the rail's ▲▼ became a drag on its own rows.
- *   • CENTER — the real 3D model, tinted per part group, clickable. Above it the
- *              model's own toolbar: detectar partes, eje, reemplazar/quitar 3D,
- *              optimizar mallas, el snippet de embed.
- *   • RIGHT  — the inspector, FIDELIDAD first (the retired pane's six checks,
- *              over this stage's own build — ModelFidelityPanel — plus «Foto de
- *              producto»), then the MODEL (name, colección, medidas, SKU base,
- *              planta, orden, telas, montaje, borrar) or, with a part group
- *              selected, that PART (nombre, selector de SKU, unir, acabados).
+ * TWO PANES, like every mail client and every messenger the owner compared it
+ * to: the LIST down the left, and everything about the piece it selected filling
+ * the rest. The right pane is stacked — el escenario arriba, la ficha abajo:
+ *
+ *      ┌───────────┬──────────────────────────┬────────────┐
+ *      │  PIEZAS   │   ESCENARIO 3D           │  MALLA     │
+ *      │  (lista)  │   (con su nombre encima) │  FIDELIDAD │
+ *      │           │                          │  PORTADA   │
+ *      │           ├──────────────────────────┴────────────┤
+ *      │           │   FICHA · tarjetas en 2–3 columnas    │
+ *      └───────────┴───────────────────────────────────────┘
+ *
+ *   • LEFT — the LIST (pages/admin/ModelManager, handed in whole as `table`):
+ *              one line per piece — picture, name, colección, what it is made
+ *              of, its size, a dot for estado that is also the publish switch.
+ *              ↑↓ walk it, drag reorders the configurador's palette, «Tabla»
+ *              folds it out over the whole dashboard for the bulk work.
+ *   • TOP — the real 3D model, tinted per part group, clickable, with its name
+ *              floating on it; and beside it the three cards you read WHILE
+ *              looking at it: the mesh's own actions, FIDELIDAD (the retired
+ *              pane's six checks over this stage's build — ModelFidelityPanel,
+ *              folded to what is wrong plus one line for what is fine) and
+ *              PORTADA. They are there because a render of a chair in a banner
+ *              leaves ~800px of black either side of the piece, and that space
+ *              had to earn its keep.
+ *   • BOTTOM — la FICHA, what you EDIT: nombre, colección, medidas, SKU base,
+ *              planta, partes, acabados, montaje — or, with a part group
+ *              selected, that PART. Wide and short, so it is a band of CARDS
+ *              flowing into two or three CSS columns instead of a column you
+ *              scroll: the whole piece on screen at once.
+ *
+ * The proportions are geometry, not taste. A VIEWPORT CANNOT FILL A BANNER: the
+ * camera fits the piece to whichever axis binds, so on a wide short stage the
+ * piece fills the height and the width is left over — which is why the flanks
+ * carry cards and why `frame` pulls back 1.12× instead of the 1.3× that had the
+ * piece sitting at 60% of the frame. Between the reframing and the cards, the
+ * empty space the owner kept pointing at is gone.
  *
  * SELECTION IS THE PARENT'S (`selectedId`/`onSelect`, owned by
  * pages/admin/TogoCatalog): the table, the stage and the inspector are three
@@ -68,6 +92,7 @@ import {
 import Modal from '../Modal.jsx';
 import EmptyState from '../EmptyState.jsx';
 import ModelFidelityPanel, { meshVersionFor } from './ModelFidelityPanel.jsx';
+import { FICHA_CARD } from './fichaCard.js';
 import ModelBrowser from '../quote-builder/ModelBrowser.jsx';
 import useFileIntake from '../primitives/useFileIntake.js';
 import { db, updateSettings } from '../../db/database.js';
@@ -84,6 +109,7 @@ import { autoUnitScale } from '../../lib/togo/togoModel.js';
 import { saveCollectionFabrics, clearCollectionFabrics } from '../../lib/modelFabrics.js';
 import { supabase } from '../../db/supabaseClient.js';
 import { proposeCollectionBindings } from '../../lib/togo/autoLink.js';
+import { useConfirm } from '../ConfirmProvider.jsx';
 import { buildFabricByCode } from '../../lib/togo/fabricIndex.js';
 import { canonicalCollection } from '../../lib/togo/collections.js';
 import { buildSuggestQuery, suggestSkuMatch, SUGGEST_LIMIT } from '../../lib/togo/suggestSku.js';
@@ -142,45 +168,64 @@ function CoverPicker({ collection, modelId, modelName, pieces, materials, heroes
     : null;
   if (!collection) return null;
   return (
-    <section className="border-b border-ink-200 px-3 py-2.5">
+    <section className={FICHA_CARD}>
       <div className="flex items-baseline gap-1.5">
         <span className="label mb-0">Portada · {collection}</span>
-        {(pin?.modelId || pin?.code) && (
-          <span className="ml-auto rounded-full bg-brand-50 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-brand-700">
-            elegida
+        {/* The badge is about THIS PIECE, which is what the card is about.
+            It used to light on `pin?.modelId || pin?.code` — i.e. whenever the
+            COLECCIÓN had any pin at all — so the card could read
+            «PORTADA · ELYSEE [ELEGIDA]» over a button offering to make this
+            piece the portada, with «ahora la lleva X» underneath: three lines
+            about two different subjects, stacked, read as one. */}
+        {isCover && (
+          <span className="ml-auto rounded-full bg-brand-50 px-1.5 py-px text-micro font-semibold uppercase tracking-wide text-brand-700">
+            esta pieza
           </span>
         )}
       </div>
-      <p className="mt-1 text-[10px] leading-snug text-ink-400">
+      <p className="mt-1 text-micro leading-snug text-ink-400">
         La pieza y la tela con que esta colección se presenta en el configurador.
       </p>
 
+      {/* WHO HOLDS IT — one sentence, and it comes BEFORE the button because it
+          is the thing the button would change. «Ahora la lleva X» used to sit
+          UNDER «Usar esta pieza como portada», so the dealer learned what they
+          were about to displace only after reading the offer to displace it. */}
+      <p className="mt-1.5 text-micro leading-snug text-ink-500">
+        {isCover ? 'La lleva esta pieza.'
+          : heldBy ? <>La lleva «<b className="font-medium text-ink-700">{heldBy}</b>».</>
+            : 'Ninguna pieza la lleva todavía.'}
+      </p>
+
+      {/* AND THE BUTTON SAYS ONLY WHAT PRESSING IT DOES. «✓ Esta pieza es la
+          portada — quitar» was a state and an action welded into one string,
+          and the reader had to work out which half was which before clicking
+          — on a control whose effect is what every customer sees first. */}
       <button
         type="button"
         onClick={() => onSave(collection, { modelId: isCover ? null : modelId })}
-        className={`mt-2 w-full rounded-md border px-2 py-1.5 text-[11px] font-medium transition ${
-          isCover
+        className={`mt-1.5 w-full rounded-md border px-2 py-1.5 text-micro font-medium transition ${
+ isCover
             ? 'border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100'
             : 'border-ink-200 text-ink-700 hover:bg-ink-50'
         }`}
       >
-        {isCover ? '✓ Esta pieza es la portada — quitar' : 'Usar esta pieza como portada'}
+        {isCover ? 'Quitar de la portada'
+          : heldBy ? 'Poner esta pieza en su lugar'
+            : 'Usar esta pieza como portada'}
       </button>
-      {heldBy && (
-        <p className="mt-1 text-[10px] leading-snug text-ink-400">Ahora la lleva «{heldBy}».</p>
-      )}
 
       <div className="mt-2 flex items-center gap-1.5">
         <span className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-ink-200 bg-ink-50">
           {cloth && <img src={swatchTileUrl(cloth, 28)} alt="" className="h-full w-full object-cover" />}
         </span>
-        <span className="min-w-0 flex-1 truncate text-[11px] text-ink-700">
+        <span className="min-w-0 flex-1 truncate text-micro text-ink-700">
           {cloth ? `${cloth.materialName} · ${cloth.colorName}` : 'Tela automática'}
         </span>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="shrink-0 rounded-md border border-ink-200 px-1.5 py-1 text-[10px] text-ink-600 hover:bg-ink-50"
+          className="shrink-0 whitespace-nowrap rounded-md border border-ink-200 px-1.5 py-1 text-micro text-ink-600 hover:bg-ink-50"
         >
           {open ? 'Cerrar' : 'Cambiar'}
         </button>
@@ -189,7 +234,7 @@ function CoverPicker({ collection, modelId, modelName, pieces, materials, heroes
           title="Una tela al azar del catálogo"
           disabled={!options.length}
           onClick={() => onSave(collection, { code: options[Math.floor(Math.random() * options.length)]?.code || null })}
-          className="shrink-0 rounded-md border border-ink-200 px-1.5 py-1 text-[10px] text-ink-600 hover:bg-ink-50 disabled:opacity-40"
+          className="shrink-0 whitespace-nowrap rounded-md border border-ink-200 px-1.5 py-1 text-micro text-ink-600 hover:bg-ink-50 disabled:opacity-40"
         >
           Al azar
         </button>
@@ -204,7 +249,7 @@ function CoverPicker({ collection, modelId, modelName, pieces, materials, heroes
                 title={`${o.materialName} · ${o.colorName}`}
                 onClick={() => { onSave(collection, { code: o.code }); setOpen(false); }}
                 className={`aspect-square overflow-hidden rounded border transition ${
-                  o.code === pin?.code ? 'border-brand-400 ring-2 ring-brand-400' : 'border-ink-200 hover:border-brand-300'
+ o.code === pin?.code ? 'border-brand-400 ring-2 ring-brand-400' : 'border-ink-200 hover:border-brand-300'
                 }`}
               >
                 <img src={swatchTileUrl(o, 40)} alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -215,7 +260,7 @@ function CoverPicker({ collection, modelId, modelName, pieces, materials, heroes
             <button
               type="button"
               onClick={() => { onSave(collection, { code: null }); setOpen(false); }}
-              className="mt-1 text-[10px] text-ink-500 underline underline-offset-2 hover:text-ink-700"
+              className="mt-1 text-micro text-ink-500 underline underline-offset-2 hover:text-ink-700"
             >
               Volver a la tela automática
             </button>
@@ -543,10 +588,10 @@ export function ProductBindModal({
         <>
           {currentRoot && (
             <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5 border-b border-ink-100 bg-ink-50/50 px-4 py-2 sm:px-6">
-              <span className="text-[10px] uppercase tracking-wide text-ink-400">SKU actual</span>
+              <span className="text-micro uppercase tracking-wide text-ink-400">SKU actual</span>
               <span className="font-mono text-xs font-medium text-ink-900">{currentRoot}</span>
               {currentName && <span className="min-w-0 truncate text-xs text-ink-600">{currentName}</span>}
-              <span className="ml-auto text-[10px] text-ink-400">se reemplaza al elegir otro</span>
+              <span className="ml-auto text-micro text-ink-400">se reemplaza al elegir otro</span>
             </div>
           )}
           <ModelBrowser
@@ -569,7 +614,8 @@ export default function ModelStudio({
   // The OPEN BRAND's own name — what the copy says instead of a manufacturer
   // this deploy happens to have shipped first. Null ⇒ neutral wording.
   brandName = null,
-  table = null, selectedId = null, onSelect, fidelityRow = null, fidelityResolved = null,
+  table = null, listExpanded = false, selectedId = null, onSelect,
+  fidelityRow = null, fidelityResolved = null,
   // The ACTIVE BRAND's import module set (src/brands/modules), resolved by the
   // page. Only the geometry adapter reaches this file: it decides which files
   // «Reemplazar 3D» accepts, because what counts as a model is a property of
@@ -577,6 +623,7 @@ export default function ModelStudio({
   // an unbranded mount behaves exactly as before.
   modules = null,
 }) {
+  const confirm = useConfirm();
   // The dealer's chosen covers, on the team settings row (see CoverPicker).
   // `planHeroPin` owns the merge so "pinned nothing" can't be encoded two ways.
   const { settings } = useApp();
@@ -1021,14 +1068,22 @@ export default function ModelStudio({
         eng.camera = camera;
         eng.controls = controls;
 
+        // THE PIECE FILLS THE STAGE. It used to sit at ~60% of the frame with
+        // air all round — 0.4 radii of headroom on top of a 1.3× pull-back —
+        // and on a wide stage that read as a chair floating in a void: the
+        // owner's «all this empty space» is mostly THIS, not the layout. 1.12×
+        // and 0.2 radii put it at ~85% of the height, which is what a product
+        // shot looks like, and still leaves the margin an orbit needs (the
+        // frame is solved for the piece's bounding radius, so a 3/4 turn of a
+        // long settee cannot swing outside it).
         const frame = () => {
           const vFov = (camera.fov * Math.PI) / 180;
           const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(0.4, camera.aspect));
           const height = eng.height;
           const dist = Math.max(
             CANON_RADIUS / Math.tan(hFov / 2),
-            (height * 0.5 + CANON_RADIUS * 0.4) / Math.tan(vFov / 2),
-          ) * 1.3;
+            (height * 0.5 + CANON_RADIUS * 0.2) / Math.tan(vFov / 2),
+          ) * 1.12;
           camera.position.set(dist * 0.6, height * 0.55 + dist * 0.42, dist * 0.78);
           controls.target.set(0, height * 0.42, 0);
           controls.update();
@@ -1036,6 +1091,12 @@ export default function ModelStudio({
         eng.frame = frame;
 
         const resize = () => {
+          // A stage with no box is a stage nobody is looking at — «Tabla» hides
+          // this whole column (never unmounts it: one WebGL context, booted
+          // once). Resizing to 1×1 and back would throw away the drawing buffer
+          // for nothing; the ResizeObserver fires again with a real size the
+          // moment the column comes back.
+          if (!host.clientWidth || !host.clientHeight) return;
           const w = Math.max(1, Math.round(host.clientWidth));
           const h = Math.max(1, Math.round(host.clientHeight));
           const key = `${w}x${h}`;
@@ -2074,9 +2135,13 @@ export default function ModelStudio({
     }
   }, [models, bakePlan]);
 
-  const deleteModel = () => {
+  const deleteModel = async () => {
     if (!card) return;
-    if (!window.confirm(`¿Eliminar el modelo "${card.name}"? Desaparecerá del configurador público.`)) return;
+    if (!(await confirm({
+      title: 'Eliminar el modelo',
+      message: `«${card.name}» desaparece del configurador público. Las cotizaciones que ya lo usan conservan lo cotizado.`,
+      confirmLabel: 'Eliminar el modelo', tone: 'danger',
+    }))) return;
     dirtyRef.current = false;
     setDirty(false);
     // Hand the pick to a SURVIVOR, chosen here from the list we can still see.
@@ -2288,30 +2353,57 @@ export default function ModelStudio({
           flex column (see MainContent), the workspace makes its app-bar
           `shrink-0`, and the workbench simply takes what's left. Grow the
           masthead and this still fits. */}
-      <div className="overflow-hidden rounded-2xl border border-ink-200 bg-canvas lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_20rem]">
+      <div
+        className={`flex flex-col overflow-hidden rounded-2xl border border-ink-200 bg-canvas lg:grid lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-0 ${
+ listExpanded
+            ? 'lg:grid-cols-1'
+            : 'lg:grid-cols-[minmax(19rem,34%)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(22rem,32%)_minmax(0,1fr)]'
+        }`}
+      >
+        {/* TWO PANES, like every mail client and every messenger: the LIST down
+            the left at a third of the screen, and everything about the piece it
+            selected filling the rest. The right pane is stacked — EL ESCENARIO
+            arriba, LA FICHA abajo — which is the shape the owner drew, and the
+            three regions between them leave no dead corner:
+                ┌───────────┬────────────────────────┐
+                │  PIEZAS   │  ESCENARIO 3D          │
+                │  (lista)  ├────────────────────────┤
+                │           │  FICHA · tarjetas      │
+                └───────────┴────────────────────────┘
+            The stage is a BANNER here, not a square, and that is fine as long
+            as the piece FILLS it — which is what the reframing above (1.12×
+            instead of 1.3×) is for; the void the owner kept pointing at was two
+            thirds camera padding and one third layout. The ficha under it is
+            wide and short, so it stops being a scrolling column and becomes a
+            BAND OF CARDS flowing into two or three CSS columns: everything
+            about the piece on screen at once, which is the whole difference
+            between a dashboard and a form in a drawer.
+            «Tabla» still folds the list out over the lot (`lg:grid-cols-1`,
+            stage and ficha hidden — never unmounted: one WebGL context).
+            Below `lg` this is an ordinary flex column and the list comes first:
+            on a phone you pick the piece before you can look at it. */}
 
-        {/* ── LEFT: the model table. Handed in whole by the section — it IS the
-            rail (one click on a row is what puts the piece on the stage), and
-            it scrolls inside its own column. */}
+        {/* ── LEFT: the list. Handed in whole by the section, which also owns
+            which density it is in — the RAIL beside the stage, or the whole
+            dashboard as a table. Selecting a row IS opening it, in both. */}
         {table}
 
-        {/* ── CENTER: the stage. */}
-        <section className="relative flex min-h-0 flex-col border-y border-ink-200 lg:border-y-0">
-          <StageToolbar
-            card={card}
-            busy={meshBusy}
-            detecting={detecting}
-            meshIntake={meshIntake}
-            onToggleAxis={toggleAxis}
-            onRemoveMesh={removeMesh}
-            onEmbed={() => setEmbedOpen(true)}
-            meshOpt={meshOpt}
-          />
+        {/* ── TOP RIGHT: the stage, and the two cards you read while looking
+            at it. A render of a chair in a 1200×420 banner leaves ~800px of
+            black either side of the piece — the geometry cannot be argued with
+            (the camera fits the piece to whichever axis binds, and on a banner
+            that is the height). So the room goes to FIDELIDAD and PORTADA: «is
+            this safe to publish» and «is this the piece that sells the
+            colección», which are questions about the thing you are looking at
+            rather than fields you edit, and therefore belong here and not in
+            the ficha below. */}
+        <section className={`relative flex min-h-0 flex-col lg:flex-row ${listExpanded ? 'hidden' : ''}`}>
+          <div className="relative flex min-h-0 flex-1 flex-col border-y border-ink-200 lg:border-y-0">
           {/* The catalogue-wide re-export's progress, under the toolbar that
               starts it (it was the rail's footer; the rail is the table now,
               and a catalogue-wide tool is not a table row). */}
           {meshOpt && (
-            <div role="status" className="shrink-0 space-y-1 border-b border-ink-200 bg-surface px-3 py-1.5 text-[10px] leading-tight text-ink-400">
+            <div role="status" className="shrink-0 space-y-1 border-b border-ink-200 bg-surface px-3 py-1.5 text-micro leading-tight text-ink-400">
               {meshOpt.running ? (
                 <>
                   <p className="tabular-nums">Optimizando {Math.min(meshOpt.done + 1, meshOpt.total)}/{meshOpt.total}{meshOpt.current ? ` · ${meshOpt.current}` : ''}</p>
@@ -2335,7 +2427,7 @@ export default function ModelStudio({
               different work (one rewrites the 3D files, the other photographs
               them) and they can run in the same session. */}
           {thumbBake && (
-            <div role="status" className="shrink-0 space-y-1 border-b border-ink-200 bg-surface px-3 py-1.5 text-[10px] leading-tight text-ink-400">
+            <div role="status" className="shrink-0 space-y-1 border-b border-ink-200 bg-surface px-3 py-1.5 text-micro leading-tight text-ink-400">
               {thumbBake.running ? (
                 <>
                   <p className="tabular-nums">Fotografiando {Math.min(thumbBake.done + 1, thumbBake.total)}/{thumbBake.total}{thumbBake.current ? ` · ${thumbBake.current}` : ''}</p>
@@ -2354,7 +2446,7 @@ export default function ModelStudio({
             </div>
           )}
           {(detectErr || meshOpErr) && (
-            <div role="alert" className="flex items-start gap-1.5 border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-[10px] text-red-400">
+            <div role="alert" className="flex items-start gap-1.5 border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-micro text-red-400">
               <AlertCircle size={11} className="mt-0.5 shrink-0" /> {detectErr || meshOpErr}
             </div>
           )}
@@ -2363,7 +2455,7 @@ export default function ModelStudio({
               ningún ejemplo se ve idéntica a una que sí, y un conflicto
               descartado en silencio dejaría la colección pareciendo coherente. */}
           {taughtNote && (
-            <div className="flex items-start gap-1.5 border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-[10px] text-ink-400">
+            <div className="flex items-start gap-1.5 border-b border-ink-200 bg-ink-100 px-3 py-1.5 text-micro text-ink-400">
               <Sparkles size={11} className="mt-0.5 shrink-0" />
               <span>
                 {taughtNote.learned > 0
@@ -2378,8 +2470,68 @@ export default function ModelStudio({
             </div>
           )}
 
-          <div className="relative h-[55dvh] min-h-0 flex-1 lg:h-auto">
+          {/* The canvas. `flex-1` only from `lg`, where the row it sits in has a
+              height to share out: below that it is `flex: 0 1 auto` and the
+              55dvh is what it measures. `flex-1` is basis ZERO, and a basis of
+              zero inside a column that sizes to its content resolves to zero —
+              the stage was collapsing to a 13px sliver on a phone with the
+              55dvh right there in the class list, overridden. */}
+          <div className="relative h-[55dvh] min-h-0 lg:h-auto lg:flex-1">
+            {/* THE CAPTION, over the render. The piece's name is the only large
+                type on this screen and it belongs ON the thing it names — the
+                bar it used to sit in was a slab of chrome across the top of the
+                stage, and every pixel of it came out of the render. Inside the
+                canvas, so the transient strips above (optimizando mallas, lo que
+                aprendió la detección) push it down with everything else instead
+                of appearing underneath it. The vignette is what keeps it
+                legible. */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[7] p-3.5">
+              <div className="truncate text-base font-semibold leading-tight tracking-tight text-ink-900">{card?.name || 'Sin modelo'}</div>
+              {card && (
+                <div className="flex items-center gap-1.5 text-micro uppercase tracking-[0.14em]">
+                  <span className="truncate text-ink-400">{card.collection}</span>
+                  {/* ¿LA VE EL CLIENTE? — the one fact about the piece you are
+                      editing that lived nowhere near the piece you are editing.
+                      It was an 8px dot on the rail row, two panes away: every
+                      time the dealer wanted to know whether this thing is live,
+                      they had to leave the stage, find the row again, and read
+                      a mark the size of a full stop. It costs one line here.
+
+                      A READOUT, not a second switch. The caption is
+                      `pointer-events-none` and stays that way — the switch is
+                      the rail's dot and there is exactly one of it (a second
+                      control for one flag is how the old Gestor|Estudio split
+                      got out of step with itself). Mark AND word, because
+                      meaning never rides on hue alone (§6), and the word is the
+                      estado strip's own — «Activa»/«Borrador», not a third
+                      name for the same flag. */}
+                  {fidelityRow && (
+                    <>
+                      <span aria-hidden className="shrink-0 text-ink-300">·</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-ink-500">
+                        <span
+                          aria-hidden
+                          className={`h-1.5 w-1.5 rounded-full ${fidelityRow.estado === 'activo' ? 'bg-status-good' : 'border border-ink-400'}`}
+                        />
+                        {fidelityRow.estado === 'activo' ? 'Activa' : 'Borrador'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             {hasModels && <div ref={hostRef} className="absolute inset-0" />}
+            {/* A VIGNETTE, in CSS, over the canvas. The engine paints one flat
+                `--canvas` and a ground plane; flat to the corners, a big stage
+                reads as a hole with a sofa in it. Darkening the edges puts the
+                light where the piece is — the oldest trick in product
+                photography and the cheapest one here: no second render target,
+                no engine change, and it costs the same in both themes because
+                the token is the stage's own ground colour. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-[5] [background:radial-gradient(70%_60%_at_50%_45%,transparent_35%,rgb(var(--canvas)/0.75)_100%)]"
+            />
             {/* The selected group's silhouette — warm gold over a dark ink
                 casing, the configurator's own selection cue (TogoStage). Path
                 data written IMPERATIVELY by strokeOutline in the render frame;
@@ -2405,12 +2557,12 @@ export default function ModelStudio({
                 inspector's) and this says where the other exit is. */}
             {joinMode && group && (
               <div className="pointer-events-none absolute inset-x-0 top-2 z-[7] flex justify-center px-3">
-                <div role="status" className="flex items-center gap-2 rounded-full border border-brand-400/60 bg-canvas/95 px-3 py-1.5 shadow-lg">
+                <div role="status" className="flex items-center gap-2 rounded-full border border-brand-400/60 bg-canvas/95 px-3 py-1.5 shadow-md">
                   <Combine size={13} className="shrink-0 text-brand-600" aria-hidden />
-                  <span className="text-[11px] text-ink-700">
+                  <span className="text-micro text-ink-700">
                     Clic en una malla para unirla a <b className="text-ink-900">{partLabelOf(draft, group.key, fallbackLabelFor(group.key))}</b>, o en una suya para separarla
                   </span>
-                  <span className="shrink-0 rounded border border-ink-300 px-1 text-[9px] text-ink-400">Esc</span>
+                  <span className="shrink-0 rounded border border-ink-300 px-1 text-micro text-ink-400">Esc</span>
                 </div>
               </div>
             )}
@@ -2441,7 +2593,7 @@ export default function ModelStudio({
                   {/* Opens the ONE intake the toolbar owns — a second
                       `rootProps`/`inputProps` pair off the same hook would
                       double-fire every drop. */}
-                  <button type="button" onClick={meshIntake.open} className="btn-secondary mx-auto text-[11px]">
+                  <button type="button" onClick={meshIntake.open} className="btn-secondary mx-auto text-micro">
                     {meshBusy ? <Loader2 size={12} className="animate-spin" /> : <UploadCloud size={12} />} Subir 3D
                   </button>
                 </div>
@@ -2453,7 +2605,7 @@ export default function ModelStudio({
                   <div className="max-w-xs space-y-1">
                     <AlertCircle size={18} className="mx-auto text-ink-300" aria-hidden />
                     <p className="text-xs text-ink-500">{meshErr || 'No se pudo mostrar el modelo.'}</p>
-                    <p className="text-[11px] text-ink-400">Puedes seguir editando las partes desde la lista.</p>
+                    <p className="text-micro text-ink-400">Puedes seguir editando las partes desde la lista.</p>
                   </div>
                 ) : (
                   <span className="inline-flex items-center gap-2 text-xs text-ink-400">
@@ -2464,22 +2616,28 @@ export default function ModelStudio({
             )}
             {hasModels && meshKey && status === 'ready' && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-2">
-                <span className="rounded-full bg-ink-100/80 px-2.5 py-1 text-[10px] font-medium text-ink-700">
+                <span className="rounded-full bg-ink-100/80 px-2.5 py-1 text-micro font-medium text-ink-700">
                   Toca una parte para seleccionarla · arrastra para girar
                 </span>
               </div>
             )}
+            </div>
           </div>
-        </section>
 
-        {/* ── RIGHT: the inspector. */}
-        <aside className="flex min-h-0 flex-col lg:border-l lg:border-ink-200">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {/* FIDELIDAD first, and OUTSIDE the model/part switch: the checks
-                answer "is this piece safe to publish", which is as true with a
-                part group selected as without. This is the whole of the retired
-                fidelity pane — its six answers over the stage's own build, with
-                no second canvas. */}
+          {/* ── EL ESTADO DE LA PIEZA, beside the render. Scrolls on its own so
+              a model with three amber checks can never push the portada out of
+              reach; below `lg` it simply follows the render down the page. */}
+          <div className="shrink-0 overflow-y-auto overscroll-contain border-t border-ink-200 p-2.5 lg:w-[19rem] lg:border-l lg:border-t-0 xl:w-[21rem]">
+            <StageToolbar
+              card={card}
+              busy={meshBusy}
+              detecting={detecting}
+              meshIntake={meshIntake}
+              onToggleAxis={toggleAxis}
+              onRemoveMesh={removeMesh}
+              onEmbed={() => setEmbedOpen(true)}
+              meshOpt={meshOpt}
+            />
             <ModelFidelityPanel
               row={fidelityRow}
               resolved={fidelityResolved}
@@ -2487,11 +2645,6 @@ export default function ModelStudio({
               building={status === 'loading'}
               meshV={meshV}
             />
-            {/* PORTADA — which piece, in which cloth, stands for this colección
-                on the configurator's first screen. Here because the piece IS
-                the selection: "esta pieza es la portada" is one click on the
-                model you are already looking at, instead of a separate screen
-                that would ask you to find it again. */}
             {card && (
               <CoverPicker
                 collection={card.collection}
@@ -2503,6 +2656,38 @@ export default function ModelStudio({
                 onSave={saveHero}
               />
             )}
+            {/* The stage's own layer list: a row IS a group of meshes on the
+                render, one click selects it there. It reads as part of the
+                viewport, not of the form — and it is what makes this column
+                reach the bottom of the stage instead of trailing off. */}
+            {card && (
+              <PartsCard
+                groups={groups}
+                draft={draft}
+                finishStateByKey={finishStateByKey}
+                factoryGroups={factoryGroups}
+                status={status}
+                hasMesh={!!meshKey}
+                onSelectGroup={setSelected}
+                onHoverGroup={setHovered}
+              />
+            )}
+          </div>
+        </section>
+
+        {/* ── BOTTOM RIGHT: la ficha, a band of cards under the stage. */}
+        <aside className={`flex min-h-0 flex-col lg:border-t lg:border-ink-200 ${listExpanded ? 'hidden' : ''}`}>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2.5">
+            {/* CSS COLUMNS, not a grid: the cards are of wildly different
+                heights (six checks vs one button) and a grid would leave a hole
+                under every short one. A column flow packs them; each card
+                carries `break-inside-avoid` so none is ever cut in half.
+                One column on a phone, two from `sm`, three on a big screen —
+                the band gets wider, not taller. */}
+            <div className="gap-x-2.5 sm:columns-2 2xl:columns-3">
+            {/* Only what you EDIT. Fidelidad and portada moved up beside the
+                render: they answer questions about the piece as a whole, and
+                they are what fills the banner's flanks. */}
             {!card ? null : group ? (
               <PartInspector
                 key={group.key}
@@ -2548,18 +2733,14 @@ export default function ModelStudio({
                 profileId={profileId}
                 groups={groups}
                 draft={draft}
-                finishStateByKey={finishStateByKey}
-                factoryGroups={factoryGroups}
                 status={status}
                 busy={meshBusy}
-                hasMesh={!!meshKey}
                 onNeedCatalog={onNeedCatalog}
                 onRegenPlan={regenPlan}
                 onDelete={deleteModel}
-                onSelectGroup={setSelected}
-                onHoverGroup={setHovered}
               />
             )}
+            </div>
           </div>
 
           {/* The parts draft's STATUS strip. It used to hold «Guardar partes»
@@ -2573,29 +2754,30 @@ export default function ModelStudio({
           {(dirty || saving || saveErr || fanoutErr > 0) && (
             <div role="status" className="border-t border-ink-200 bg-surface px-3 py-2 space-y-1.5">
               {saveErr && (
-                <p className="flex items-start gap-1 text-[10px] text-red-400">
+                <p className="flex items-start gap-1 text-micro text-red-400">
                   <AlertCircle size={11} className="mt-0.5 shrink-0" /> {saveErr}
                 </p>
               )}
               {/* The model's own save landed; only the colección lagged behind. */}
               {fanoutErr > 0 && (
-                <p className="text-[10px] leading-tight text-ink-400">
+                <p className="text-micro leading-tight text-ink-400">
                   No se pudieron actualizar {fanoutErr} modelo{fanoutErr === 1 ? '' : 's'} de la colección.
                 </p>
               )}
               {dirty && fanoutCount > 0 && (
-                <p className="text-[10px] leading-tight text-ink-400">
+                <p className="text-micro leading-tight text-ink-400">
                   Los acabados se aplicarán también a {fanoutCount} modelo{fanoutCount === 1 ? '' : 's'} de {collection}.
                 </p>
               )}
               {(dirty || saving) && (
-                <p className="flex items-center gap-1.5 text-[10px] text-ink-400">
+                <p className="flex items-center gap-1.5 text-micro text-ink-400">
                   <Loader2 size={11} className="shrink-0 animate-spin" aria-hidden /> Guardando…
                 </p>
               )}
             </div>
           )}
         </aside>
+
       </div>
 
       {/* The catalog picker for the selected PART group — picking allocates one
@@ -2629,44 +2811,46 @@ function StageToolbar({
   card, busy, detecting, meshIntake, onToggleAxis, onRemoveMesh, onEmbed, meshOpt = null,
 }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-ink-200 bg-surface px-3 py-2">
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-medium text-ink-900">{card?.name || 'Sin modelo'}</div>
-        {card && <div className="truncate text-[10px] text-ink-400">{card.collection}</div>}
-      </div>
-      <div className="flex flex-wrap items-center justify-end gap-1">
+    // NOT A BAR ANY MORE. It was a slab across the top of the stage, and every
+    // pixel of it came out of the render; the name floats over the piece now
+    // (see the caption in the stage) and what is left — the three things you do
+    // to a piece's 3D FILE — is a card in the column beside it, where it fills
+    // room the render could not use anyway.
+    <section className={`space-y-1.5 ${FICHA_CARD}`}>
+      <span className="label mb-0">Malla 3D</span>
+      <div className="flex flex-wrap items-center gap-1">
         {/* Detecting and re-exporting are MAINTENANCE, not decisions — the dealer
             should never have to know that a mesh needs re-exporting or that a
             model was never tagged, so both run themselves (see the effects in
             ModelStudio). What is left here is the passive read-out: work in
             flight, never a button. */}
         {(detecting || meshOpt?.running) && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-ink-400" aria-live="polite">
+          <span className="inline-flex items-center gap-1 text-micro text-ink-400" aria-live="polite">
             <Loader2 size={11} className="animate-spin" aria-hidden />
             {detecting ? 'Detectando partes…' : `Preparando mallas ${meshOpt.done}/${meshOpt.total}`}
           </span>
         )}
         {card?.meshUrl && (
-          <button type="button" onClick={onToggleAxis} disabled={busy} className="btn-ghost text-[11px] disabled:opacity-50" title="Si el modelo aparece acostado, cambia el eje vertical (regenera la planta)">
+          <button type="button" onClick={onToggleAxis} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Si el modelo aparece acostado, cambia el eje vertical (regenera la planta)">
             Eje {card.meshUpAxis === 'z' ? 'Z' : 'Y'}
           </button>
         )}
         {card && (
-          <label {...meshIntake.rootProps} className={`btn-ghost text-[11px] cursor-pointer ${meshIntake.dragging ? 'ring-2 ring-brand-500' : ''}`} title="Reemplazar el archivo 3D de este modelo">
+          <label {...meshIntake.rootProps} className={`btn-ghost text-micro cursor-pointer ${meshIntake.dragging ? 'ring-2 ring-brand-500' : ''}`} title="Reemplazar el archivo 3D de este modelo">
             {busy ? <Loader2 size={12} className="animate-spin" /> : <UploadCloud size={12} />} {card.meshUrl ? 'Reemplazar 3D' : 'Subir 3D'}
             <input {...meshIntake.inputProps} />
           </label>
         )}
         {card?.meshUrl && (
-          <button type="button" onClick={onRemoveMesh} className="p-1 text-ink-400 hover:text-red-500" title="Quitar el modelo 3D (vuelve a la geometría generada)">
+          <button type="button" onClick={onRemoveMesh} className="btn-icon-sm text-ink-400 hover:text-red-500" title="Quitar el modelo 3D (vuelve a la geometría generada)">
             <Trash2 size={13} />
           </button>
         )}
-        <button type="button" onClick={onEmbed} className="btn-ghost text-[11px]" title="El código para embeber el configurador en tu web">
+        <button type="button" onClick={onEmbed} className="btn-ghost text-micro" title="El código para embeber el configurador en tu web">
           <Code2 size={12} /> Insertar
         </button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -2680,11 +2864,11 @@ function EmbedModal({ open, onClose, brandName = null }) {
   return (
     <Modal open={open} onClose={onClose} size="md" title="Embeber en tu web">
       <div className="space-y-2.5">
-        <p className="text-[11px] text-ink-500">
+        <p className="text-micro text-ink-500">
           Pega este código en tu sitio: muestra un card que abre el configurador en una nueva pestaña.
           Los clientes arman su Togo y te llega como cotización borrador para dar seguimiento.
         </p>
-        <div className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-ink-900 p-3 font-mono text-[11px] text-ink-100">{snippet}</div>
+        <div className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-ink-900 p-3 font-mono text-micro text-ink-100">{snippet}</div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={copy} className="btn-ghost text-xs">
             {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />} {copied ? 'Copiado' : 'Copiar código'}
@@ -2703,8 +2887,10 @@ function ModelInspector({
   card, row, collections, cards, families, products, fabricLinks, fabricLinkModule = null,
   brandName = null, profileId,
   candidateIndex = null, modelCtx = null,
-  groups, draft, finishStateByKey = {}, factoryGroups = null, status, busy, hasMesh = true,
-  onNeedCatalog, onRegenPlan, onDelete, onSelectGroup, onHoverGroup,
+  // `groups` stays (the base-SKU note asks whether the piece HAS componentes);
+  // the part list itself moved out to PartsCard, beside the render.
+  groups, draft, status, busy,
+  onNeedCatalog, onRegenPlan, onDelete,
 }) {
   const [pickOpen, setPickOpen] = useState(false);
   // Optimistic binding: a global invalidate refetches the (huge) catalog, so the
@@ -2761,79 +2947,87 @@ function ModelInspector({
   };
 
   return (
-    <div className="divide-y divide-ink-200">
+    <>
       {/* ── The model itself. */}
-      <section className="space-y-2.5 px-3 py-3">
-        <div>
-          <label className="label" htmlFor={`togo-name-${card.id}`}>Nombre</label>
-          <input
-            id={`togo-name-${card.id}`}
-            className="input h-8 py-0 text-[13px] font-medium"
-            defaultValue={card.name}
-            onBlur={(e) => e.target.value.trim() && e.target.value !== card.name && db.togoModels.update(card.id, { name: e.target.value.trim(), updatedAt: Date.now() })}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor={`togo-col-input-${card.id}`}>Colección</label>
-          <input
-            id={`togo-col-input-${card.id}`}
-            className="input h-8 py-0 text-[12px]"
-            list={`togo-col-${card.id}`}
-            defaultValue={card.collection === 'Togo' ? '' : card.collection}
-            placeholder="Togo"
-            onBlur={(e) => commitCollection(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          />
-          <datalist id={`togo-col-${card.id}`}>
-            {collections.map((c) => <option key={c} value={c} />)}
-          </datalist>
-        </div>
-
-        <div>
-          <label className="label" htmlFor={`togo-group-input-${card.id}`}>Grupo</label>
-          <input
-            id={`togo-group-input-${card.id}`}
-            className="input h-8 py-0 text-[12px]"
-            defaultValue={row?.productGroup || ''}
-            placeholder="Sin grupo"
-            onBlur={(e) => commitGroup(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor={`togo-cat-input-${card.id}`}>Categoría</label>
-          <input
-            id={`togo-cat-input-${card.id}`}
-            className="input h-8 py-0 text-[12px]"
-            defaultValue={row?.category || ''}
-            placeholder="Sin categoría"
-            onBlur={(e) => commitCategory(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="label">Ancho (cm)</span>
+      <section className={`space-y-2.5 ${FICHA_CARD}`}>
+        {/* IDENTITY, TWO UP. Six one-line fields stacked cost ~250px of a column
+            that already had more to say than it had room for; side by side they
+            cost half that and read as what they are — one block of labels. The
+            name keeps the full width (it is the one you actually read), and the
+            pairing only starts at `sm`: on a phone this pane is the page and a
+            170px input is not a text field. */}
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor={`togo-name-${card.id}`}>Nombre</label>
             <input
-              type="number" min="1" className="input h-8 py-0 text-[12px] tabular-nums"
-              defaultValue={card.widthCm}
-              onBlur={(e) => commitDim('widthCm', e.target.value)}
+              id={`togo-name-${card.id}`}
+              className="input h-8 py-0 text-sm font-medium"
+              defaultValue={card.name}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== card.name && db.togoModels.update(card.id, { name: e.target.value.trim(), updatedAt: Date.now() })}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
             />
-          </label>
-          <label className="block">
-            <span className="label">Fondo (cm)</span>
+          </div>
+
+          <div>
+            <label className="label" htmlFor={`togo-col-input-${card.id}`}>Colección</label>
             <input
-              type="number" min="1" className="input h-8 py-0 text-[12px] tabular-nums"
-              defaultValue={card.depthCm}
-              onBlur={(e) => commitDim('depthCm', e.target.value)}
+              id={`togo-col-input-${card.id}`}
+              className="input h-8 py-0 text-xs"
+              list={`togo-col-${card.id}`}
+              defaultValue={card.collection === 'Togo' ? '' : card.collection}
+              placeholder="Togo"
+              onBlur={(e) => commitCollection(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
             />
-          </label>
+            <datalist id={`togo-col-${card.id}`}>
+              {collections.map((c) => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="label" htmlFor={`togo-group-input-${card.id}`}>Grupo</label>
+            <input
+              id={`togo-group-input-${card.id}`}
+              className="input h-8 py-0 text-xs"
+              defaultValue={row?.productGroup || ''}
+              placeholder="Sin grupo"
+              onBlur={(e) => commitGroup(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+            />
+          </div>
+
+          <div>
+            <label className="label" htmlFor={`togo-cat-input-${card.id}`}>Categoría</label>
+            <input
+              id={`togo-cat-input-${card.id}`}
+              className="input h-8 py-0 text-xs"
+              defaultValue={row?.category || ''}
+              placeholder="Sin categoría"
+              onBlur={(e) => commitCategory(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="label">Ancho (cm)</span>
+              <input
+                type="number" min="1" className="input h-8 py-0 text-xs tabular-nums"
+                defaultValue={card.widthCm}
+                onBlur={(e) => commitDim('widthCm', e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+              />
+            </label>
+            <label className="block">
+              <span className="label">Fondo (cm)</span>
+              <input
+                type="number" min="1" className="input h-8 py-0 text-xs tabular-nums"
+                defaultValue={card.depthCm}
+                onBlur={(e) => commitDim('depthCm', e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+              />
+            </label>
+          </div>
         </div>
 
         {/* Estado has ONE control on this screen and it is the pill on the
@@ -2853,13 +3047,13 @@ function ModelInspector({
       {/* ── The model's SKU. ONE binding, TWO prices: the catalog entry for the
           whole piece IS the elemento completo, so a monocolor build quotes on
           it alone and a mixed one adds the componentes on top. */}
-      <section className="space-y-1 px-3 py-3">
+      <section className={`space-y-1 ${FICHA_CARD}`}>
         <span className="label mb-0">SKU base</span>
         <button
           type="button"
           onClick={() => { onNeedCatalog?.(); setPickOpen(true); }}
-          className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left text-[11px] transition-colors ${
-            boundRoot ? 'border-brand-300 bg-brand-500/10 text-brand-700 hover:bg-brand-500/20' : 'border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+          className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left text-micro transition-colors ${
+ boundRoot ? 'border-brand-300 bg-brand-500/10 text-brand-700 hover:bg-brand-500/20' : 'border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
           }`}
           title={`Vincular el producto${brandName ? ` ${brandName}` : ''} que da el precio por grado`}
         >
@@ -2871,17 +3065,17 @@ function ModelInspector({
           </span>
         </button>
         {boundFamily?.graded && (
-          <p className="text-[10px] leading-tight text-ink-400">{boundFamily.grades.length} grados de tela.</p>
+          <p className="text-micro leading-tight text-ink-400">{boundFamily.grades.length} grados de tela.</p>
         )}
         {/* The rule this ONE SKU carries, in the owner's own words — shown only
             where there are componentes, since a piece that is all base has a
             single price and nothing to explain. */}
         {hasComponents && (
-          <p className="text-[10px] leading-tight text-ink-400">
+          <p className="text-micro leading-tight text-ink-400">
             Se cotiza así cuando todos los componentes llevan el mismo material; si se mezclan, se suma cada componente por su SKU (más caro).
           </p>
         )}
-        {pending != null && <p className="text-[10px] text-ink-400">Guardando…</p>}
+        {pending != null && <p className="text-micro text-ink-400">Guardando…</p>}
         {/* Unbound is exactly where the suggestion belongs: an already-bound
             model has an answer, and re-proposing one over it is how a good
             binding gets replaced by a plausible one. */}
@@ -2909,107 +3103,33 @@ function ModelInspector({
       </section>
 
       {/* ── The derived plan. */}
-      <section className="space-y-1.5 px-3 py-3">
+      <section className={`space-y-1.5 ${FICHA_CARD}`}>
         <div className="flex items-center justify-between gap-2">
           <span className="label mb-0">Planta</span>
           {card.meshUrl && (
-            <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-[10px] disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
+            <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
               {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Regenerar
             </button>
           )}
         </div>
         <div className="grid aspect-[4/3] w-24 place-items-center overflow-hidden rounded-lg bg-canvas p-2 text-ink-600 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: sanitizeSvg(card.svg || '') }} />
         {row?.meshSourceName && (
-          <p className="truncate text-[10px] text-ink-400" title={row.meshSourceName}>
+          <p className="truncate text-micro text-ink-400" title={row.meshSourceName}>
             Fuente: {row.meshSourceName}
             {row.ingestedAt ? ` · ${new Date(row.ingestedAt).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
           </p>
         )}
       </section>
 
-      {/* ── The model's part groups — the index into the part editor. Every row
-          that will show the client NOTHING says so here, on the row: an
-          Estructura is a real choice once a palette the Model accepts exists,
-          its own or the colección's (resolveStructureFinish), and the dealer is
-          looking at this list, not at the part he hasn't opened yet. */}
-      <section className="space-y-1.5 px-3 py-3">
-        <span className="label mb-0">Partes</span>
-        {groups.length === 0 ? (
-          /* Three different "nothing here", and only one of them is «Detectar
-             partes»: with no 3D there is nothing to detect FROM, and while the
-             mesh is loading there is nothing to say yet. */
-          <p className="text-[10px] leading-tight text-ink-400">
-            {!hasMesh
-              ? 'Este modelo no tiene 3D todavía. Sube uno con «Reemplazar 3D» y luego usa «Detectar partes».'
-              : status === 'loading'
-                ? 'Leyendo las mallas…'
-                : 'Sin partes que etiquetar — usa «Detectar partes» sobre el modelo 3D.'}
-          </p>
-        ) : (
-          <ul className="space-y-0.5">
-            {groups.map((g) => {
-              const role = partRoleFor(draft, g.key, 0, g.key);
-              const root = draft?.roots?.[role] || '';
-              const fin = finishStateByKey[g.key] || null;
-              const unfinished = !!fin?.structure && !fin.ready;
-              const factory = !!factoryGroups?.has(g.key);
-              return (
-                <li key={g.key}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectGroup(g.key)}
-                    onMouseEnter={() => onHoverGroup(g.key)}
-                    onMouseLeave={() => onHoverGroup((h) => (h === g.key ? null : h))}
-                    className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-ink-100"
-                    title={g.key}
-                  >
-                    <span className="h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ring-white/10" style={{ backgroundColor: cssClay(g.index) }} aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-[11px] text-ink-800">{partLabelOf(draft, g.key, fallbackLabelFor(g.key))}</span>
-                    {/* The piece came with its own finish and keeps it — said
-                        HERE because the alternative is the dealer picking a
-                        tela, seeing this part ignore it, and filing a bug. */}
-                    {factory && (
-                      <span className="shrink-0 rounded-full bg-ink-100 px-1.5 py-0.5 text-[9px] font-medium text-ink-500">
-                        Material propio
-                      </span>
-                    )}
-                    {unfinished && (
-                      <AlertCircle
-                        size={11}
-                        className="shrink-0 text-amber-400"
-                        aria-hidden
-                      />
-                    )}
-                    <span className={`shrink-0 text-[10px] ${unfinished ? 'text-amber-400' : 'text-ink-400'}`}>
-                      {BILLED_SLOTS.includes(role)
-                        ? (root ? `Componente · SKU ${root}` : 'Componente')
-                        : unfinished
-                          // «sin acabados» is only true when NOTHING covers it.
-                          // `invalid` means the rows typed here are all being
-                          // thrown away — a different thing to go fix.
-                          ? (fin.status === 'invalid' ? 'Estructura · acabados incompletos' : 'Estructura · sin acabados')
-                          : SLOT_LABELS[role] || SLOT_LABELS.base}
-                    </span>
-                  </button>
-                  {/* Some rows kept, some dropped — the kept ones hide the loss,
-                      so it is spelled out rather than left to a badge. */}
-                  {fin?.status === 'partial' && (
-                    <p className="pl-6 text-[10px] leading-tight text-amber-400">
-                      {fin.dropped} acabado{fin.dropped === 1 ? '' : 's'} sin nombre o sin color — no se guardan.
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
       {/* ── Montaje: where the piece sits on the plan. */}
       <MountSection card={card} />
 
-      {/* ── Collection-wide tools (they act on every model of this colección). */}
-      <section className="space-y-2 px-3 py-3">
+      {/* ── Collection-wide tools (they act on every model of this colección).
+          Upstream folded «Auto-vincular» into the table's «Completar con
+          Claude» chain; this deploy keeps the collection-level review here —
+          the auto-import chain stays out by design (its grammar is one
+          manufacturer's price-list vocabulary). */}
+      <section className={`space-y-2 ${FICHA_CARD}`}>
         <span className="label mb-0">Colección · {card.collection}</span>
         <AutoLinkRow
           collection={card.collection}
@@ -3032,12 +3152,105 @@ function ModelInspector({
         )}
       </section>
 
-      <section className="px-3 py-3">
-        <button type="button" onClick={onDelete} className="btn-ghost w-full text-[11px] text-ink-400 hover:text-red-500" title="Eliminar el modelo del catálogo">
+      <section className={FICHA_CARD}>
+        <button type="button" onClick={onDelete} className="btn-ghost w-full text-micro text-ink-400 hover:text-red-500" title="Eliminar el modelo del catálogo">
           <Trash2 size={12} /> Eliminar modelo
         </button>
       </section>
-    </div>
+    </>
+  );
+}
+
+
+/**
+ * PARTES — the model's part groups, BESIDE THE RENDER rather than in the ficha.
+ *
+ * It is the viewport's layer list: a row here is a group of meshes on the stage,
+ * clicking it selects that group (and the stage draws its outline), hovering
+ * lights it up. Kept in a scrolling column under FIDELIDAD and PORTADA, which is
+ * also what fills the flank a banner-shaped stage cannot use — the same reason
+ * those two are there. Every row that will show the client NOTHING says so on
+ * the row: an Estructura is a real choice once a palette the Model accepts
+ * exists, its own or the colección's (resolveStructureFinish), and the dealer is
+ * looking at this list, not at the part he hasn't opened yet.
+ */
+function PartsCard({
+  groups, draft, finishStateByKey = {}, factoryGroups = null, status, hasMesh = true,
+  onSelectGroup, onHoverGroup,
+}) {
+  return (
+    <section className={`space-y-1.5 ${FICHA_CARD}`}>
+      <span className="label mb-0">Partes</span>
+      {groups.length === 0 ? (
+        /* Three different "nothing here", and only one of them is «Detectar
+           partes»: with no 3D there is nothing to detect FROM, and while the
+           mesh is loading there is nothing to say yet. */
+        <p className="text-micro leading-tight text-ink-400">
+          {!hasMesh
+            ? 'Este modelo no tiene 3D todavía. Sube uno con «Reemplazar 3D» y luego usa «Detectar partes».'
+            : status === 'loading'
+              ? 'Leyendo las mallas…'
+              : 'Sin partes que etiquetar — usa «Detectar partes» sobre el modelo 3D.'}
+        </p>
+      ) : (
+        <ul className="space-y-0.5">
+          {groups.map((g) => {
+            const role = partRoleFor(draft, g.key, 0, g.key);
+            const root = draft?.roots?.[role] || '';
+            const fin = finishStateByKey[g.key] || null;
+            const unfinished = !!fin?.structure && !fin.ready;
+            const factory = !!factoryGroups?.has(g.key);
+            return (
+              <li key={g.key}>
+                <button
+                  type="button"
+                  onClick={() => onSelectGroup(g.key)}
+                  onMouseEnter={() => onHoverGroup(g.key)}
+                  onMouseLeave={() => onHoverGroup((h) => (h === g.key ? null : h))}
+                  className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-ink-100"
+                  title={g.key}
+                >
+                  <span className="h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ring-white/10" style={{ backgroundColor: cssClay(g.index) }} aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-micro text-ink-800">{partLabelOf(draft, g.key, fallbackLabelFor(g.key))}</span>
+                  {/* The piece came with its own finish and keeps it — said
+                      HERE because the alternative is the dealer picking a
+                      tela, seeing this part ignore it, and filing a bug. */}
+                  {factory && (
+                    <span className="shrink-0 rounded-full bg-ink-100 px-1.5 py-0.5 text-micro font-medium text-ink-500">
+                      Material propio
+                    </span>
+                  )}
+                  {unfinished && (
+                    <AlertCircle
+                      size={11}
+                      className="shrink-0 text-amber-400"
+                      aria-hidden
+                    />
+                  )}
+                  <span className={`shrink-0 text-micro ${unfinished ? 'text-amber-400' : 'text-ink-400'}`}>
+                    {BILLED_SLOTS.includes(role)
+                      ? (root ? `Componente · SKU ${root}` : 'Componente')
+                      : unfinished
+                        // «sin acabados» is only true when NOTHING covers it.
+                        // `invalid` means the rows typed here are all being
+                        // thrown away — a different thing to go fix.
+                        ? (fin.status === 'invalid' ? 'Estructura · acabados incompletos' : 'Estructura · sin acabados')
+                        : SLOT_LABELS[role] || SLOT_LABELS.base}
+                  </span>
+                </button>
+                {/* Some rows kept, some dropped — the kept ones hide the loss,
+                    so it is spelled out rather than left to a badge. */}
+                {fin?.status === 'partial' && (
+                  <p className="pl-6 text-micro leading-tight text-amber-400">
+                    {fin.dropped} acabado{fin.dropped === 1 ? '' : 's'} sin nombre o sin color — no se guardan.
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -3055,18 +3268,18 @@ function MountSection({ card }) {
     db.togoModels.update(card.id, { mountHeightCm: Number.isFinite(n) && n > 0 ? n : null, updatedAt: Date.now() });
   };
   return (
-    <section className="space-y-1.5 px-3 py-3">
-      <span className="label mb-0">Montaje</span>
+    <section className={`space-y-1.5 ${FICHA_CARD}`} aria-labelledby={`mount-${card.id}`}>
+      <span id={`mount-${card.id}`} className="label mb-0">Montaje</span>
       <div className="flex items-center gap-1.5">
-        <select className="input h-7 w-28 py-0 text-[11px]" value={seat ? 'seat' : 'floor'} onChange={(e) => setMount(e.target.value)}>
+        <select aria-label="Montaje" className="input h-7 w-28 py-0 text-micro" value={seat ? 'seat' : 'floor'} onChange={(e) => setMount(e.target.value)}>
           <option value="floor">Piso</option>
           <option value="seat">Asiento</option>
         </select>
         {seat && (
-          <label className="flex items-center gap-1 text-[10px] text-ink-400">
+          <label className="flex items-center gap-1 text-micro text-ink-400">
             altura
             <input
-              type="number" min="1" className="input h-7 w-16 py-0 text-[11px]"
+              type="number" min="1" className="input h-7 w-16 py-0 text-micro"
               defaultValue={card.mountHeightCm ?? 40}
               onBlur={(e) => setHeight(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
@@ -3112,34 +3325,34 @@ function PartInspector({
   });
 
   return (
-    <div className="divide-y divide-ink-200">
+    <>
       <div className="flex items-center gap-2 px-3 py-2">
-        <button type="button" onClick={onBack} className="btn-ghost text-[11px]" title="Volver al modelo">
+        <button type="button" onClick={onBack} className="btn-ghost text-micro" title="Volver al modelo">
           <ArrowLeft size={12} /> Modelo
         </button>
         <span className="h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ring-white/10" style={{ backgroundColor: cssClay(group.index) }} aria-hidden />
       </div>
 
-      <section className="space-y-2 px-3 py-3">
+      <section className={`space-y-2 ${FICHA_CARD}`}>
         <label className="block">
           <span className="label">Nombre de la parte</span>
           <input
             type="text"
-            className="input h-8 py-0 text-[12px]"
+            className="input h-8 py-0 text-xs"
             value={draft?.labels?.[group.key] ?? ''}
             placeholder={fallbackLabelFor(group.key)}
             onChange={(e) => onLabel(e.target.value)}
           />
         </label>
-        <p className="text-[10px] leading-tight text-ink-400">
+        <p className="text-micro leading-tight text-ink-400">
           {group.nodeCount} {group.nodeCount === 1 ? 'malla' : 'mallas'} en el modelo
           {members.length ? ` · ${members.length + 1} piezas unidas` : ''}
         </p>
         {/* Why this part ignores the tela — and the one thing that changes it.
             The dealer's own tag always wins; nothing here is a dead end. */}
         {factory && (
-          <p className="flex items-start gap-1 text-[10px] leading-tight text-ink-400">
-            <span className="mt-px shrink-0 rounded-full bg-ink-100 px-1.5 py-0.5 text-[9px] font-medium text-ink-500">
+          <p className="flex items-start gap-1 text-micro leading-tight text-ink-400">
+            <span className="mt-px shrink-0 rounded-full bg-ink-100 px-1.5 py-0.5 text-micro font-medium text-ink-500">
               Material propio
             </span>
             <span>
@@ -3190,14 +3403,14 @@ function PartInspector({
             afterwards. */}
         {role === 'structure' && (
           <>
-            <p className="mt-1.5 text-[10px] leading-tight text-ink-400">El cliente elige entre estos acabados.</p>
-            <p className="mt-1 text-[10px] leading-tight text-ink-400">
+            <p className="mt-1.5 text-micro leading-tight text-ink-400">El cliente elige entre estos acabados.</p>
+            <p className="mt-1 text-micro leading-tight text-ink-400">
               Es el acabado de estructura de toda la colección {collection}: se aplica solo con marcar la pieza como Estructura, aquí y en las demás.
             </p>
           </>
         )}
         {!BILLED_SLOTS.includes(role) && role !== 'structure' && (
-          <p className="mt-1.5 text-[10px] leading-tight text-ink-400">
+          <p className="mt-1.5 text-micro leading-tight text-ink-400">
             El cliente no elige este acabado: se materializa siempre con el que quede por defecto.
           </p>
         )}
@@ -3214,7 +3427,7 @@ function PartInspector({
           frame's own material — had no route at all. Both are one gesture now,
           and it runs the same in reverse: what came grouped from the file
           separates exactly like what he grouped himself. */}
-      <section className="space-y-1.5 px-3 py-3">
+      <section className={`space-y-1.5 ${FICHA_CARD}`}>
         <div className="flex items-center justify-between gap-2">
           <span className="label mb-0">Unir y separar</span>
         </div>
@@ -3228,12 +3441,12 @@ function PartInspector({
               type="button"
               onClick={onToggleJoinMode}
               aria-pressed={joinMode}
-              className={`w-full text-[11px] ${joinMode ? 'btn-brand' : 'btn-secondary'}`}
+              className={`w-full text-micro ${joinMode ? 'btn-brand' : 'btn-secondary'}`}
             >
               <Combine size={12} aria-hidden /> {joinMode ? 'Terminar' : 'Unir y separar con clic'}
-              <kbd className="ml-1 rounded border border-current/30 px-1 text-[9px] opacity-60">U</kbd>
+              <kbd className="ml-1 rounded border border-current/30 px-1 text-micro opacity-60">U</kbd>
             </button>
-            <p className="text-[10px] leading-tight text-ink-400">
+            <p className="text-micro leading-tight text-ink-400">
               {joinMode
                 ? 'Clic en cualquier malla del modelo para unirla a esta pieza; clic en una que ya sea suya para separarla.'
                 : 'Actívalo y ve tocando en el modelo: lo que toques se une a esta pieza, y lo que ya sea suyo se separa.'}
@@ -3242,7 +3455,7 @@ function PartInspector({
               <button
                 type="button"
                 onClick={() => { setJoining((v) => !v); setChecked(new Set()); }}
-                className="btn-ghost w-full text-[10px] text-ink-500"
+                className="btn-ghost w-full text-micro text-ink-500"
               >
                 {joining ? 'Cerrar la lista' : 'o elígelas de la lista'}
               </button>
@@ -3267,7 +3480,7 @@ function PartInspector({
                       onChange={() => toggle(g.key)}
                     />
                     <span className="h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ring-white/10" style={{ backgroundColor: cssClay(g.index) }} aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-[11px] text-ink-700" title={g.key}>
+                    <span className="min-w-0 flex-1 truncate text-micro text-ink-700" title={g.key}>
                       {partLabelOf(draft, g.key, fallbackLabelFor(g.key))}
                     </span>
                   </label>
@@ -3278,11 +3491,11 @@ function PartInspector({
               type="button"
               onClick={() => { onMerge([...checked]); setChecked(new Set()); setJoining(false); }}
               disabled={checked.size === 0}
-              className="btn-secondary w-full text-[11px] disabled:opacity-50"
+              className="btn-secondary w-full text-micro disabled:opacity-50"
             >
               <Combine size={12} aria-hidden /> Unir seleccionadas ({checked.size})
             </button>
-            <p className="text-[10px] leading-tight text-ink-400">
+            <p className="text-micro leading-tight text-ink-400">
               Se unen en «{partLabelOf(draft, group.key, fallbackLabelFor(group.key))}» — una sola parte, un solo acabado, un solo SKU.
             </p>
           </>
@@ -3296,35 +3509,35 @@ function PartInspector({
             <ul className="space-y-1">
               {members.map((m) => (
                 <li key={m} className="flex items-center gap-1.5 rounded-md bg-ink-100 px-2 py-1">
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-ink-500" title={m}>{m}</span>
-                  <button type="button" onClick={() => onSeparate([m])} className="btn-ghost shrink-0 text-[10px]" title="Separar esta malla de la parte">
+                  <span className="min-w-0 flex-1 truncate font-mono text-micro text-ink-500" title={m}>{m}</span>
+                  <button type="button" onClick={() => onSeparate([m])} className="btn-ghost shrink-0 text-micro" title="Separar esta malla de la parte">
                     <Ungroup size={11} aria-hidden /> Separar
                   </button>
                 </li>
               ))}
             </ul>
             {members.length > 1 && (
-              <button type="button" onClick={() => onSeparate(members)} className="btn-ghost w-full text-[10px] text-ink-500">
+              <button type="button" onClick={() => onSeparate(members)} className="btn-ghost w-full text-micro text-ink-500">
                 <Ungroup size={11} aria-hidden /> Separarlas todas
               </button>
             )}
-            <p className="text-[10px] leading-tight text-ink-400">
+            <p className="text-micro leading-tight text-ink-400">
               Cada una vuelve a ser su propia pieza, con el mismo rol que tiene ahora. El acabado se queda en «{partLabelOf(draft, group.key, fallbackLabelFor(group.key))}».
             </p>
           </>
         )}
         {!joining && members.length === 0 && others.length === 0 && (
-          <p className="text-[10px] leading-tight text-ink-400">
+          <p className="text-micro leading-tight text-ink-400">
             Una sola malla: no hay nada con que unirla ni nada que separarle.
           </p>
         )}
         {!joining && members.length === 0 && others.length > 0 && group.nodeCount > 1 && (
-          <p className="text-[10px] leading-tight text-ink-400">
+          <p className="text-micro leading-tight text-ink-400">
             Sus {group.nodeCount} mallas comparten un solo material del export y la misma forma: van juntas siempre.
           </p>
         )}
       </section>
-    </div>
+    </>
   );
 }
 
@@ -3349,7 +3562,7 @@ function StructureFinishNote({ state }) {
   }[state.status];
   if (!text) return null;
   return (
-    <p role="status" className="mb-2 flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-tight text-amber-400">
+    <p role="status" className="notice notice-sm notice-warn mb-2 leading-tight">
       <AlertCircle size={11} className="mt-px shrink-0" aria-hidden /> {text}
     </p>
   );
@@ -3408,7 +3621,7 @@ function SkuSelector({
   const legacyZone = MATERIALIZATION_ROLES.includes(role);
 
   return (
-    <section className="space-y-1.5 px-3 py-3">
+    <section className={`space-y-1.5 ${FICHA_CARD}`}>
       <span className="label mb-0">Se cotiza como</span>
 
       {/* Clicking the already-active card is a no-op (it's a radio); coming
@@ -3453,29 +3666,29 @@ function SkuSelector({
         {billed && (
           <div className="space-y-1 rounded-lg border border-ink-200 bg-surface p-2">
             {root && (
-              <p className="text-[10px] font-medium leading-tight text-ink-600">
+              <p className="text-micro font-medium leading-tight text-ink-600">
                 SKU {root}{fam?.name ? ` · ${fam.name}` : ''}
               </p>
             )}
             <div className="flex items-center justify-between gap-2">
-              <label className="flex items-center gap-1.5 text-[10px] text-ink-500">
+              <label className="flex items-center gap-1.5 text-micro text-ink-500">
                 <span className="text-ink-400">Se cobra</span>
                 <input
                   key={String(partCount(draft, role))}
-                  type="number" min="0" max={COUNT_MAX} className="input h-6 w-14 py-0 text-[11px]"
+                  type="number" min="0" max={COUNT_MAX} className="input h-6 w-14 py-0 text-micro"
                   defaultValue={partCount(draft, role)}
                   onBlur={(e) => onCount(role, e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                 />
                 <span className="text-ink-400">× SKU</span>
               </label>
-              <span className="shrink-0 text-[10px] tabular-nums text-ink-400">{meshN} en el modelo</span>
+              <span className="shrink-0 text-micro tabular-nums text-ink-400">{meshN} en el modelo</span>
             </div>
-            <p className="text-[10px] leading-tight text-ink-400">
+            <p className="text-micro leading-tight text-ink-400">
               El catálogo vende individual o en juego de 2/3 — déjalo en 1 si el SKU es un juego que ya cubre todos.
             </p>
             {root && (
-              <button type="button" onClick={() => onSlot('base')} className="btn-ghost text-[10px] text-ink-400 hover:text-red-500">
+              <button type="button" onClick={() => onSlot('base')} className="btn-ghost text-micro text-ink-400 hover:text-red-500">
                 <Trash2 size={11} /> Quitar SKU
               </button>
             )}
@@ -3491,7 +3704,7 @@ function SkuSelector({
       />
 
       {error && (
-        <p role="alert" className="flex items-start gap-1 text-[10px] text-red-400">
+        <p role="alert" className="flex items-start gap-1 text-micro text-red-400">
           <AlertCircle size={11} className="mt-0.5 shrink-0" /> {error}
         </p>
       )}
@@ -3586,7 +3799,7 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
       <button
         type="button"
         onClick={ask}
-        className="btn-ghost w-full justify-center text-[10px]"
+        className="btn-ghost w-full justify-center text-micro"
         title="Que Claude proponga el SKU del catálogo que le pone precio a esta pieza"
       >
         <Sparkles size={11} /> Sugerir con Claude
@@ -3596,7 +3809,7 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
 
   if (busy) {
     return (
-      <p className="flex items-center justify-center gap-1.5 py-1 text-[10px] text-ink-400">
+      <p className="flex items-center justify-center gap-1.5 py-1 text-micro text-ink-400">
         <Loader2 size={11} className="animate-spin" />
         {stage === 'waiting' ? 'Cargando el catálogo…' : 'Claude está comparando el catálogo…'}
       </p>
@@ -3606,10 +3819,10 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
   if (stage === 'error') {
     return (
       <div className="space-y-1">
-        <p role="alert" className="flex items-start gap-1 text-[10px] leading-tight text-amber-400">
+        <p role="alert" className="flex items-start gap-1 text-micro leading-tight text-amber-400">
           <AlertCircle size={11} className="mt-0.5 shrink-0" /> {err}
         </p>
-        <button type="button" onClick={ask} className="btn-ghost w-full justify-center text-[10px]">
+        <button type="button" onClick={ask} className="btn-ghost w-full justify-center text-micro">
           <RefreshCw size={11} /> Reintentar
         </button>
       </div>
@@ -3630,21 +3843,21 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
     <div className="space-y-1.5 rounded-lg border border-ink-200 bg-surface p-2">
       <div className="flex items-center gap-1.5">
         <Sparkles size={11} className="shrink-0 text-ink-400" aria-hidden />
-        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${style.chip}`}>{style.label}</span>
+        <span className={`rounded-full px-1.5 py-0.5 text-micro font-medium ${style.chip}`}>{style.label}</span>
         {pick.source === 'fallback' && (
-          <span className="rounded-full bg-ink-200 px-1.5 py-0.5 text-[9px] text-ink-500">sin Claude</span>
+          <span className="rounded-full bg-ink-200 px-1.5 py-0.5 text-micro text-ink-500">sin Claude</span>
         )}
       </div>
 
-      <p className="text-[11px] font-medium leading-tight text-ink-900">
+      <p className="text-micro font-medium leading-tight text-ink-900">
         SKU {pick.root}
         {picked?.name ? <span className="font-normal text-ink-600"> · {picked.name}</span> : null}
       </p>
-      <p className="text-[10px] tabular-nums text-ink-500">{usdFrom(picked?.fromUsd)}</p>
-      {pick.why && <p className="text-[10px] leading-tight text-ink-500">{pick.why}</p>}
+      <p className="text-micro tabular-nums text-ink-500">{usdFrom(picked?.fromUsd)}</p>
+      {pick.why && <p className="text-micro leading-tight text-ink-500">{pick.why}</p>}
       {/* A degrade says so in the dealer's own words — «poco seguro» alone would
           read as Claude hedging, when in fact Claude never answered. */}
-      {pick.note && <p className="text-[10px] leading-tight text-amber-400">{pick.note}</p>}
+      {pick.note && <p className="text-micro leading-tight text-amber-400">{pick.note}</p>}
 
       {/* Nothing auto-binds — «proponer siempre». This is the one click, and it
           rides the studio's existing write path (the model's own bind, or
@@ -3652,7 +3865,7 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
       <button
         type="button"
         onClick={() => onBind(pick.root)}
-        className="btn-primary w-full justify-center py-1 text-[10px]"
+        className="btn-primary w-full justify-center py-1 text-micro"
         title={`Vincular esta pieza al SKU ${pick.root}`}
       >
         <Link2 size={11} /> Vincular {pick.root}
@@ -3660,7 +3873,7 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
 
       {others.length > 0 && (
         <div className="space-y-0.5 border-t border-ink-100 pt-1.5">
-          <p className="text-[9px] uppercase tracking-wide text-ink-400">Alternativas</p>
+          <p className="text-micro uppercase tracking-wide text-ink-400">Alternativas</p>
           {others.map((c) => (
             <button
               key={c.root}
@@ -3669,20 +3882,20 @@ function SkuSuggestPanel({ model, part = null, candidateIndex, onNeedCatalog, on
               className="flex w-full items-baseline gap-1.5 rounded-md px-1 py-0.5 text-left hover:bg-ink-100"
               title={`Vincular al SKU ${c.root} en su lugar`}
             >
-              <span className="font-mono text-[10px] text-ink-700">{c.root}</span>
-              <span className="min-w-0 flex-1 truncate text-[10px] text-ink-500">{c.name}</span>
-              <span className="shrink-0 text-[10px] tabular-nums text-ink-400">{usdFrom(c.fromUsd)}</span>
+              <span className="font-mono text-micro text-ink-700">{c.root}</span>
+              <span className="min-w-0 flex-1 truncate text-micro text-ink-500">{c.name}</span>
+              <span className="shrink-0 text-micro tabular-nums text-ink-400">{usdFrom(c.fromUsd)}</span>
             </button>
           ))}
           {pick.runnerUp && (
-            <p className="pt-0.5 text-[10px] leading-tight text-ink-400">
+            <p className="pt-0.5 text-micro leading-tight text-ink-400">
               {pick.runnerUp.root}: {pick.runnerUp.why}
             </p>
           )}
         </div>
       )}
 
-      <button type="button" onClick={ask} className="btn-ghost w-full justify-center text-[10px] text-ink-400">
+      <button type="button" onClick={ask} className="btn-ghost w-full justify-center text-micro text-ink-400">
         <RefreshCw size={11} /> Sugerir otra vez
       </button>
     </div>
@@ -3704,11 +3917,11 @@ function SkuOption({ active, onClick, title, hint, icon: Icon, children }) {
         {active && <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={`flex items-center gap-1 truncate text-[11px] font-medium ${active ? 'text-brand-700' : 'text-ink-700'}`}>
+        <span className={`flex items-center gap-1 truncate text-micro font-medium ${active ? 'text-brand-700' : 'text-ink-700'}`}>
           {Icon && <Icon size={11} className="shrink-0" aria-hidden />}
           {title}
         </span>
-        {hint && <span className="mt-0.5 block text-[10px] leading-tight text-ink-400">{hint}</span>}
+        {hint && <span className="mt-0.5 block text-micro leading-tight text-ink-400">{hint}</span>}
       </span>
     </>
   );
@@ -3760,7 +3973,7 @@ function SkuSubOption({ active, onClick, title, note, action, icon: Icon }) {
       <span className={`mt-0.5 grid h-3 w-3 shrink-0 place-items-center rounded-full border ${active ? 'border-brand-500' : 'border-ink-300'}`} aria-hidden>
         {active && <span className="h-1 w-1 rounded-full bg-brand-500" />}
       </span>
-      <span className={`min-w-0 flex-1 text-[10px] leading-tight ${active ? 'font-medium text-brand-700' : 'text-ink-600'}`}>
+      <span className={`min-w-0 flex-1 text-micro leading-tight ${active ? 'font-medium text-brand-700' : 'text-ink-600'}`}>
         {Icon && <Icon size={10} className="mr-1 inline-block align-[-1px]" aria-hidden />}
         {/* The choice and what it costs are ONE unit; the affordance is the one
             break opportunity (the three don't fit on one line at 20rem, and the
@@ -3888,7 +4101,7 @@ function FinishEditor({ groupKey, draft, inherited = null, collection, structure
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <span className="label mb-0">{structure ? 'Acabados de estructura' : 'Acabados'}</span>
-        <button type="button" onClick={add} className="btn-ghost text-[10px]">
+        <button type="button" onClick={add} className="btn-ghost text-micro">
           <Plus size={11} aria-hidden /> Añadir acabado
         </button>
       </div>
@@ -3900,7 +4113,7 @@ function FinishEditor({ groupKey, draft, inherited = null, collection, structure
       {shared && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span
-            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-ink-100 px-1.5 py-0.5 text-[10px] text-ink-400"
+            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-ink-100 px-1.5 py-0.5 text-micro text-ink-400"
             title={structure
               ? 'Estos acabados son la estructura de la colección: ya se aplican a esta pieza. Al editarlos aquí se aplican a todas las marcadas como Estructura.'
               : 'Estos acabados vienen de otros modelos de la colección. Al editarlos aquí se aplican a todos.'}
@@ -3915,7 +4128,7 @@ function FinishEditor({ groupKey, draft, inherited = null, collection, structure
 
       {rows.length === 0 ? (
         <div className="space-y-1.5">
-          <p className="text-[10px] leading-tight text-ink-400">
+          <p className="text-micro leading-tight text-ink-400">
             {structure
               ? 'Sin acabados: el cliente no verá esta estructura. Empieza con el par de siempre y ajústalo.'
               : 'Sin acabados propios — esta parte se materializa con la tela del modelo.'}
@@ -3924,7 +4137,7 @@ function FinishEditor({ groupKey, draft, inherited = null, collection, structure
               for metal structure, straight from the Model so the studio can't
               drift from what the scene renders. */}
           {structure && (
-            <button type="button" onClick={plantStarter} className="btn-secondary w-full text-[10px]">
+            <button type="button" onClick={plantStarter} className="btn-secondary w-full text-micro">
               <Palette size={11} aria-hidden /> Usar Acero / Acero lacado negro
             </button>
           )}
@@ -3953,13 +4166,13 @@ function FinishEditor({ groupKey, draft, inherited = null, collection, structure
               />
               <input
                 type="text"
-                className="input h-6 min-w-0 flex-1 py-0 text-[11px]"
+                className="input h-6 min-w-0 flex-1 py-0 text-micro"
                 value={r.label}
                 placeholder="Nombre"
                 onChange={(e) => patch(i, { label: e.target.value })}
                 onBlur={() => reslug(i)}
               />
-              <label className="inline-flex shrink-0 items-center gap-1 text-[10px] text-ink-500" title="Se renderiza como metal">
+              <label className="inline-flex shrink-0 items-center gap-1 text-micro text-ink-500" title="Se renderiza como metal">
                 <input
                   type="checkbox"
                   className="h-3 w-3 accent-brand-500"
@@ -3990,7 +4203,7 @@ function FinishEditor({ groupKey, draft, inherited = null, collection, structure
           missing it costs the whole part. So the count is spelled out under the
           list, in words, whenever the Model would drop a row. */}
       {dropped > 0 && (
-        <p role="status" className="flex items-start gap-1 text-[10px] leading-tight text-amber-400">
+        <p role="status" className="flex items-start gap-1 text-micro leading-tight text-amber-400">
           <AlertCircle size={11} className="mt-px shrink-0" aria-hidden />
           {dropped === 1
             ? 'Un acabado no se guardará: le falta el nombre.'

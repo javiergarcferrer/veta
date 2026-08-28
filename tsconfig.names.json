@@ -15,8 +15,14 @@
      "newId is not defined" on 2026-08-16); this is its browser twin.
 
      Deliberately loose about everything else: `checkJs` here surfaces plenty of
-     type noise the migration hasn't reached yet, and the npm script greps
-     TS2304 ONLY. This pass answers one question — does every name resolve? */
+     type noise the migration hasn't reached yet, and the npm script greps the
+     two UNBOUND-NAME codes ONLY. Both are required and TS2304 alone is a hole:
+     tsc downgrades to TS2552 ("Cannot find name 'modelz'. Did you mean
+     'models'?") the moment the free identifier RESEMBLES something in scope —
+     which is precisely the shape of the bug this guard exists for, since a
+     typo of a real variable is the common way one is written. Grepping TS2304
+     alone let `models` → `modelz` ship green.
+     This pass answers one question — does every name resolve? */
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "checkJs": true,

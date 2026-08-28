@@ -38,7 +38,7 @@ import { loadTogoModels } from '../components/togo/togoModelLoader.js';
 const statusInk = (status) => (status === 'pending' ? 'text-neutral-900' : 'text-neutral-400');
 
 // Shared eyebrow: 11px uppercase, letterspaced, muted.
-const EYEBROW = 'text-[11px] uppercase tracking-[0.15em] text-neutral-500';
+const EYEBROW = 'text-micro uppercase tracking-[0.15em] text-neutral-500';
 
 /** "2× Sillón · 1× Módulo esquina" from the placed items + the model-name map. */
 function summarizeItems(items, modelNames) {
@@ -168,7 +168,7 @@ export default function DealerInbox() {
           <div className="shrink-0 flex items-baseline justify-between py-5">
             <span className={EYEBROW}>{t(locale, 'inbox.title')}</span>
             {requests.length > 0 && (
-              <span className="text-[11px] tracking-[0.15em] text-neutral-400 tabular-nums">{requests.length}</span>
+              <span className="text-micro tracking-[0.15em] text-neutral-400 tabular-nums">{requests.length}</span>
             )}
           </div>
 
@@ -188,7 +188,7 @@ export default function DealerInbox() {
                     className={`w-full text-left py-5 px-3 -mx-3 border-b border-neutral-200 flex items-start justify-between gap-3 transition-colors ${on ? 'bg-neutral-50' : 'hover:bg-neutral-50/60'}`}
                   >
                     <div className="min-w-0">
-                      <div className={`text-[11px] uppercase tracking-[0.15em] ${statusInk(req.status)}`}>
+                      <div className={`text-micro uppercase tracking-[0.15em] ${statusInk(req.status)}`}>
                         {t(locale, `inbox.status.${req.status}`)}
                       </div>
                       <div className="mt-1.5 text-lg font-light tracking-tight leading-snug text-neutral-900 break-words">
@@ -219,12 +219,12 @@ export default function DealerInbox() {
               <button
                 type="button"
                 onClick={() => setOpenId(null)}
-                className="lg:hidden mb-5 text-[11px] uppercase tracking-[0.15em] text-neutral-500 hover:text-neutral-900"
+                className="eyebrow lg:hidden mb-5 text-neutral-500 hover:text-neutral-900"
               >
                 ← {t(locale, 'inbox.back')}
               </button>
               {/* Detail hero: status · name · meta. */}
-              <div className={`text-[11px] uppercase tracking-[0.15em] ${statusInk(selected.status)}`}>
+              <div className={`text-micro uppercase tracking-[0.15em] ${statusInk(selected.status)}`}>
                 {t(locale, `inbox.status.${selected.status}`)}
               </div>
               <div className="mt-2 text-2xl sm:text-3xl font-light tracking-tight leading-tight text-neutral-900">
@@ -288,7 +288,7 @@ function SwatchHover({ code, fabric, className = '' }) {
     <div className={`group relative ${className}`} tabIndex={0}>
       <Swatch code={code} className="w-10 h-10" />
       {(url || fabric) && (
-        <div className="pointer-events-none absolute z-20 left-0 bottom-full mb-2 opacity-0 translate-y-1 transition duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus:opacity-100 group-focus:translate-y-0">
+        <div className="pointer-events-none absolute z-20 left-0 bottom-full mb-2 opacity-0 translate-y-1 transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100 coarse:opacity-100 group-hover:translate-y-0 group-focus:opacity-100 group-focus:translate-y-0">
           <div className="w-44 border border-neutral-200 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] p-3">
             {url && <img src={url} alt="" draggable={false} className="w-full aspect-square object-cover bg-neutral-100" />}
             {fabric && <div className="mt-2 text-sm leading-snug text-neutral-900">{fabric}</div>}
@@ -410,7 +410,7 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
             <button
               type="button"
               onClick={() => onSetStatus(req.id, 'contacted')}
-              className="inline-flex items-center border border-neutral-900 bg-neutral-900 text-white px-4 py-2 text-[11px] uppercase tracking-[0.15em] transition-colors hover:bg-white hover:text-neutral-900"
+              className="eyebrow inline-flex items-center border border-neutral-900 bg-neutral-900 text-white px-4 py-2 transition-colors hover:bg-white hover:text-neutral-900"
             >
               {t(locale, 'inbox.markContacted')}
             </button>
@@ -419,7 +419,7 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
             <button
               type="button"
               onClick={() => onSetStatus(req.id, 'pending')}
-              className="inline-flex items-center border border-neutral-300 px-4 py-2 text-[11px] uppercase tracking-[0.15em] text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+              className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
             >
               {t(locale, 'inbox.reopen')}
             </button>
@@ -465,7 +465,7 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
                     <div className="min-w-0 flex-1">
                       <div className="text-base text-neutral-900 truncate">{name}</div>
                       {(dims || fabric) && (
-                        <div className="mt-0.5 text-[11px] tracking-wide text-neutral-500 truncate">
+                        <div className="mt-0.5 text-micro tracking-wide text-neutral-500 truncate">
                           {dims}{dims && fabric ? ' · ' : ''}{fabric}
                         </div>
                       )}
@@ -507,7 +507,7 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
                 <button
                   type="button"
                   onClick={downloadDxf}
-                  className="text-[11px] uppercase tracking-[0.15em] text-neutral-900 underline underline-offset-4 decoration-1 hover:decoration-2"
+                  className="eyebrow text-neutral-900 underline underline-offset-4 decoration-1 hover:decoration-2"
                 >
                   {t(locale, 'inbox.download2d')}
                 </button>
@@ -515,7 +515,7 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
                   type="button"
                   onClick={downloadGlb}
                   disabled={glbBusy}
-                  className="text-[11px] uppercase tracking-[0.15em] text-neutral-900 underline underline-offset-4 decoration-1 hover:decoration-2 disabled:opacity-40 disabled:no-underline"
+                  className="eyebrow text-neutral-900 underline underline-offset-4 decoration-1 hover:decoration-2 disabled:opacity-40 disabled:no-underline"
                 >
                   {t(locale, 'inbox.download3d')}
                 </button>

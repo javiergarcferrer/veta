@@ -35,7 +35,7 @@ function CopyButton({ value, label, icon: Icon = Copy, className = 'chip-action'
   };
   return (
     <button type="button" onClick={copy} className={className} title={value}>
-      {copied ? <Check size={12} className="text-emerald-600" /> : <Icon size={12} />}
+      {copied ? <Check size={12} className="text-status-good-ink" /> : <Icon size={12} />}
       {copied ? 'Copiado' : label}
     </button>
   );
@@ -46,14 +46,14 @@ function KitRow({ icon: Icon, title, blurb, value, mono = true, children }) {
   return (
     <div className="px-4 py-3 space-y-2">
       <div className="flex items-start gap-2.5">
-        <Icon size={14} className="text-ink-400 mt-0.5 shrink-0" />
+        <Icon size={14} className="text-ink-500 mt-0.5 shrink-0" />
         <div className="min-w-0">
-          <h4 className="text-[12px] font-semibold text-ink-800 leading-tight">{title}</h4>
-          <p className="text-[11px] text-ink-500 leading-snug">{blurb}</p>
+          <h4 className="text-xs font-semibold text-ink-800 leading-tight">{title}</h4>
+          <p className="text-micro text-ink-500 leading-snug">{blurb}</p>
         </div>
       </div>
       {value != null && (
-        <div className={`rounded-lg border border-ink-200 bg-ink-50/50 px-2.5 py-2 text-[11px] text-ink-600 break-all ${mono ? 'font-mono' : ''} max-h-28 overflow-y-auto`}>
+        <div className={`rounded-lg border border-ink-200 bg-ink-50/50 px-2.5 py-2 text-micro text-ink-600 break-all ${mono ? 'font-mono' : ''} max-h-28 overflow-y-auto`}>
           {value}
         </div>
       )}
@@ -81,7 +81,7 @@ export default function DealerKit({ slug, inboxToken, name, brandName = null }) 
 
   if (!slug) {
     return (
-      <p className="text-[11px] text-ink-400 px-4 py-3">
+      <p className="text-micro text-ink-500 px-4 py-3">
         El kit aparece cuando el distribuidor tiene un slug.
       </p>
     );
@@ -144,7 +144,7 @@ export default function DealerKit({ slug, inboxToken, name, brandName = null }) 
               />
             ) : (
               <div className="grid h-[112px] w-[112px] place-items-center">
-                <Loader2 size={16} className="animate-spin text-ink-300" />
+                <Loader2 size={16} className="animate-spin text-ink-400" />
               </div>
             )}
           </div>

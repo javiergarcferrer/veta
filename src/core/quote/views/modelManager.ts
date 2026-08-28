@@ -105,13 +105,15 @@ export type ModelManagerOpts = {
    */
   dir?: 'asc' | 'desc';
   /**
-   * The BACKLOG filter — the two facts the estado tabs can't express: a piece
-   * with no servable mesh (the configurador draws the generic shape instead of
-   * the model) and a piece with no SKU bound (no price, so it cannot be
-   * quoted). Exactly the predicates `counts.sinMesh` / `counts.sinSku` count,
-   * so the number the board prints and the rows it shows can never disagree.
+   * The BACKLOG filter — the THREE facts the estado tabs can't express, which
+   * are exactly the three publish gates a piece can fail: no servable mesh (the
+   * configurador draws the generic shape instead of the model), no SKU bound
+   * (no price, so it cannot be quoted), and no part roles tagged (it cannot bill
+   * its own cushions). Each is exactly the predicate `counts.sinMesh` /
+   * `counts.sinSku` / `counts.sinPartes` counts, so the number the board prints
+   * and the rows it shows can never disagree.
    */
-  pendiente?: 'mesh' | 'sku' | null;
+  pendiente?: 'mesh' | 'sku' | 'partes' | null;
 };
 
 /** The board's KPI strip — over ALL models, never the filtered slice, so
@@ -122,6 +124,23 @@ export type ModelManagerCounts = {
   borradores: number;
   sinMesh: number;
   sinSku: number;
+  /**
+   * Pieces whose mesh IS there and that nobody has said what they are made of.
+   *
+   * The mesh gate is folded in on purpose, and it is the one asymmetry in this
+   * strip: part roles are tagged ON mesh groups, so a piece with no mesh has no
+   * parts to tag and counting it here would advertise work that cannot be
+   * started — where a SKU binds to a piece with or without geometry, which is
+   * why `sinSku` counts every row. The three chips are the backlog IN THE ORDER
+   * YOU FIX IT, each counting only what is actionable at that step; a mesh-less
+   * piece is one piece of work («sube el 3D»), counted once, under `sinMesh`.
+   *
+   * It is also the gate that dominates a fresh pCon import — thirty pieces land
+   * with geometry, no SKU and no roles — and the only one the board never
+   * counted: the strip read «1 sin malla · 2 sin SKU» over a «Completar» button
+   * offering to fix 49, and nothing on screen said where the other 47 were.
+   */
+  sinPartes: number;
 };
 
 export type ModelManagerResult = {
@@ -332,6 +351,7 @@ export function resolveModelManager(models: unknown[], opts: ModelManagerOpts = 
     borradores: all.filter((r) => r.estado === 'borrador').length,
     sinMesh: all.filter((r) => r.meshKind === 'none').length,
     sinSku: all.filter((r) => !r.skuBound).length,
+    sinPartes: all.filter((r) => r.meshKind !== 'none' && !r.partsRoles.length).length,
   };
 
   // The colección picker's options come from the WHOLE catalog: a filter that
@@ -353,7 +373,9 @@ export function resolveModelManager(models: unknown[], opts: ModelManagerOpts = 
   const wanted = norm(opts.collection);
   const collectionKey = wanted && wanted !== 'all' ? wanted : '';
   const estado = opts.estado && opts.estado !== 'all' ? opts.estado : null;
-  const pendiente = opts.pendiente === 'mesh' || opts.pendiente === 'sku' ? opts.pendiente : null;
+  const pendiente = opts.pendiente === 'mesh' || opts.pendiente === 'sku' || opts.pendiente === 'partes'
+    ? opts.pendiente
+    : null;
 
   const asc = sorterFor(opts.sort);
   const dir = opts.dir === 'asc' || opts.dir === 'desc' ? opts.dir : defaultDirFor(opts.sort);
@@ -369,6 +391,8 @@ export function resolveModelManager(models: unknown[], opts: ModelManagerOpts = 
       if (collectionKey && norm(r.collection) !== collectionKey) return false;
       if (pendiente === 'mesh' && r.meshKind !== 'none') return false;
       if (pendiente === 'sku' && r.skuBound) return false;
+      // Same predicate as `counts.sinPartes`, mesh gate included — see the type.
+      if (pendiente === 'partes' && (r.meshKind === 'none' || r.partsRoles.length)) return false;
       if (!q) return true;
       return norm(r.name).includes(q) || norm(r.collection).includes(q) || norm(r.id).includes(q);
     })

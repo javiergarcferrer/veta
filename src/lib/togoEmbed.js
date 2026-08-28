@@ -80,17 +80,28 @@ export function togoEmbedModalUrl(dealerSlug) {
 }
 
 /**
- * The phone-handoff URL rendered as a QR on desktop AR: opens the clean
- * standalone configurator (which drops straight into the build) carrying the
- * encoded build (see lib/togo/buildShare) so the phone restores the exact same
- * layout — ready for "Ver en tu espacio" (WebAR). `build` is already base64url
- * (URL-safe), so it rides as-is. Returns '' when there's nothing to hand off.
+ * THE DESIGN URL — one link that carries a whole build, used by both ways a
+ * design leaves the screen:
+ *   • the QR the desktop AR viewer renders (the phone restores the exact layout
+ *     and places it life-size — WebAR needs a camera the laptop hasn't got), and
+ *   • "Compartir mi diseño": the copyable/shareable link a visitor sends to
+ *     whoever else decides, and the dealer reopens to quote.
+ *
+ * It opens the clean standalone configurator (which drops straight into the
+ * build) carrying the encoded build (see lib/togo/buildShare). `build` is
+ * already base64url (URL-safe), so it rides as-is.
+ *
+ * `lang` rides along so the recipient lands in the SAME language the sender was
+ * reading — the widget resolves its locale from `?lang` (see resolveTogoLocale),
+ * so a link without it silently reverts to the dealer's default. Returns '' when
+ * there's nothing to hand off.
  */
-export function togoHandoffUrl(dealerSlug, build) {
+export function togoHandoffUrl(dealerSlug, build, { lang } = {}) {
   if (!build) return '';
   const origin = typeof location !== 'undefined' ? location.origin : '';
   const dealerQ = dealerSlug ? `dealer=${encodeURIComponent(dealerSlug)}&` : '';
-  return `${origin}/configurator?${dealerQ}build=${build}`;
+  const langQ = lang ? `lang=${encodeURIComponent(lang)}&` : '';
+  return `${origin}/configurator?${dealerQ}${langQ}build=${build}`;
 }
 
 /** The token-gated dealer lead inbox page (HashRouter). The `token` is the ONLY

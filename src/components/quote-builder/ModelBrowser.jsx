@@ -3,7 +3,9 @@ import { Search, X, PackageSearch, ChevronRight, Loader2 } from 'lucide-react';
 import { useLiveQueryStatus } from '../../db/hooks.js';
 import { searchCatalogModels, catalogCategories, productsByCategory } from '../../db/database.js';
 import { resolveCatalogSearch, modelDescription } from '../../core/catalog/index.js';
-import { groupFamilies, productForGrade, familyStock } from '../../lib/catalog.js';
+import { groupFamilies, productForGrade, familyStock, specImageOf } from '../../lib/catalog.js';
+import { groupModelFamilies, variesIn } from '../../core/catalog/index.js';
+import { BRAND_CARL_HANSEN, BRAND_FREDERICIA } from '../../lib/constants.js';
 import { formatMoney } from '../../lib/format.js';
 import { BRAND_LIGNE_ROSET } from '../../lib/constants.js';
 import ImageView from '../ImageView.jsx';
@@ -74,7 +76,7 @@ export default function ModelBrowser({ profileId, onPick, brand = BRAND_LIGNE_RO
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-shrink-0 px-4 sm:px-6 pt-4 pb-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 pointer-events-none" />
           <input
             ref={inputRef}
             value={q}
@@ -99,7 +101,7 @@ export default function ModelBrowser({ profileId, onPick, brand = BRAND_LIGNE_RO
           {q && (
             // btn-icon matches the input's 36/44 height exactly, so the clear
             // affordance fills the input's right end as a full-size touch target.
-            <button type="button" onClick={() => { setQ(''); inputRef.current?.focus(); }} className="btn-icon absolute right-0 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700" aria-label="Limpiar">
+            <button type="button" onClick={() => { setQ(''); inputRef.current?.focus(); }} className="btn-icon absolute right-0 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-700" aria-label="Limpiar">
               <X size={14} />
             </button>
           )}
@@ -203,7 +205,7 @@ export function PickerSearch({ profileId, brand, term, onPick }) {
     <div className="rounded-lg border border-ink-100 py-1">
       {models.map((m) => <ModelButton key={m.root} model={m} onPick={onPick} showCategory />)}
       {more > 0 && (
-        <div className="px-3 pt-2 pb-1 text-[11px] text-ink-400">
+        <div className="px-3 pt-2 pb-1 text-micro text-ink-500">
           {more} {more === 1 ? 'modelo más' : 'modelos más'} — afina la búsqueda.
         </div>
       )}
@@ -261,10 +263,10 @@ function BrowseCategory({ profileId, brand, category, count, onPick }) {
     >
       <summary className="cursor-pointer list-none select-none px-3 py-3 sm:py-2.5 min-h-11 flex items-center justify-between gap-3 hover:bg-ink-50 active:bg-ink-100 transition-colors">
         <span className="flex items-center gap-2 min-w-0">
-          <ChevronRight size={14} className="text-ink-400 flex-shrink-0 transition-transform group-open/cat:rotate-90" aria-hidden />
+          <ChevronRight size={14} className="text-ink-500 flex-shrink-0 transition-transform group-open/cat:rotate-90" aria-hidden />
           <span className="font-medium text-sm text-ink-900 truncate" title={label}>{label}</span>
         </span>
-        <span className="text-[11px] text-ink-400 tabular-nums flex-shrink-0">{count}</span>
+        <span className="text-micro text-ink-500 tabular-nums flex-shrink-0">{count}</span>
       </summary>
       {everOpened && <BrowseCategoryModels profileId={profileId} brand={brand} category={category} onPick={onPick} />}
     </details>
@@ -280,6 +282,21 @@ function BrowseCategoryModels({ profileId, brand, category, onPick }) {
   );
   const models = useMemo(() => [...groupFamilies(products)].sort(byName), [products]);
 
+  // THE IMPORTED HOUSES ARE COLLAPSED BY MODEL. Carl Hansen prices per EAN, so
+  // every one of the Wishbone's 41 variants was its own row and the picker read
+  // as a wall of near-identical lines. Fredericia's root carries the frame and
+  // height, so one barstool is several roots. Both are one MODEL to a person.
+  //
+  // Ligne Roset is deliberately NOT grouped: its `products.family` is a RANGE
+  // ("TOGO"), not a model, so collapsing on it would merge the Togo sofa with
+  // the Togo armchair. See core/catalog groupModelFamilies.
+  const grouped = useMemo(
+    () => (brand === BRAND_CARL_HANSEN || brand === BRAND_FREDERICIA
+      ? [...groupModelFamilies(models)].sort((a, b) => a.model.localeCompare(b.model, 'es', { sensitivity: 'base' }))
+      : null),
+    [models, brand],
+  );
+
   if (!loaded) {
     return (
       <div className="px-3 py-5 text-center text-sm text-ink-500 flex items-center justify-center gap-2 border-t border-ink-100">
@@ -288,14 +305,75 @@ function BrowseCategoryModels({ profileId, brand, category, onPick }) {
     );
   }
   if (error) {
-    return <div className="px-3 py-4 text-sm text-red-700 border-t border-ink-100">No se pudieron cargar los productos.</div>;
+    return <div className="px-3 py-4 text-sm text-status-critical-ink border-t border-ink-100">No se pudieron cargar los productos.</div>;
   }
   if (models.length === 0) {
     return <div className="px-3 py-4 text-sm text-ink-500 border-t border-ink-100">Sin productos.</div>;
   }
+  if (grouped) {
+    return (
+      <div className="border-t border-ink-100 py-1">
+        {grouped.map((g) => <ModelGroupButton key={g.key} group={g} onPick={onPick} />)}
+      </div>
+    );
+  }
   return (
     <div className="border-t border-ink-100 py-1">
       {models.map((m) => <ModelButton key={m.root} model={m} onPick={onPick} />)}
+    </div>
+  );
+}
+
+/**
+ * A MODEL with its variants folded under it — one row for the Wishbone instead
+ * of 41. Collapsed it says what the model is, what it costs across its range,
+ * and what it VARIES IN ("Madera: Oak Oiled · Oak Soap"), which is the line
+ * that makes a long catalog scannable. Opened it lists the member families,
+ * each picked exactly as before — the pick contract is untouched, only what a
+ * person sees first has changed.
+ *
+ * A model with a single member skips the fold entirely: an extra tap to reach
+ * one thing is worse than the flat row it replaced.
+ */
+function ModelGroupButton({ group, onPick }) {
+  const [open, setOpen] = useState(false);
+  if (group.families.length === 1) {
+    return <ModelButton model={group.families[0]} onPick={onPick} />;
+  }
+  const varies = variesIn(group, { max: 2 });
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full text-left rounded-md px-3 py-2.5 min-h-11 flex items-center gap-3 hover:bg-ink-50 active:bg-ink-100 transition-colors"
+      >
+        <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-ink-100 text-ink-500 flex-shrink-0">
+          <PackageSearch size={15} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-ink-900 truncate">{group.model}</span>
+          <span className="block text-xs text-ink-500 truncate">
+            {varies || `${group.families.length} variantes`}
+          </span>
+        </span>
+        <span className="flex flex-col items-end flex-shrink-0">
+          <span className="text-xs tabular-nums text-ink-900 whitespace-nowrap">
+            {group.priceMin == null
+              ? '—'
+              : group.priceMin === group.priceMax
+                ? usd(group.priceMin)
+                : `${usd(group.priceMin)} – ${usd(group.priceMax)}`}
+          </span>
+          <span className="text-micro text-ink-500 tabular-nums">{group.families.length} variantes</span>
+        </span>
+      </button>
+      {open && (
+        <div className="pl-6 border-l-2 border-ink-100 ml-4 mb-1">
+          {group.families.map((m) => <ModelButton key={m.root} model={m} onPick={onPick} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -312,6 +390,13 @@ function ModelButton({ model, onPick, showCategory = false }) {
   // rows are raw families, so fall back to the sample.
   const description = model.description ?? modelDescription(sample);
   const hasPhoto = !!(sample?.imageId || sample?.imageSrc);
+  // No photo? Ligne Roset publishes an outline per article and no photograph, so
+  // the model's own LINE DRAWING is the picture — and a picker of 27k identically
+  // named modular pieces (LEFT-ARM SOFA, FIRESIDE CHAIR SETTEE RIGHT…) is exactly
+  // where seeing the shape beats reading the words. The glyph stays for a model
+  // that has neither. Drawn `contain` on white: an outline cropped to a square is
+  // a smudge, and the drawings are black on a white page.
+  const drawing = hasPhoto ? null : specImageOf(model);
   // Inventory gate — tracked models (LSG) show their live stock and an
   // out-of-stock one cannot be picked at all (the store has nothing to sell).
   const stock = familyStock(model);
@@ -326,13 +411,31 @@ function ModelButton({ model, onPick, showCategory = false }) {
         out ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink-50 active:bg-ink-100'
       }`}
     >
+      {/* HOVER TO SEE IT PROPERLY. A 36px thumbnail is an identifier, not a look
+          at the piece — and this list is where the dealer is deciding WHICH
+          piece. `hoverPreview` floats it at up to 420px beside the row (the
+          source is capped at 1200, so it stays sharp), flipping and clamping to
+          the viewport, and closes on scroll. Fine pointers only: on touch there
+          is no hover to read, and the row's own tap already means "pick this". */}
       {hasPhoto ? (
-        // The catalog's own photo (LSG); LR rows have none and keep the glyph.
+        // The catalog's own photo (LSG). The thumbnail crops (object-cover);
+        // the popup shows the whole frame, which is the point of opening it.
         <ImageView
           id={sample.imageId}
           fallbackUrl={sample.imageSrc || null}
           alt=""
+          hoverPreview
           className="w-9 h-9 rounded-md object-cover bg-ink-100 flex-shrink-0"
+          placeholderClassName="w-9 h-9 rounded-md bg-ink-100 flex-shrink-0"
+        />
+      ) : drawing ? (
+        // The maker's line drawing (LR) — the one that earns the popup most:
+        // an outline at 36px is a smudge, and at 420px it is the piece.
+        <ImageView
+          id={drawing}
+          alt=""
+          hoverPreview
+          className="w-9 h-9 rounded-md object-contain bg-white border border-ink-100 flex-shrink-0"
           placeholderClassName="w-9 h-9 rounded-md bg-ink-100 flex-shrink-0"
         />
       ) : (
@@ -342,7 +445,7 @@ function ModelButton({ model, onPick, showCategory = false }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-ink-900 truncate">{model.name || model.root}</span>
-        <span className="block text-[11px] text-ink-500 truncate">
+        <span className="block text-micro text-ink-500 truncate">
           {[
             showCategory ? (model.category || NO_CATEGORY) : null,
             model.family,
@@ -350,7 +453,7 @@ function ModelButton({ model, onPick, showCategory = false }) {
           ].filter(Boolean).join(' · ')}
         </span>
         {description && (
-          <span className="block text-[11px] text-ink-400 truncate" title={description}>{description}</span>
+          <span className="block text-micro text-ink-500 truncate" title={description}>{description}</span>
         )}
       </span>
       <span className="flex flex-col items-end gap-0.5 flex-shrink-0">

@@ -29,6 +29,29 @@ export default {
         // skin remaps onto it); never the internal app.
         verlag: ['Verlag', 'Lausanne', 'system-ui', 'sans-serif'],
       },
+      // ── The type ladder (closed set) ───────────────────────────────────────
+      // A scale step must be PERCEPTUALLY DISTINCT or it is not a step, it is
+      // noise: 13px next to 14px is a 7% difference, below the just-noticeable
+      // difference for type at reading sizes, so it adds a value to maintain
+      // and nothing a reader can use. The app carried eight arbitrary sizes
+      // (10 / 11 / 12 / 12.5 / 13 / 14 / 15px) on top of the named Tailwind
+      // ones; they are collapsed onto the eight rungs below and
+      // tests/designSystem.test.js keeps the set closed.
+      //
+      //   micro 11  dense numeric, captions, table meta   ← the app's floor
+      //   xs    12  secondary / helper text
+      //   sm    14  DEFAULT running text, table data, controls
+      //   base  16  product / entity names
+      //   lg    18  card + dialog titles
+      //   xl    20  section headline
+      //   2xl   24  page titles, KPI figures
+      //   3xl   30  the one hero figure per page
+      //
+      // `micro` is a BARE string on purpose: a [size, {lineHeight}] tuple would
+      // also emit a line-height, and these 1.5k sites inherit their leading
+      // from the row they sit in (a table cell, a chip, a legend). Naming the
+      // size must not silently re-lead half the app.
+      fontSize: { micro: '11px' },
       // Safe-area inset tokens, usable via Tailwind's spacing utilities:
       //   pt-safe-t, pb-safe-b, pl-safe-l, pr-safe-r, etc.
       // Combined with stock padding via arbitrary values where a minimum is
@@ -47,6 +70,39 @@ export default {
         // single `.dark` toggle re-skins the whole app. Surfaces that must stay
         // dark in both themes (the sidebar / mobile topbar) live inside
         // `.theme-chrome`, which locally re-pins these vars to the light ramp.
+        // STATE colour, promoted out of the chart layer on 2026-08-21. These four
+        // are the only status values in the app that were ever validated as a
+        // SET — fixed CVD-safe separation, re-selected (not flipped) for dark,
+        // 3:1 against both surfaces — and until now they were reachable only
+        // from chart code via `rgb(var(--viz-…))`. Everything else painting
+        // state reached for raw Tailwind instead: 909 emerald, 882 amber, 650
+        // red, 482 rose. Exposing them here gives state ONE validated source.
+        //
+        // They are single mid-tones, so they are the right thing for a dot, a
+        // rule, an icon or a bar — not for a tint+text pill pair, which needs
+        // two steps. The `.status-pill-*` layer keeps its Tailwind tints, which
+        // tests/statusPills.test.js verifies at 4.5:1 individually; that is a
+        // grandfather with a measurement behind it, not an oversight.
+        // The destructive FILL (see index.css) — not a mark tone, not an ink:
+        // a solid button that carries white text, warmed into the clay family.
+        danger: 'rgb(var(--danger) / <alpha-value>)',
+        status: {
+          good:     'rgb(var(--viz-good) / <alpha-value>)',
+          warning:  'rgb(var(--viz-warning) / <alpha-value>)',
+          serious:  'rgb(var(--viz-serious) / <alpha-value>)',
+          critical: 'rgb(var(--viz-critical) / <alpha-value>)',
+          // The TEXT step of the same family. The four above are MARK tones,
+          // held to the 3:1 of SC 1.4.11 (a dot, a bar, an arrowhead); a
+          // FIGURE is text and owes 4.5:1, and `--viz-good` measures 3.36:1 on
+          // the light surface. `text-status-good` paints the triangle,
+          // `text-status-good-ink` paints the number. Four valences of
+          // emphasis a figure can carry, each measured on BOTH surfaces —
+          // see the block comment in index.css for the numbers.
+          'good-ink':     'rgb(var(--viz-good-ink) / <alpha-value>)',
+          'critical-ink': 'rgb(var(--viz-critical-ink) / <alpha-value>)',
+          'warning-ink':  'rgb(var(--viz-warning-ink) / <alpha-value>)',
+          'info-ink':     'rgb(var(--viz-info-ink) / <alpha-value>)',
+        },
         ink: {
           50:  'rgb(var(--ink-50) / <alpha-value>)',
           100: 'rgb(var(--ink-100) / <alpha-value>)',

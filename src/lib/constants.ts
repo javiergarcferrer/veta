@@ -138,6 +138,16 @@ export const QUOTE_STATUS_ARCHIVED: QuoteStatus = 'archived';
  * to. Each brand imports in its own manner; the admin Catálogos section has
  * one page per brand:
  *   • ligne-roset — the supplier price-list CSV upload.
+ *   • carl-hansen — read from Carl Hansen & Søn's own public PIM by the
+ *     carl-hansen Edge Function (blob model masters + ex-VAT USD price lists +
+ *     product-page variants). `reference` is the variant's EAN-13, which
+ *     cannot collide with an 8-digit LR SKU.
+ *   • fredericia  — Fredericia Furniture and Erik Jørgensen, bought not from
+ *     the factory but from ANTHOM DESIGN HOUSE; read from its Shopify
+ *     storefront by the anthom-catalog Edge Function. `reference` is the
+ *     store's own SKU (`FRE-1731-FG3-ABL-CH`) — hyphenated, so it cannot
+ *     collide with an 8-digit LR SKU or a CH EAN-13, which is what lets the
+ *     grammar dispatch on shape (src/brands/fredericia).
  *
  * LIFESTYLEGARDEN WAS RETIRED (migration 20261207000000). Its 109 products and
  * 830 catalog photos were removed — they had no `brands` row pointing at them,
@@ -158,15 +168,23 @@ export const QUOTE_STATUS_ARCHIVED: QuoteStatus = 'archived';
  */
 export const BRAND_LIGNE_ROSET = 'ligne-roset';
 export const BRAND_LIFESTYLEGARDEN = 'lifestylegarden';
+export const BRAND_CARL_HANSEN = 'carl-hansen';
+export const BRAND_FREDERICIA = 'fredericia';
 
 /** Every brand catalog, in display order — what a brand switcher iterates. */
-export const ALL_BRANDS: string[] = [BRAND_LIGNE_ROSET];
+export const ALL_BRANDS: string[] = [
+  BRAND_LIGNE_ROSET,
+  BRAND_CARL_HANSEN,
+  BRAND_FREDERICIA,
+];
 
 /** brand id → human name (chips, tabs, page titles). Retired brands stay here:
  *  this map renders ids that already exist in old documents. */
 export const BRAND_NAMES: Record<string, string> = {
   [BRAND_LIGNE_ROSET]: 'Ligne Roset',
   [BRAND_LIFESTYLEGARDEN]: 'LifestyleGarden',
+  [BRAND_CARL_HANSEN]: 'Carl Hansen & Søn',
+  [BRAND_FREDERICIA]: 'Fredericia',
 };
 
 /** Human name for a brand id; falls back to the raw id so an unknown/legacy
@@ -193,5 +211,11 @@ export const PRODUCT_LIST_COLUMNS: string[] = [
   'id', 'profileId', 'brand', 'reference', 'name', 'subtype', 'dimensions',
   'family', 'familyCode', 'category', 'priceUsd', 'listPriceUsd', 'cost',
   'stockQty', 'imageId', 'imageSrc', 'imageSrcs', 'lifestyleImageSrc',
+  // The maker's line drawing (LR rows) — the ONLY picture a Ligne Roset article
+  // has, so without it the model picker, the quote line and the printed proposal
+  // all fall back to a placeholder on 27k of the 34k rows. One nullable text
+  // column: it earns its seat here because it is read catalog-WIDE (the picker
+  // draws every model), which is exactly what a bounded per-quote read can't serve.
+  'specImageId',
   'extraImageIds', 'active', 'createdAt', 'updatedAt',
 ];

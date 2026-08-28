@@ -149,7 +149,9 @@ export async function fetchSharedQuote(token) {
  *
  *   pick = { alternatives: { [group]: lineId } }
  *        | { optionals:    { [lineId]: boolean } }
- *        | { materials:    { [lineOrComponentId]: grade } }
+ *        | { materials:    { [lineOrComponentId]: { grade, label } | grade } }
+ *               (a material is (grade, label) — one model can offer two fabrics
+ *                at the same grade; a bare grade takes the first option at it)
  *        | { materialPick: { [lineOrComponentId]: { grade, fabric, swatchImageId } } }
  *               (an empty grade clears the fabric → restores the model's range)
  */

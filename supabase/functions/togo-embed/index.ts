@@ -71,6 +71,7 @@ import {
   withInternalRequestFields,
   type QuoteBrand,
 } from './quotes.ts';
+import { loadHouseGradeSet } from '../_shared/brandGrades.ts';
 import {
   cacheHeadersFor,
   catalogModelShape,
@@ -262,6 +263,11 @@ async function dealerByToken(admin: Admin, token: string): Promise<Row | null> {
 async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Row> {
   const { settings, rates, marginPct, models, products, materials, fabrics } = await loadContext(admin, dealer);
   const retail = (list: number) => Math.round(list * (1 + marginPct / 100) * 100) / 100;
+  // The grade ladder the pure pricers read. It used to be a hardcoded 23-letter
+  // set inside dealer.ts; it is now the brand's own row. This widget prices ONE
+  // catalog per deploy — the HOUSE brand's — so asking for the house keeps the
+  // brand id out of this function.
+  const ladder = await loadHouseGradeSet(admin);
 
   // Offered fabrics per family root (model_fabrics.pattern_names, already stored
   // fabricKey-normalized) → the picker's per-model fabric allowlist.
@@ -302,7 +308,7 @@ async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Ro
   // The per-model projection lives in payload.ts (pure, node-importable) so the
   // ONE rule that matters about it — the public catalog carries NO `svg` — is
   // pinned in tests/togoDealer.test.js instead of living in a comment here.
-  const out = models.map((m) => catalogModelShape(m, { products, retail, offeredByRoot }));
+  const out = models.map((m) => catalogModelShape(m, { products, retail, offeredByRoot, ladder }));
   // Per-dealer presentation: scale every model's USD prices by the dealer's ONE
   // price factor — markup × FX, straight off the row so the widget and the
   // dealer's own inbox can't apply different halves — then strip per its
@@ -750,7 +756,10 @@ async function priceRequestRows(
   // dealer row the widget was priced from, so the inbox states the number the
   // visitor was shown (the inbox is NOT gated by pricing_mode — the dealer
   // always sees its own prices).
-  const priceIndex = buildPriceIndex(referenced, products, retail);
+  // Same ladder source as buildCatalog — the inbox must price identically to the
+  // widget the visitor saw, so it may not resolve grades a different way.
+  const ladder = await loadHouseGradeSet(admin);
+  const priceIndex = buildPriceIndex(referenced, products, retail, ladder);
   const requests = requestRows.map((r) => {
     const shaped = shapeInboxRequest(r);
     const { items, totalUsd } = priceInboxItems(shaped.items, priceIndex, dealer);

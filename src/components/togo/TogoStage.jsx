@@ -2571,7 +2571,7 @@ export default function TogoStage({
         <>
           <svg
             ref={dimSvgRef}
-            className="absolute inset-0 w-full h-full pointer-events-none z-[5] text-ink-400"
+            className="absolute inset-0 w-full h-full pointer-events-none z-[5] text-ink-500"
             style={{ overflow: 'visible', display: 'none' }}
             fill="none"
             stroke="currentColor"
@@ -2586,14 +2586,14 @@ export default function TogoStage({
               (owner screenshot 2026-07-30) — horizontal text, always. */}
           <div
             ref={dimTopRef}
-            className="absolute z-[5] pointer-events-none whitespace-nowrap rounded-full px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-ink-200/80 text-[11px] font-medium leading-none tabular-nums text-ink-700"
+            className="absolute z-[5] pointer-events-none whitespace-nowrap rounded-full px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-ink-200/80 text-micro font-medium leading-none tabular-nums text-ink-700"
             style={{ display: 'none', left: 0, top: 0 }}
           >
             {dims.widthLabel}
           </div>
           <div
             ref={dimLeftRef}
-            className="absolute z-[5] pointer-events-none whitespace-nowrap rounded-full px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-ink-200/80 text-[11px] font-medium leading-none tabular-nums text-ink-700"
+            className="absolute z-[5] pointer-events-none whitespace-nowrap rounded-full px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-ink-200/80 text-micro font-medium leading-none tabular-nums text-ink-700"
             style={{ display: 'none', left: 0, top: 0 }}
           >
             {dims.depthLabel}

@@ -25,6 +25,12 @@
 //     buildCatalog uses, so the inbox and the widget agree to the cent. The
 //     inbox is NOT scoped by `collections`: a lead already captured stays
 //     readable even after the dealer stops carrying that colección.
+//
+// The grade LADDER is no longer a constant here: it arrives from the brand's own
+// row (`brands.ladder`, loaded by index.ts) as a `ReadonlySet<string>`, and the
+// SKU split it feeds lives once in `_shared/brandGrades`. This file stays pure —
+// it receives the ladder, it never reads it.
+import { gradeSet, splitRootGrade } from '../_shared/brandGrades.ts';
 
 export type PricingMode = 'full' | 'from' | 'hidden';
 
@@ -50,19 +56,26 @@ interface CatalogModel {
 // cushion/bolster/armCushion via parts.roots[role] (the shared SKUs);
 // exterior/interior are MATERIALIZATION ZONES of the base SKU (the Prado
 // ottomans' mono/bicolor split) — they never price as their own lines.
-export const PART_ROLES: readonly string[] = ['base', 'structure', 'exterior', 'interior', 'cushion', 'bolster', 'armCushion'];
+
+// The slot kinds + the three lists they derive live in ONE Deno home so the two
+// functions cannot drift from each other: `_shared/partKinds`. Canonical side and
+// reasoning: src/lib/togo/meshParts.js. Welded by tests/meshParts.test.js.
+import {
+  PART_KINDS, PART_ROLES, MATERIALIZATION_ROLES, UNPRICED_ROLES, BILLED_ROLES,
+} from '../_shared/partKinds.ts';
+// Re-exported: the tests and the sibling modules read these names from here, as
+// they did when the lists were declared in this file.
+export { PART_KINDS, PART_ROLES, MATERIALIZATION_ROLES, UNPRICED_ROLES, BILLED_ROLES };
 
 // Materialization zones: the ottoman's single graded SKU covers the COMPLETE
 // materialization; a bicolor pick can only re-grade that SKU (dearest zone
 // wins in priceInboxItems), never add a billed part.
-export const MATERIALIZATION_ROLES: readonly string[] = ['exterior', 'interior'];
 
 // Roles that NEVER bill, for two different reasons that reach the same answer:
 // a zone is already inside the base SKU, and a `structure` is a finish on metal
 // (lacado negro, acero) the customer picks for free. One list, so "does this
 // bill?" is asked ONCE. (Mirror of lib/togo/meshParts.js — the wall pin in
 // tests/meshParts.test.js compares them.)
-export const UNPRICED_ROLES: readonly string[] = [...MATERIALIZATION_ROLES, 'structure'];
 
 // The CEILING on a typed billed count — mirror of lib/togo/meshParts.js
 // `COUNT_MAX` (the wall forbids importing it; tests/meshParts.test.js pins the
@@ -666,16 +679,16 @@ export function shapeInboxRequest(row: Row | null | undefined): {
 // a graded model's SKUs share an 8-digit family root; the grade letter is the
 // trailing char; the cheapest priced SKU under a root is the quoted base.
 
-// The Ligne Roset fabric/leather grade letters (mirrors lib/subtype GRADE_GROUPS:
-// Telas A–R, Microfibras S, Pieles U–X; T/Y/Z skipped).
-const GRADES = new Set('ABCDEFGHIJKLMNOPQRSUVWX'.split(''));
-
 // A SKU "8 digits + grade letter" is a graded variant → { root, grade };
 // anything else is its own root with no grade.
-function splitGrade(ref: string): { root: string; grade: string } {
-  const m = /^(\d{8})([A-Za-z])$/.exec(ref);
-  if (m && GRADES.has(m[2].toUpperCase())) return { root: m[1], grade: m[2].toUpperCase() };
-  return { root: ref, grade: '' };
+//
+// The ladder used to be a hardcoded 23-letter set right here — one of three
+// copies under supabase/functions, each carrying its own copy of this split. It
+// now arrives as `ladder`, resolved from the brand's own row by the impure
+// caller (this module is PURE and may not read a table), and the body is
+// `_shared/brandGrades:splitRootGrade`.
+function splitGrade(ref: string, ladder: ReadonlySet<string> = gradeSet(null)): { root: string; grade: string } {
+  return splitRootGrade(ref, ladder);
 }
 
 // The cheapest priced SKU under a family root (8-digit prefix) = the model's
@@ -694,13 +707,16 @@ export function baseProductFor(root: string | null, products: Row[]): Row | null
 // The graded family at a root → the CatalogFamily shape with RETAIL per-grade
 // prices baked in (`retail` applies the margin), so the widget/inbox reprices
 // identically to the internal configurator.
-export function familyFor(root: string | null, products: Row[], retail: (n: number) => number) {
+export function familyFor(
+  root: string | null, products: Row[], retail: (n: number) => number,
+  ladder: ReadonlySet<string> = gradeSet(null),
+) {
   if (!root) return null;
   const byGrade: Record<string, { priceUsd: number; reference: string }> = {};
   let name = '';
   for (const p of products) {
     const ref = String(p.reference || '');
-    const { root: r, grade } = splitGrade(ref);
+    const { root: r, grade } = splitGrade(ref, ladder);
     if (r !== root || !grade) continue;
     if (!byGrade[grade]) byGrade[grade] = { priceUsd: retail(num(p.price_usd)), reference: ref };
     if (!name && p.name) name = String(p.name);
@@ -742,10 +758,11 @@ export function buildPriceIndex(
   models: Row[],
   products: Row[],
   retail: (n: number) => number,
+  ladder: ReadonlySet<string> = gradeSet(null),
 ): Record<string, PriceEntry> {
   const gradesOf = (root: string | null): Record<string, number> => {
     const byGrade: Record<string, number> = {};
-    const family = familyFor(root, products, retail);
+    const family = familyFor(root, products, retail, ladder);
     if (family) {
       for (const [grade, info] of Object.entries(family.byGrade)) {
         byGrade[grade] = num((info as { priceUsd?: unknown }).priceUsd);

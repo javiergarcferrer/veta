@@ -10,6 +10,28 @@ import { activeCatalogModule } from '../../brands/runtime.js';
 import { productForGrade } from '../../lib/catalog.js';
 import { formatMoney } from '../../lib/format.js';
 import { primaryFiber, compositionGroup, NO_COMPOSITION } from '../../lib/composition.js';
+import { materialsInBook, materialBook } from '../../lib/materialBooks.js';
+
+/**
+ * The category filter's vocabulary, in printed order — the five `MaterialCategory`
+ * values, not the four the bar used to hard-code. `finish` (Fredericia's wood,
+ * stone and webbing; Carl Hansen's oak and paper cord) had no tab at all, so 55
+ * rows were reachable only through "Todos".
+ *
+ * WHICH OF THEM SHOW is derived from the list, never from this array: now that
+ * every quoting picker is scoped to ONE book, a fixed bar renders tabs that can
+ * only ever come back empty — "COM" on a Ligne Roset piece (the COM library is
+ * Kvadrat's own book), "Outdoor" on a Carl Hansen chair. A control that cannot
+ * return a result is worse than no control.
+ */
+const CATEGORY_TABS = [
+  { k: 'fabric', label: 'Telas' },
+  { k: 'leather', label: 'Pieles' },
+  { k: 'outdoor', label: 'Outdoor' },
+  { k: 'finish', label: 'Acabados' },
+  // COM — telas de otras casas (Dedar, Pierre Frey, Kvadrat…).
+  { k: 'com', label: 'COM' },
+];
 
 /**
  * Headless material + color chooser — the two-step MaterialList → ColorGrid
@@ -37,6 +59,14 @@ import { primaryFiber, compositionGroup, NO_COMPOSITION } from '../../lib/compos
  *
  * Props:
  *   materials      catalog materials (already loaded by the caller)
+ *   book?          a `lib/materialBooks` id — show only THAT house's materials.
+ *                  The offer collision the books re-key named and could not fix
+ *                  in the schema: `materials` pools every house, so without this
+ *                  a dealer configuring a Fredericia piece is offered Ligne
+ *                  Roset's telas, and one configuring a Carl Hansen chair is
+ *                  offered anything ungraded. Unset = every book, which is the
+ *                  right answer for the project palette (the dealer's own
+ *                  cross-brand library) and for a COM.
  *   gradeFilter?   string[] of grade letters to restrict the material list to
  *   nameFilter?    Set<string> of fabricKey(name) values a linked MODEL actually
  *                  offers — restricts the list to in-grade AND offered fabrics.
@@ -75,6 +105,7 @@ import { primaryFiber, compositionGroup, NO_COMPOSITION } from '../../lib/compos
  */
 export default function MaterialColorPicker({
   materials,
+  book = '',
   gradeFilter,
   nameFilter,
   family = null,
@@ -93,10 +124,13 @@ export default function MaterialColorPicker({
   // site" by the catalog import. They stay in the catalog (admin can review /
   // restore) but can't be quoted. Every pick surface (line swatch, catalog
   // insert, client link) routes through here; the admin review list doesn't.
-  const list = useMemo(
-    () => (offeredOnly ? (materials || []).filter(isMaterialOffered) : (materials || [])),
-    [materials, offeredOnly],
-  );
+  // ONE BOOK, THEN OFFERED. The book filter runs FIRST because it answers a
+  // different question: `offeredOnly` asks whether a material is still sold,
+  // `book` asks whose price list it belongs to at all. See `materialsInBook`.
+  const list = useMemo(() => {
+    const mine = materialsInBook(materials, book);
+    return offeredOnly ? mine.filter(isMaterialOffered) : mine;
+  }, [materials, book, offeredOnly]);
 
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
@@ -133,6 +167,18 @@ export default function MaterialColorPicker({
     if (hit?.material) setPicked(hit.material);
     else if (shouldAutoFocusInput()) queueMicrotask(() => inputRef.current?.focus());
   }, [autoDrill, multiMode, list, currentGrade, currentFabric]);
+
+  // The categories THIS book actually has something in, plus "Todos".
+  const categories = useMemo(() => {
+    const have = new Set((list || []).map((m) => m.category));
+    return [{ k: '', label: 'Todos' }, ...CATEGORY_TABS.filter((c) => have.has(c.k))];
+  }, [list]);
+  // A book switch (re-opening the picker on another line) can retire the tab
+  // that was selected. Fall back to "Todos" rather than leaving the list
+  // filtered by a category no visible tab is showing as active.
+  useEffect(() => {
+    if (category && !categories.some((c) => c.k === category)) setCategory('');
+  }, [categories, category]);
 
   const allowGrade = useMemo(() => {
     if (!gradeFilter || gradeFilter.length === 0) return null;
@@ -279,6 +325,8 @@ export default function MaterialColorPicker({
       ) : (
         <MaterialList
           fill={fill}
+          book={book}
+          categories={categories}
           displayList={displayList}
           groups={groups}
           total={list.length}
@@ -395,13 +443,13 @@ function MaterialPrice({ family, material }) {
     const p = productForGrade(family, String(material.grade || '').toUpperCase());
     return p?.priceUsd != null
       ? <span className="text-ink-700 font-medium">{usd(p.priceUsd)}</span>
-      : <span className="text-ink-400">—</span>;
+      : <span className="text-ink-500">—</span>;
   }
   if (material.price == null) return null;
   return (
     <span className="text-ink-700 font-medium">
       ${material.price}
-      <span className="text-ink-400 ml-0.5 font-normal">/{material.priceUnit === 'sm' ? 'm²' : 'yd'}</span>
+      <span className="text-ink-500 ml-0.5 font-normal">/{material.priceUnit === 'sm' ? 'm²' : 'yd'}</span>
     </span>
   );
 }
@@ -413,19 +461,30 @@ function MaterialPrice({ family, material }) {
 function MaterialList({
   fill, displayList, groups, total, gradeFiltered, modelFiltered, modelHasFilter,
   showAllNames, onToggleShowAllNames, family, q, setQ, category, setCategory,
-  sort, setSort, groupByFiber, setGroupByFiber, activeIdx, setActiveIdx,
-  multiSelect, selected, onActivate, onConfirmMany, inputRef, currentGrade,
+  sort, setSort, groupByFiber, setGroupByFiber, activeIdx, setActiveIdx, categories,
+  multiSelect, selected, onActivate, onConfirmMany, inputRef, currentGrade, book,
 }) {
   if (total === 0) {
+    // NAME THE BOOK THAT IS EMPTY. This used to say "importa el catálogo Ligne
+    // Roset 10.2025" whatever you were configuring, so a dealer on a Fredericia
+    // piece was sent to import a catalogue that was already there and would not
+    // have helped — the empty list is this HOUSE's, and the fix is its own
+    // importer. Unscoped (the project palette) keeps the general wording.
+    const open = book ? materialBook(book) : null;
     return (
       <div className="text-center py-10">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-ink-100 text-ink-500 mb-3">
           <Layers size={18} />
         </div>
-        <div className="text-sm font-medium text-ink-900">Catálogo vacío</div>
+        <div className="text-sm font-medium text-ink-900">
+          {open ? `Sin ${open.noun}s de ${open.label}` : 'Catálogo vacío'}
+        </div>
         <p className="text-xs text-ink-500 mt-1 max-w-sm mx-auto">
-          Pídele al administrador que importe el catálogo de materiales de la marca en
-          {' '}<span className="font-mono">Administración → Materiales</span>.
+          {open
+            ? <>Pídele al administrador que importe el libro de {open.label} en{' '}
+              <span className="font-mono">Administración → Materiales</span>.</>
+            : <>Pídele al administrador que importe el catálogo en{' '}
+              <span className="font-mono">Administración → Materiales</span>.</>}
         </p>
       </div>
     );
@@ -442,7 +501,7 @@ function MaterialList({
         ? 'sticky top-0 z-20 -mx-4 sm:-mx-6 bg-surface px-4 sm:px-6 pt-4 pb-3 space-y-2 border-b border-ink-100'
         : 'space-y-2'}>
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
           <input
             ref={inputRef}
             type="search"
@@ -455,14 +514,7 @@ function MaterialList({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border border-ink-200 bg-surface text-xs w-full sm:w-auto sm:inline-flex overflow-hidden">
-            {[
-              { k: '', label: 'Todos' },
-              { k: 'fabric', label: 'Telas' },
-              { k: 'leather', label: 'Pieles' },
-              { k: 'outdoor', label: 'Outdoor' },
-              // COM — telas de otras casas (Dedar, Pierre Frey, Kvadrat…).
-              { k: 'com', label: 'COM' },
-            ].map((c, i) => (
+            {categories.map((c, i) => (
               <button
                 key={c.k}
                 type="button"
@@ -477,7 +529,7 @@ function MaterialList({
             ))}
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
-            <label className="inline-flex items-center gap-1 text-[11px] text-ink-500 flex-1 sm:flex-none">
+            <label className="inline-flex items-center gap-1 text-micro text-ink-500 flex-1 sm:flex-none">
               <span className="hidden sm:inline">Ordenar</span>
               <select
                 value={sort}
@@ -508,7 +560,7 @@ function MaterialList({
       </div>
 
       {currentGrade && !gradeFiltered && (
-        <div className={`text-[11px] text-ink-500${fill ? ' mt-3' : ''}`}>
+        <div className={`text-micro text-ink-500${fill ? ' mt-3' : ''}`}>
           La línea actual tiene <b className="text-ink-700">Grade {currentGrade}</b>; al elegir un material se reemplaza por el grade del catálogo.
         </div>
       )}
@@ -517,7 +569,7 @@ function MaterialList({
           fabrics it actually offers — with an escape hatch to show every
           in-grade fabric, and a way back to the offered-only set. */}
       {modelHasFilter && (
-        <div className={`text-[11px] text-ink-500 flex items-center gap-1.5${fill ? ' mt-3' : ''}`}>
+        <div className={`text-micro text-ink-500 flex items-center gap-1.5${fill ? ' mt-3' : ''}`}>
           {modelFiltered ? (
             <>
               <span>Mostrando solo las telas <b className="text-ink-700">disponibles para este modelo</b>.</span>
@@ -537,7 +589,7 @@ function MaterialList({
       )}
 
       {multiSelect && (
-        <div className={`text-[11px] text-ink-500${fill ? ' mt-3' : ''}`}>
+        <div className={`text-micro text-ink-500${fill ? ' mt-3' : ''}`}>
           Marca varias telas para ofrecerlas como <b className="text-ink-700">opciones</b> de esta línea; cada una mostrará su diferencia de precio.
         </div>
       )}
@@ -550,7 +602,7 @@ function MaterialList({
             <li key={g.fiber} className="py-0">
               <div className="sticky top-0 z-[1] bg-surface/95 backdrop-blur px-3 py-1.5 eyebrow flex items-center justify-between">
                 <span className="truncate">{g.fiber}</span>
-                <span className="text-ink-400 font-normal tabular-nums">{g.items.length}</span>
+                <span className="text-ink-500 font-normal tabular-nums">{g.items.length}</span>
               </div>
               <ul className="divide-y divide-ink-100">
                 {g.items.map((m, localIdx) => {
@@ -589,7 +641,7 @@ function MaterialList({
 
       {multiSelect ? (
         <div className={`flex flex-wrap items-center justify-between gap-3 ${fill ? 'mt-3 pt-3 border-t border-ink-100' : 'pt-1'}`}>
-          <span className="text-[10px] text-ink-400">
+          <span className="text-micro text-ink-500">
             {displayList.length} de {total} · {selected?.size || 0} seleccionadas
           </span>
           <button
@@ -602,7 +654,7 @@ function MaterialList({
           </button>
         </div>
       ) : (
-        <div className={`text-[10px] text-ink-400 text-right hidden sm:block${fill ? ' mt-3' : ''}`}>
+        <div className={`text-micro text-ink-500 text-right hidden sm:block${fill ? ' mt-3' : ''}`}>
           {displayList.length} de {total} materiales · ↑↓ navegar · ↵ elegir · Esc cerrar
         </div>
       )}
@@ -664,13 +716,13 @@ function MaterialRow({ m, active, multiSelect, checked, family, onHover, onActiv
               </span>
             )}
           </div>
-          <div className="text-[11px] text-ink-500 mt-0.5 truncate" title={m.composition || undefined}>
+          <div className="text-micro text-ink-500 mt-0.5 truncate" title={m.composition || undefined}>
             {m.composition || '—'}
           </div>
         </div>
         <div className="text-right text-xs text-ink-500 tabular-nums flex-shrink-0">
           <div><MaterialPrice family={family} material={m} /></div>
-          <div className="text-[10px] hidden sm:block">{m.colors?.length || 0} colores</div>
+          <div className="text-micro hidden sm:block">{m.colors?.length || 0} colores</div>
         </div>
       </button>
     </li>
@@ -708,14 +760,14 @@ function ColorGrid({ material, onBack, onPick, currentFabric, family, fill = fal
           >
             <ChevronLeft size={14} /> Volver al catálogo
           </button>
-          <div className="flex-1 text-right text-[11px] text-ink-500 min-w-0">
+          <div className="flex-1 text-right text-micro text-ink-500 min-w-0">
             {material.grade && <span className="font-medium text-ink-700">Grade {material.grade}</span>}
             <span className="ml-2 tabular-nums"><MaterialPrice family={family} material={material} /></span>
           </div>
         </div>
 
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
           <input
             type="search"
             value={q}
@@ -771,7 +823,7 @@ function ColorGrid({ material, onBack, onPick, currentFabric, family, fill = fal
                   {/* Color names are data — wrap, never ellipsize. */}
                   <div className="min-w-0 px-2 py-1.5">
                     <div className="break-words text-xs font-semibold text-ink-900">{c.name}</div>
-                    <div className="text-[10px] text-ink-500 font-mono tabular-nums">#{c.code}</div>
+                    <div className="text-micro text-ink-500 font-mono tabular-nums">#{c.code}</div>
                   </div>
                 </button>
               );
@@ -789,7 +841,7 @@ function ColorGrid({ material, onBack, onPick, currentFabric, family, fill = fal
         >
           <X size={14} /> Sin color específico
         </button>
-        <span className="text-[10px] text-ink-400">
+        <span className="text-micro text-ink-500">
           {colors.length} de {material.colors?.length || 0} colores
         </span>
       </div>

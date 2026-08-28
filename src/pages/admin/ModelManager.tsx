@@ -1,14 +1,43 @@
 /**
- * THE MODEL TABLE — the left column of the Modelos dashboard.
+ * THE LIST OF PIECES — the Modelos dashboard's navigator, in two densities.
+ *
+ *   • `rail`  — the left column beside the stage: ONE LINE per piece (picture,
+ *     name, colección, a dot for estado, a triangle when something is missing),
+ *     fifteen on screen. What you use to FIND the piece you are about to work
+ *     on, and to walk the catalogue with ↑↓ while the stage follows.
+ *   • `tabla` — «Tabla» hands the list the WHOLE dashboard: every column, the
+ *     checkboxes, the bulk bar, «Completar con Claude», the import review. What
+ *     you use to work the catalogue itself.
+ *
+ * Same component, same rows, same selection, same writes — only the density
+ * changes, and the piece on the stage never moves because you switched. That is
+ * the difference from the Gestor|Estudio split this dashboard replaced, which
+ * was a second SCREEN with its own idea of what was selected.
  *
  * It is not a screen. It is the RAIL of the workbench: every piece the
  * configurador can place, with the facts that decide whether it is safe to
  * publish (estado, malla, partes, SKU), and CLICKING A ROW IS OPENING IT. The
- * stage and the inspector to its right are already editing whatever is selected
+ * stage and the inspector ABOVE it are already editing whatever is selected
  * here — there is no «abrir», no drill-in, and nothing to come back from. It
  * replaced the studio's plan-tile rail outright: the rail's colección chips are
  * this table's «Colección» filter pill, and its ▲▼ became the drag below — the
  * piece is ordered among the pieces it is ordered against.
+ *
+ * THE RAIL IS NOT A NARROW TABLE — that distinction is the whole lesson of the
+ * three layouts this screen went through. Squeezed into a 17rem column, nine
+ * columns turned «Medium Sofa 210» into «Mediu…» and every «Partes» cell into a
+ * tower of chips, four pieces to a viewport; moved to a full-width band at the
+ * bottom, the table read beautifully and left the 3D stage a 1380×380 letterbox
+ * with a chair floating in a void. A table wants width, a viewport wants a
+ * square, and a screen has only so much: so the list gives up its columns to be
+ * a rail, and gets ALL of them back — plus every bulk tool — the moment you
+ * press «Tabla», which is also the only time the stage has to step aside.
+ *
+ * In `tabla` the chrome above the rows is ONE wrapping toolbar line («Pieza»,
+ * «Agregar», the reorder state, `ListSearchHeader bar` with the search, the
+ * estado tabs, orden, columnas and the colección pill, then the backlog chips);
+ * everything else it shows is a bar that only exists while there is something
+ * to say.
  *
  * SELECTION IS CONTROLLED (`selectedId` / `onSelect`) and owned by the section
  * (pages/admin/TogoCatalog), because the table, the 3D stage and the inspector
@@ -74,7 +103,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode,
 } from 'react';
-import { AlertCircle, Boxes, GripVertical, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Boxes, GripVertical, Loader2, PanelLeft, Plus, Sparkles, Table2, Trash2 } from 'lucide-react';
 import { db } from '../../db/database.js';
 import { removeTogoMesh } from '../../db/togoMeshUpload.js';
 import type { TogoModel } from '../../types/domain.js';
@@ -84,6 +113,8 @@ import {
   planTogoReorder, resolveCollectionReview, resolveModelManager,
 } from '../../core/quote/index.js';
 import { suggestCollectionSkus } from '../../lib/togo/suggestSku.js';
+import BacklogChips from '../../components/togo/BacklogChips.jsx';
+import type { BacklogKey } from '../../components/togo/BacklogChips.jsx';
 import { ROW_THUMB, useTogoThumbnails } from '../../components/togo/togoThumbnails.js';
 import CollectionSkuReview from '../../components/togo/CollectionSkuReview.jsx';
 import { PART_LABELS } from '../../lib/togo/meshParts.js';
@@ -157,17 +188,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'updated', label: 'Actualizado' },
 ];
 
-/**
- * The BACKLOG chips — the two facts the estado tabs cannot express, and the
- * only numbers worth a row of their own once the tabs carry
- * total/activos/borradores. Each is a real filter, not a readout: the whole
- * point of «41 sin SKU» is to then work on those 41.
- */
-const BACKLOG = [
-  { key: 'mesh' as const, label: 'sin malla', title: 'Piezas sin malla 3D servible: el configurador les dibuja la forma genérica en vez del modelo. Toca para ver solo esas.' },
-  { key: 'sku' as const, label: 'sin SKU', title: 'Piezas sin SKU vinculado: no tienen precio, así que no se pueden cotizar. Toca para ver solo esas.' },
-];
-
 const MESH_BADGE: Record<string, { label: string; className: string; title: string }> = {
   glb: { label: 'GLB', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300', title: 'Malla servible: el configurador la renderiza' },
   raw: { label: 'Fuente', className: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300', title: 'El slot tiene un export fuente (.fbx/.obj…), no un GLB convertido' },
@@ -181,7 +201,7 @@ const SKU_BADGE: Record<'yes' | 'no', { label: string; className: string; title:
   no: { label: 'Sin SKU', className: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300', title: 'Sin producto vinculado: la pieza no puede poner precio' },
 };
 
-const BADGE_CLS = 'inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide';
+const BADGE_CLS = 'inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wide';
 
 /** Everything one row's cells may need. Assembled ONCE per row so each column's
  *  `cell` stays a pure read — no column ever reaches back into the component. */
@@ -228,14 +248,14 @@ const MODEL_COLUMNS: ModelColumn[] = [
       <div className="flex items-center gap-1">
         {/* The grab affordance. The SLOT is always reserved so toggling the
             sort can't change the column's measured width mid-session. */}
-        <span className="w-3 shrink-0 text-ink-300" aria-hidden>
-          {canReorder && <GripVertical size={12} className="opacity-0 transition-opacity group-hover:opacity-100" />}
+        <span className="w-3 shrink-0 text-ink-400" aria-hidden>
+          {canReorder && <GripVertical size={12} className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 coarse:opacity-100" />}
         </span>
-        <div className="grid h-9 w-12 place-items-center overflow-hidden rounded bg-ink-50 text-ink-300">
+        <div className="grid h-9 w-12 place-items-center overflow-hidden rounded bg-ink-50 text-ink-400">
           {thumb
             ? <img src={thumb} alt="" draggable={false} className="h-full w-full select-none object-contain" />
             : svg
-              ? <span className="h-full w-full p-px text-ink-400 [&>svg]:h-full [&>svg]:w-full" aria-hidden dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }} />
+              ? <span className="h-full w-full p-px text-ink-500 [&>svg]:h-full [&>svg]:w-full" aria-hidden dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }} />
               : <Boxes size={14} aria-hidden />}
         </div>
       </div>
@@ -250,7 +270,7 @@ const MODEL_COLUMNS: ModelColumn[] = [
         {/* `min-h` keeps every row the same height whether or not it carries the
             warning — otherwise a «sin planta» row would stand a line taller than
             its neighbours once the medidas move out to their own column. */}
-        <div className="min-h-[15px] text-[11px] tabular-nums text-ink-400">
+        <div className="min-h-[15px] text-micro tabular-nums text-ink-500">
           <span className="md:hidden">{Math.round(r.widthCm)}×{Math.round(r.depthCm)} cm · {r.collection}</span>
           {!r.svg && (
             <span className="text-amber-600 dark:text-amber-400">
@@ -283,14 +303,14 @@ const MODEL_COLUMNS: ModelColumn[] = [
       ? (
         <span className="flex flex-wrap gap-1">
           {r.partsRoles.map((role) => (
-            <span key={role} className="badge py-0 text-[10px]">{PART_LABELS[role] || role}</span>
+            <span key={role} className="badge py-0 text-micro">{PART_LABELS[role] || role}</span>
           ))}
           {r.partsSkuCount > 0 && (
-            <span className="badge-brand py-0 text-[10px]" title="Partes con SKU propio">{r.partsSkuCount} SKU</span>
+            <span className="badge-brand py-0 text-micro" title="Partes con SKU propio">{r.partsSkuCount} SKU</span>
           )}
         </span>
       )
-      : <span className="text-xs text-ink-300">—</span>),
+      : <span className="text-xs text-ink-400">—</span>),
   },
   {
     key: 'sku', label: 'SKU',
@@ -315,7 +335,7 @@ const MODEL_COLUMNS: ModelColumn[] = [
   },
   {
     key: 'updated', label: 'Actualizado',
-    thClass: 'hidden md:table-cell', tdClass: 'hidden whitespace-nowrap tabular-nums text-ink-400 md:table-cell',
+    thClass: 'hidden md:table-cell', tdClass: 'hidden whitespace-nowrap tabular-nums text-ink-500 md:table-cell',
     cell: ({ r }) => (r.updatedAt ? formatDateTime(r.updatedAt) : '—'),
   },
   {
@@ -344,7 +364,12 @@ const DEFAULT_VISIBLE_COLS: Record<string, boolean> = {
   parts: true, sku: true, mesh: true, dims: true, updated: false, estado: true,
 };
 const COLS_STORAGE_KEY = 'rs.togoModels.cols.v1';
-const WIDTHS_STORAGE_KEY = 'rs.togoModels.widths.v1';
+// v2: the widths stored under v1 were MEASURED inside the old ~22rem left
+// column — natural widths for a rail, meaningless across the full-width band,
+// and `table-layout: fixed` would have scaled the cramped set up proportionally
+// (a 4rem thumbnail column at 8rem) instead of re-measuring. A layout change is
+// exactly what a width key version is for.
+const WIDTHS_STORAGE_KEY = 'rs.togoModels.widths.v2';
 const SORT_STORAGE_KEY = 'rs.togoModels.sort.v1';
 
 /**
@@ -399,11 +424,29 @@ type Props = {
    *  applied. Published so «anterior/siguiente» elsewhere can walk this list
    *  instead of the unfiltered catalogue. Must be stable (useCallback). */
   onOrderChange?: (ids: string[]) => void;
+  /**
+   * WHICH LIST. Two jobs, two densities, ONE component — same state, same
+   * selection, same writes:
+   *   • `rail`  — the navigator beside the stage: thumbnail, name, colección,
+   *     estado. What you use to FIND the piece you are about to work on.
+   *   • `tabla` — the full data table over the whole dashboard: every column,
+   *     the checkboxes, the bulk bar, «Completar». What you use to WORK THE
+   *     CATALOGUE (publish thirty borradores, chase the pieces without SKU).
+   * It is a DENSITY, not a mode with a life of its own: nothing is fetched,
+   * selected or remembered differently in one than the other, and the piece on
+   * the stage never changes because you switched. That is the whole difference
+   * from the Gestor|Estudio split this dashboard replaced, which drilled into a
+   * second screen with its own idea of what was selected.
+   */
+  mode?: ListMode;
+  onModeChange?: (next: ListMode) => void;
 };
+
+export type ListMode = 'rail' | 'tabla';
 
 export default function ModelManager({
   models, selectedId, onSelect, onAddModel, onImportSeeds, products = null, onNeedCatalog,
-  onOrderChange,
+  onOrderChange, mode = 'rail', onModeChange,
 }: Props) {
   // ── Table controls (UI state, nothing derived). `filters` is ListSearchHeader's
   // secondary-filter bag — one key today, `collection`.
@@ -440,10 +483,11 @@ export default function ModelManager({
   const [binding, setBinding] = useState(false);
   const [bound, setBound] = useState(0);
 
-  // ── The backlog filter: «sin malla» / «sin SKU», the two facts the estado
-  // tabs can't express. Not persisted — it is a working set for right now, not
-  // a view the dealer would want restored days later on a different piece.
-  const [pendiente, setPendiente] = useState<'mesh' | 'sku' | null>(null);
+  // ── The backlog filter: «sin malla» / «sin SKU» / «sin partes», the three
+  // publish gates the estado tabs can't express. Not persisted — it is a working
+  // set for right now, not a view the dealer would want restored days later on a
+  // different piece.
+  const [pendiente, setPendiente] = useState<BacklogKey | null>(null);
 
   // ── Drag-to-reorder: the row being dragged and the row it would land above.
   const [dragId, setDragId] = useState<string | null>(null);
@@ -932,7 +976,9 @@ export default function ModelManager({
   // table) and takes focus on a row click so the arrows work straight after
   // picking a model with the mouse.
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const selRowRef = useRef<HTMLTableRowElement | null>(null);
+  // A <tr> in the table, a <div> in the rail — same job (keep the selection in
+  // view), so the ref is typed at the element they share.
+  const selRowRef = useRef<HTMLElement | null>(null);
   useEffect(() => { selRowRef.current?.scrollIntoView({ block: 'nearest' }); }, [selectedId]);
 
   const onKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -994,16 +1040,267 @@ export default function ModelManager({
     options: catalog.collections.map((c) => ({ value: c, label: c })),
   }), [catalog.collections]);
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE RAIL — the navigator beside the stage.
+  //
+  // A table crammed into 17rem is what this screen kept getting wrong: nine
+  // columns squeezed until «Medium Sofa 210» read «Mediu…» and every «Partes»
+  // cell grew a tower of chips, four pieces to a screen. A rail is not a narrow
+  // table, it is a DIFFERENT OBJECT: one line per piece — picture, name,
+  // colección — and the four publish-gate facts reduced to two marks you can
+  // read without stopping (an amber triangle for «le falta algo», a dot for
+  // activo/borrador that is also the switch). Fifteen pieces to a screen, and
+  // the columns those chips used to hold are one click away in «Tabla».
+  if (mode === 'rail') {
+    return (
+      <div className="flex min-h-0 flex-col bg-surface/40 lg:row-span-2 lg:h-full lg:border-r lg:border-ink-200">
+        {/* ── HEAD. Fixed: the list scrolls under it, never it with the list. */}
+        <div className="shrink-0 space-y-2 border-b border-ink-200 px-2.5 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="eyebrow">Piezas</span>
+            <span className="text-micro tabular-nums text-ink-500">{counts.total}</span>
+            <button
+              type="button"
+              onClick={() => onModeChange?.('tabla')}
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-micro font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800"
+              title="Ver el catálogo completo: todas las columnas, selección múltiple, publicar en lote y «Completar con Claude». La pieza seleccionada no cambia."
+            >
+              <Table2 size={13} aria-hidden /> Tabla
+            </button>
+          </div>
+
+          {/* The same list furniture as the table — búsqueda, estados, orden y
+              colección — in the layout `dense` exists for. No «Columnas»: a
+              rail has one. */}
+          <ListSearchHeader
+            searchValue={q}
+            onSearchChange={setQ}
+            searchPlaceholder="Buscar pieza…"
+            tabs={tabs}
+            activeTab={estado}
+            onTabChange={(k: string) => setEstado(k as 'all' | Estado)}
+            filters={[collectionFilter]}
+            activeFilters={filters}
+            onFiltersChange={setFilters}
+            sortOptions={SORT_OPTIONS}
+            sort={sort}
+            onSortChange={setSort}
+            resultCount={narrowed ? view.rows.length : undefined}
+            resultNoun={['pieza', 'piezas']}
+            dense
+          />
+
+          <BacklogChips counts={counts} value={pendiente} onChange={setPendiente} />
+
+        </div>
+
+        {error && (
+          <div role="alert" className="shrink-0 border-b border-ink-200 px-2.5 py-2 text-micro text-status-critical-ink">{error}</div>
+        )}
+
+        {/* ── THE LIST. Its own scroller and its own focus, so ↑↓ walk the
+            pieces (and Alt+↑↓ reorder them) the moment you click one. */}
+        <div
+          ref={scrollRef}
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+          // `flex-1` from `lg` only, where the rail has a height to divide up.
+          // Below it the column sizes to its content, and a basis-zero item in
+          // a content-sized column resolves to zero — the same trap that had
+          // the stage collapsing to a sliver on a phone. Here it is a capped
+          // height instead: the list takes what it needs up to 45dvh, then
+          // scrolls, and the stage still starts above the fold.
+          role="listbox"
+          aria-label="Piezas del catálogo"
+          aria-activedescendant={selectedId ? `togo-rail-${selectedId}` : undefined}
+          className="scroll-thin max-h-[45dvh] min-h-0 overflow-y-auto overscroll-contain p-1.5 focus:outline-none lg:max-h-none lg:flex-1"
+        >
+          <ul role="presentation" className="space-y-px">
+            {visible.map((r) => {
+              const on = r.id === selectedId;
+              const est = estadoOf(r);
+              const thumb = thumbs[r.id];
+              const svg = rawById.get(r.id)?.svg || '';
+              const dragging = dragId === r.id;
+              const isDropTarget = canReorder && dropId === r.id && dragId !== r.id;
+              const falta = r.meshKind === 'none' ? 'Sin malla 3D: el configurador dibuja la forma genérica.'
+                : !r.skuBound ? 'Sin SKU vinculado: la pieza no puede cotizarse.'
+                  : !r.partsRoles.length ? 'Sin partes etiquetadas: no puede facturar sus componentes.'
+                    : null;
+              return (
+                <li key={r.id}>
+                  <div
+                    ref={on ? (el) => { selRowRef.current = el; } : null}
+                    id={`togo-rail-${r.id}`}
+                    role="option"
+                    aria-selected={on}
+                    onClick={() => { onSelect(r.id); scrollRef.current?.focus({ preventScroll: true }); }}
+                    draggable={canReorder}
+                    onDragStart={(e) => {
+                      if (!canReorder) return;
+                      setDragId(r.id);
+                      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', r.id); } catch { /* older Safari */ }
+                    }}
+                    onDragOver={(e) => {
+                      if (!canReorder || !dragId || dragId === r.id) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDropId(r.id);
+                    }}
+                    onDrop={(e) => { if (!canReorder) return; e.preventDefault(); dropOn(r.id); }}
+                    onDragEnd={() => { setDragId(null); setDropId(null); }}
+                    title={canReorder
+                      ? `${r.name} — arrastra para moverla dentro de su colección (ese ES el orden de la paleta del configurador; Alt + ↑↓ con el teclado)`
+                      : r.name}
+                    className={`group relative flex items-center gap-2 rounded-lg py-1.5 pl-2 pr-1.5 transition-colors ${
+                      canReorder ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                    } ${dragging ? 'opacity-40' : ''} ${
+                      isDropTarget ? 'before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded-full before:bg-brand-500' : ''
+                    } ${on ? 'bg-brand-500/15' : 'hover:bg-ink-100'}`}
+                  >
+                    {/* The selection, said with a rule rather than a border box:
+                        a rail of outlined cards is noise at fifteen rows. */}
+                    {on && <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-brand-500" />}
+
+                    {canReorder && (
+                      <GripVertical
+                        size={12}
+                        aria-hidden
+                        className="absolute -left-0.5 top-1/2 -translate-y-1/2 text-ink-400 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 coarse:opacity-100"
+                      />
+                    )}
+
+                    <div className="grid h-9 w-12 shrink-0 place-items-center overflow-hidden rounded-md bg-ink-100 text-ink-400">
+                      {thumb
+                        ? <img src={thumb} alt="" draggable={false} className="h-full w-full select-none object-contain" />
+                        : svg
+                          ? <span className="h-full w-full p-px text-ink-500 [&>svg]:h-full [&>svg]:w-full" aria-hidden dangerouslySetInnerHTML={{ __html: sanitizeSvg(svg) }} />
+                          : <Boxes size={13} aria-hidden />}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className={`truncate text-xs leading-tight ${on ? 'font-semibold text-ink-900' : 'font-medium text-ink-800'}`}>
+                        {r.name || 'Sin nombre'}
+                      </div>
+                      <div className="truncate text-micro leading-tight text-ink-500">{r.collection}</div>
+                    </div>
+
+                    {/* WHAT IT IS MADE OF — the «Partes» column, as two labels
+                        and a count. Only from `md`, where the pane is wide
+                        enough that they land in the row's own empty middle
+                        instead of squeezing the name. */}
+                    {r.partsRoles.length > 0 && (
+                      <div className="hidden shrink-0 items-center gap-1 md:flex">
+                        {r.partsRoles.slice(0, 2).map((role) => (
+                          <span key={role} className="badge py-0 text-micro">{PART_LABELS[role] || role}</span>
+                        ))}
+                        {r.partsRoles.length > 2 && (
+                          <span className="text-micro tabular-nums text-ink-500" title={r.partsRoles.map((x) => PART_LABELS[x] || x).join(' · ')}>
+                            +{r.partsRoles.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <span className="hidden shrink-0 text-micro tabular-nums text-ink-500 lg:inline">
+                      {Math.round(r.widthCm)}×{Math.round(r.depthCm)}
+                    </span>
+
+                    {falta && (
+                      <span className="shrink-0 text-status-warning-ink" title={falta} role="img" aria-label={falta}>
+                        <AlertTriangle size={12} aria-hidden />
+                      </span>
+                    )}
+
+                    {/* Estado IS the switch, the same one click the table's pill
+                        is — a rail you can publish from is a rail you can
+                        actually work the borradores in.
+                        Which is also why it takes `.btn-icon-sm` rather than a
+                        hand-rolled box: it was `h-5 w-5`, 20px, under §1's 24px
+                        floor, and `targetSize` never caught it because that pin
+                        scans hand-rolled `p-1`. The rail performs exactly ONE
+                        write and this is it — a mis-tap on a showroom tablet
+                        publishes a piece to customers — so the primitive keeps
+                        the 8px dot and gives it a 24/44 target. */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleEstado(r); }}
+                      disabled={!!saving[r.id]}
+                      aria-pressed={est === 'activo'}
+                      title={est === 'activo' ? 'Publicado en el configurador — toca para pasarlo a borrador' : 'Oculto del configurador — toca para publicarlo'}
+                      className="btn-icon-sm shrink-0 rounded-full hover:bg-ink-200/60"
+                    >
+                      <span
+                        aria-hidden
+                        className={`h-2 w-2 rounded-full ${
+                          saving[r.id] ? 'animate-pulse bg-ink-400'
+                            : est === 'activo' ? 'bg-status-good' : 'border border-ink-400'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {!view.rows.length && (
+            <div className="space-y-2 px-3 py-10 text-center text-micro text-ink-500">
+              <p>{counts.total ? 'Ninguna pieza coincide.' : 'Todavía no hay piezas en el catálogo Togo.'}</p>
+              {!counts.total && onImportSeeds && (
+                <button type="button" onClick={() => onImportSeeds()} className="btn-secondary text-micro">Importar piezas Togo</button>
+              )}
+            </div>
+          )}
+
+          {view.rows.length > visible.length && (
+            <button type="button" onClick={() => setLimit((n) => n + PAGE)} className="btn-ghost mt-1 w-full justify-center text-micro">
+              Mostrar más ({view.rows.length - visible.length})
+            </button>
+          )}
+        </div>
+
+        {/* ── FOOT. What you start rather than browse; the mass work lives in
+            the table. */}
+        <div className="shrink-0 space-y-1.5 border-t border-ink-200 p-2">
+          {onAddModel && (
+            <button type="button" onClick={onAddModel} className="btn-primary w-full justify-center text-micro" title="Subir uno o varios modelos 3D (.fbx/.glb) — una pieza o una escena completa de pCon">
+              <Plus size={13} /> Agregar pieza
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    // The dashboard's left column: a flex column that FILLS the grid cell from
-    // `lg` up (the table takes the slack and scrolls inside itself, so the page
-    // body never scrolls) and, below `lg`, simply stacks above the stage — which
-    // draws the divider between them with its own `border-y`.
-    <div className="flex min-h-0 flex-col gap-2 p-2 lg:h-full lg:border-r lg:border-ink-200">
-      {/* Actions — the two controls the shared header has no slot for. */}
-      <div className="flex flex-wrap items-center gap-1.5">
+    // THE TABLE takes the whole dashboard (the studio collapses to one column
+    // and hides the stage and the ficha while this is up), so it finally has the
+    // width a nine-column table wants. It fills its cell from `lg` up and
+    // scrolls inside itself, so the page body never scrolls.
+    <div className="order-first flex min-h-0 flex-col gap-2 p-2 lg:order-none lg:h-full">
+      {/* ── THE TOOLBAR. ONE line, because every line here is a row of the table
+          below it: the two controls the shared header has no slot for
+          («Agregar», the reorder state), then the header itself in `bar` mode
+          (search · estado · orden · columnas · colección), then what is left to
+          finish. It wraps rather than scrolls — at a narrow window it becomes
+          two lines and nothing is ever out of reach. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        {/* THE WAY BACK, first in the line because that is where the «Tabla»
+            button that opened this was. Nothing is lost on the way: the piece
+            selected here is the piece on the stage when the rail comes back. */}
+        {onModeChange && (
+          <button
+            type="button"
+            onClick={() => onModeChange('rail')}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-micro font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800"
+            title="Volver a la pieza: el escenario 3D y la ficha, con la lista como carril"
+          >
+            <PanelLeft size={13} aria-hidden /> Pieza
+          </button>
+        )}
         {onAddModel && (
-          <button type="button" onClick={onAddModel} className="btn-primary text-[11px]" title="Subir uno o varios modelos 3D (.fbx/.glb) — una pieza o una escena completa de pCon">
+          <button type="button" onClick={onAddModel} className="btn-primary text-micro" title="Subir uno o varios modelos 3D (.fbx/.glb) — una pieza o una escena completa de pCon">
             <Plus size={13} /> Agregar
           </button>
         )}
@@ -1012,7 +1309,7 @@ export default function ModelManager({
             silently does nothing. */}
         {canReorder ? (
           <span
-            className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50/60 px-2 py-1 text-[10px] font-medium text-brand-700 dark:border-brand-900/50 dark:bg-brand-950/30"
+            className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50/60 px-2 py-1 text-micro font-medium text-brand-700 dark:border-brand-900/50 dark:bg-brand-950/30"
             title="Arrastra una fila para moverla dentro de su colección — ese orden ES el de la paleta del configurador. Con el teclado: Alt + ↑↓ sobre la fila seleccionada."
           >
             <GripVertical size={11} aria-hidden /> Arrastra para ordenar
@@ -1021,79 +1318,64 @@ export default function ModelManager({
           <button
             type="button"
             onClick={() => setSort({ key: 'collection', dir: 'asc' })}
-            className="inline-flex items-center gap-1 rounded-full border border-dashed border-ink-300 px-2 py-1 text-[10px] font-medium text-ink-400 transition-colors hover:border-ink-400 hover:text-ink-600"
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-ink-300 px-2 py-1 text-micro font-medium text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-600"
             title="Reordenar la paleta solo tiene sentido con la tabla en orden de colección ascendente: ese ES el orden en que el configurador ofrece las piezas. Toca para cambiar el orden."
           >
             <GripVertical size={11} aria-hidden /> Ordena por colección para arrastrar
           </button>
         )}
-      </div>
 
-      {/* The shared list header: búsqueda debounced, el estado como pestañas con
-          sus conteos, la colección como pill, orden CON dirección y el menú de
-          columnas. `[&>div]:mb-2` trims its page-level bottom margin — this is a
-          rail, not a page.
-          `resultCount` rides ONLY while something narrows the list: unfiltered
-          it restated the «Todos» tab one row below itself — the header printed
-          «125 modelos» directly under a tab already reading «Todos 125». */}
-      <div className="[&>div]:mb-2">
-        <ListSearchHeader
-          searchValue={q}
-          onSearchChange={setQ}
-          searchPlaceholder="Buscar modelo, colección…"
-          tabs={tabs}
-          activeTab={estado}
-          onTabChange={(k: string) => setEstado(k as 'all' | Estado)}
-          filters={[collectionFilter]}
-          activeFilters={filters}
-          onFiltersChange={setFilters}
-          sortOptions={SORT_OPTIONS}
-          sort={sort}
-          onSortChange={setSort}
-          columns={MODEL_COLUMNS}
-          visibleColumns={visibleCols}
-          onColumnsChange={setVisibleCols}
-          onColumnsReset={() => { resetCols(); resetWidths(); }}
-          resultCount={narrowed ? view.rows.length : undefined}
-          resultNoun={['modelo', 'modelos']}
-          dense
-        />
-      </div>
+        {/* WHAT NEEDS DOING, and nothing else. The estado tabs already carry
+            total/activos/borradores with their counts, so repeating them here was
+            the same three numbers a third time. What the tabs CAN'T say is which
+            pieces are unfinished — and a zero is good news that needs no row, so
+            each gate appears only when it is a real backlog. They ride the
+            toolbar's own line — three chips never deserved a band across the
+            dashboard — and they ride it BEFORE the header, with the rest of the
+            catalogue's state («Agregar», el orden): after it they would have
+            been pushed to the far right of whatever the header's own wrap left
+            over, which is nowhere in particular. */}
+        <BacklogChips counts={counts} value={pendiente} onChange={setPendiente} className="shrink-0" />
 
-      {/* WHAT NEEDS DOING, and nothing else. The estado tabs already carry
-          total/activos/borradores with their counts, so repeating them here was
-          the same three numbers a third time. What the tabs CAN'T say is which
-          pieces are unfinished — and a zero is good news that needs no row, so
-          each half appears only when it is a real backlog. */}
-      {(counts.sinMesh > 0 || counts.sinSku > 0) && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums">
-          {BACKLOG.map((b) => {
-            const n = b.key === 'mesh' ? counts.sinMesh : counts.sinSku;
-            if (!n) return null;
-            const on = pendiente === b.key;
-            return (
-              <button
-                key={b.key}
-                type="button"
-                onClick={() => setPendiente(on ? null : b.key)}
-                aria-pressed={on}
-                title={b.title}
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors ${
-                  on
-                    ? 'border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200'
-                    : 'border-transparent text-amber-600 hover:border-amber-300 dark:text-amber-400'
-                }`}
-              >
-                <b>{n}</b> {b.label}
-                {on && <X size={10} aria-hidden />}
-              </button>
-            );
-          })}
+        {/* The shared list header: búsqueda debounced, el estado como pestañas
+            con sus conteos, la colección como pill, orden CON dirección y el
+            menú de columnas — todo en la MISMA línea (`bar`), que es la forma
+            que pide una banda ancha y baja. Se queda con la holgura (`flex-1`),
+            así el conteo se va al extremo derecho y la línea tiene dos anclas.
+            Sólo desde `lg`: `flex-1` es basis 0, así que en una pantalla
+            estrecha no fuerza el salto de línea — se quedaba con los pixeles
+            que sobraran (ninguno) y se desbordaba de lado. Debajo de `lg` toma
+            una línea entera (`w-full`) y envuelve dentro de ella.
+            `resultCount` rides ONLY while something narrows the list: unfiltered
+            it restated the «Todos» tab one row below itself — the header printed
+            «125 modelos» directly under a tab already reading «Todos 125». */}
+        <div className="w-full min-w-0 lg:w-auto lg:flex-1">
+          <ListSearchHeader
+            searchValue={q}
+            onSearchChange={setQ}
+            searchPlaceholder="Buscar modelo, colección…"
+            tabs={tabs}
+            activeTab={estado}
+            onTabChange={(k: string) => setEstado(k as 'all' | Estado)}
+            filters={[collectionFilter]}
+            activeFilters={filters}
+            onFiltersChange={setFilters}
+            sortOptions={SORT_OPTIONS}
+            sort={sort}
+            onSortChange={setSort}
+            columns={MODEL_COLUMNS}
+            visibleColumns={visibleCols}
+            onColumnsChange={setVisibleCols}
+            onColumnsReset={() => { resetCols(); resetWidths(); }}
+            resultCount={narrowed ? view.rows.length : undefined}
+            resultNoun={['modelo', 'modelos']}
+            bar
+          />
         </div>
-      )}
+      </div>
 
       {error && (
-        <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+        <div role="alert" className="notice notice-sm notice-danger">
           <AlertCircle size={14} className="mt-0.5 shrink-0" /> {error}
         </div>
       )}
@@ -1107,10 +1389,10 @@ export default function ModelManager({
           <span className="mr-1 text-xs font-medium tabular-nums text-ink-800">
             {checkedIds.size} seleccionado{checkedIds.size === 1 ? '' : 's'}
           </span>
-          <button type="button" onClick={() => bulkEstado('activo')} disabled={bulkBusy} className="btn-secondary text-[11px] disabled:opacity-50" title="Publicar los seleccionados en el configurador">
+          <button type="button" onClick={() => bulkEstado('activo')} disabled={bulkBusy} className="btn-secondary text-micro disabled:opacity-50" title="Publicar los seleccionados en el configurador">
             Activar
           </button>
-          <button type="button" onClick={() => bulkEstado('borrador')} disabled={bulkBusy} className="btn-secondary text-[11px] disabled:opacity-50" title="Ocultar los seleccionados del configurador">
+          <button type="button" onClick={() => bulkEstado('borrador')} disabled={bulkBusy} className="btn-secondary text-micro disabled:opacity-50" title="Ocultar los seleccionados del configurador">
             Pasar a borrador
           </button>
           {/* The collection-level suggestion: ONE question for the whole checked
@@ -1120,22 +1402,22 @@ export default function ModelManager({
             type="button"
             onClick={askCollection}
             disabled={bulkBusy || !!review}
-            className="btn-secondary text-[11px] disabled:opacity-50"
+            className="btn-secondary text-micro disabled:opacity-50"
             title="Que Claude proponga el SKU de catálogo de todas las piezas seleccionadas de una vez — abre una revisión, no vincula nada"
           >
             <Sparkles size={12} /> Sugerir SKUs con Claude
           </button>
-          <button type="button" onClick={() => setConfirmDelete(true)} disabled={bulkBusy} className="btn-secondary text-[11px] !text-red-700 disabled:opacity-50 dark:!text-red-400" title="Eliminar los seleccionados del catálogo">
+          <button type="button" onClick={() => setConfirmDelete(true)} disabled={bulkBusy} className="btn-secondary text-micro !text-status-critical-ink disabled:opacity-50 dark:!text-status-critical-ink" title="Eliminar los seleccionados del catálogo">
             {bulkBusy ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Eliminar…
           </button>
-          <button type="button" onClick={() => { setCheckedIds(new Set()); shiftAnchor.current = null; }} disabled={bulkBusy} className="btn-ghost ml-auto text-[11px] disabled:opacity-50">
+          <button type="button" onClick={() => { setCheckedIds(new Set()); shiftAnchor.current = null; }} disabled={bulkBusy} className="btn-ghost ml-auto text-micro disabled:opacity-50">
             Limpiar selección
           </button>
         </div>
       )}
 
       {bound > 0 && !review && (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <p className="notice notice-sm notice-success">
           {bound} SKU{bound === 1 ? '' : 's'} vinculado{bound === 1 ? '' : 's'}.
         </p>
       )}
@@ -1234,7 +1516,7 @@ export default function ModelManager({
                 return (
                   <tr
                     key={r.id}
-                    ref={on ? selRowRef : null}
+                    ref={on ? (el) => { selRowRef.current = el; } : null}
                     // ONE click: the stage and the inspector to the right are
                     // already editing this piece by the next paint.
                     onClick={() => { onSelect(r.id); scrollRef.current?.focus({ preventScroll: true }); }}

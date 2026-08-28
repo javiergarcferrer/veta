@@ -153,7 +153,7 @@ export default function TogoArViewer({ open, onClose, scene3d, material, storeNa
             <div className="absolute inset-0 grid place-items-center text-center px-6">
               {status === 'error' ? (
                 <div className="text-ink-500 text-sm flex flex-col items-center gap-2">
-                  <AlertCircle size={22} className="text-ink-300" />
+                  <AlertCircle size={22} className="text-ink-400" />
                   No se pudo preparar la vista. Agrega al menos una pieza e inténtalo de nuevo.
                 </div>
               ) : (
@@ -177,7 +177,7 @@ export default function TogoArViewer({ open, onClose, scene3d, material, storeNa
                 {qrDataUrl ? (
                   <img src={qrDataUrl} alt="Código QR para abrir tu diseño en el teléfono" width={132} height={132} className="block h-[132px] w-[132px]" />
                 ) : (
-                  <div className="grid h-[132px] w-[132px] place-items-center"><Loader2 size={18} className="animate-spin text-ink-300" /></div>
+                  <div className="grid h-[132px] w-[132px] place-items-center"><Loader2 size={18} className="animate-spin text-ink-400" /></div>
                 )}
               </div>
               <div className="min-w-0">
@@ -191,7 +191,7 @@ export default function TogoArViewer({ open, onClose, scene3d, material, storeNa
             </div>
           ) : (
             <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2.5 text-xs text-ink-600 flex items-center gap-2">
-              <Smartphone size={16} className="shrink-0 text-ink-400" />
+              <Smartphone size={16} className="shrink-0 text-ink-500" />
               Arrastra para girar el modelo. Para colocarlo a tamaño real en tu sala, abre el configurador desde tu teléfono.
             </div>
           )

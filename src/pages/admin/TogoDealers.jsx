@@ -106,7 +106,7 @@ const DEALER_COLUMNS = [
           <span className="truncate">{r.name}</span>
           {!r.active && <span className="status-pill status-pill-inactive shrink-0">Inactivo</span>}
         </div>
-        <div className="text-[11px] text-ink-400 font-mono truncate">/{r.slug}</div>
+        <div className="text-micro text-ink-500 font-mono truncate">/{r.slug}</div>
       </div>
     ),
   },
@@ -116,7 +116,7 @@ const DEALER_COLUMNS = [
     cell: ({ r }) => (
       <div className="min-w-0">
         <div className="truncate">{r.catalogLabel}</div>
-        <div className="text-[11px] text-ink-400 tabular-nums">
+        <div className="text-micro text-ink-500 tabular-nums">
           {r.catalogPieces} {r.catalogPieces === 1 ? 'pieza' : 'piezas'}
           {r.catalogEmpty && <span className="text-amber-600 dark:text-amber-400"> · sin colecciones</span>}
         </div>
@@ -129,7 +129,7 @@ const DEALER_COLUMNS = [
     cell: ({ r }) => (
       <div className="min-w-0">
         <div className="truncate">{r.pricingLabel}</div>
-        <div className="text-[11px] text-ink-400 tabular-nums">{r.moneyLabel}</div>
+        <div className="text-micro text-ink-500 tabular-nums">{r.moneyLabel}</div>
       </div>
     ),
   },
@@ -139,7 +139,7 @@ const DEALER_COLUMNS = [
     tdClass: 'text-right tabular-nums whitespace-nowrap',
     cell: ({ r }) => (r.open > 0
       ? <span className="font-semibold text-brand-600">{r.open}</span>
-      : <span className="text-ink-400">0</span>),
+      : <span className="text-ink-500">0</span>),
   },
   {
     key: 'total', label: 'Solicitudes',
@@ -282,7 +282,7 @@ export default function TogoDealers() {
           <span className="icon-tile tint-brand w-9 h-9 rounded-xl shrink-0"><Store size={17} /></span>
           <div className="min-w-0">
             <h2 className="font-display font-semibold text-sm">Distribuidores</h2>
-            <p className="text-[11px] text-ink-500 leading-snug">
+            <p className="text-micro text-ink-500 leading-snug">
               Cada uno embebe el MISMO configurador con su catálogo, su moneda, su margen y su bandeja de solicitudes.
             </p>
           </div>
@@ -334,20 +334,20 @@ export default function TogoDealers() {
                   <span className="text-sm font-medium text-ink-900 truncate">{r.name}</span>
                   <span className={`status-pill ${r.statusCls} shrink-0`}>{r.statusLabel}</span>
                 </div>
-                <div className="text-[11px] text-ink-400 font-mono truncate">/{r.slug}</div>
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-500">
+                <div className="text-micro text-ink-500 font-mono truncate">/{r.slug}</div>
+                <div className="flex flex-wrap items-center gap-1.5 text-micro text-ink-500">
                   <span className="inline-flex items-center gap-1"><Boxes size={11} /> {r.catalogLabel}</span>
                   <span className="inline-flex items-center gap-1"><Coins size={11} /> {r.moneyLabel}</span>
                   <span className="inline-flex items-center gap-1 tabular-nums"><Inbox size={11} /> {r.open} abiertas · {r.total} total</span>
                 </div>
                 {r.catalogEmpty && (
-                  <div className="text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                  <div className="text-micro text-amber-700 dark:text-amber-300 flex items-center gap-1">
                     <AlertTriangle size={11} /> Sin colecciones asignadas.
                   </div>
                 )}
               </button>
             ))}
-            {list.noMatches && <p className="card card-pad text-center text-sm text-ink-400">Sin resultados.</p>}
+            {list.noMatches && <p className="card card-pad text-center text-sm text-ink-500">Sin resultados.</p>}
           </div>
 
           <div className="hidden md:block card overflow-hidden">
@@ -367,7 +367,7 @@ export default function TogoDealers() {
                     </tr>
                   ))}
                   {list.noMatches && (
-                    <tr><td colSpan={cols.length} className="text-center text-sm text-ink-400 py-6">Sin resultados.</td></tr>
+                    <tr><td colSpan={cols.length} className="text-center text-sm text-ink-500 py-6">Sin resultados.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -427,7 +427,7 @@ export default function TogoDealers() {
           />
         ) : (
           // The gap between writing a new dealer and the live query returning it.
-          <div className="py-10 text-center text-sm text-ink-400">
+          <div className="py-10 text-center text-sm text-ink-500">
             <Loader2 size={16} className="animate-spin inline-block" />
           </div>
         )}
@@ -487,7 +487,7 @@ function DealerEditor({
       size="lg"
       footer={(
         <div className="flex items-center justify-between gap-3 w-full">
-          <p className="text-[11px] text-ink-400 min-w-0 truncate">
+          <p className="text-micro text-ink-500 min-w-0 truncate">
             {draft.issues.length > 0
               ? draft.issues[0].text
               : draft.catalog.summary}
@@ -508,7 +508,7 @@ function DealerEditor({
         {draft.steps.map((s) => (
           <li
             key={s.key}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-micro ${
               s.done
                 ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200'
                 : 'border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200'

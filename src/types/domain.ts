@@ -860,6 +860,10 @@ export interface QuoteLine {
   brand?: string | null;
   lineMarginPct?: number;
   lineDiscountPct?: number;
+  /** SIN ITBIS — exento. Only a producto personalizado may carry it, and
+   *  `lib/pricing:lineTaxExempt` — never this raw field — is what the money
+   *  reads. */
+  taxExempt?: boolean;
   /**
    * Price RANGE for a line quoted WITHOUT a chosen material — the model's
    * cheapest→priciest fabric grade, snapshotted from the catalog when the line
@@ -1531,6 +1535,8 @@ export interface PricingLine {
   basePrice: number;
   lineMarginPct?: number;
   lineDiscountPct?: number;
+  /** SIN ITBIS, already resolved through `lib/pricing:lineTaxExempt`. */
+  taxExempt?: boolean;
 }
 
 export interface PricingQuote {
@@ -1549,6 +1555,9 @@ export interface Totals {
    *  the professional's commission. See lib/pricing:computeTotals. */
   courtesyDiscountAmt: number;
   taxableBase: number;
+  /** The slice of `taxableBase` charged no ITBIS (lines marked sin ITBIS): the
+   *  tax fell on `taxableBase − exemptBase + shipping`. See lib/pricing. */
+  exemptBase: number;
   taxAmt: number;
   shipping: number;
   grandTotal: number;

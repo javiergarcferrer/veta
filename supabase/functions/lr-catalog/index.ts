@@ -1,10 +1,13 @@
 // lr-catalog — reads ligne-roset.com server-side (the site sends no CORS) and
-// re-serves clean JSON, in three modes:
+// re-serves clean JSON, in four modes:
 //
 //   { url }         → the fabrics offered on ONE product page (Materials admin).
 //   { all: true }   → the WHOLE US fabric catalog (a sitemap-driven sweep).
 //   { pieces: true} → every category-listing product card (page path + card
 //                     image) for the Escaparate's photo matcher.
+//   { link: true }  → AUTO-LINK every graded model to its collection's page,
+//                     writing `model_fabrics` for the whole catalog at once
+//                     (`dryRun` previews). Also runs inside the weekly cron.
 //
 // How the site exposes it (two same-origin AJAX endpoints behind each product):
 //   GET /<lang>/ajax/patterns/product/<productCode>           → [patternId, …]
@@ -29,9 +32,14 @@
 // the Materials admin importer; neither is public. We verify the caller's JWT
 // in-code (gateway verify_jwt stays off so the CORS preflight passes) so
 // anonymous internet traffic can't drive the expensive sitemap sweep.
+// { link:true } additionally requires an ADMIN (it rewrites every model's fabric
+// restriction), and { cron:true } only the service key.
 
+import { readAllPages } from '../_shared/readAllPages.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { mergeCatalog, type LrPattern, type Material } from './merge.ts';
+import { BOOK_LIGNE_ROSET, mergeCatalog, type LrPattern, type Material } from './merge.ts';
+import { planModelLinks, rootOfSku, type CatalogRoot, type LrProductPage } from './modelLink.ts';
+import { withImportRun } from '../_shared/importRun.ts';
 
 const TEAM = 'team';
 
@@ -296,7 +304,7 @@ interface CatalogSource {
   partial: boolean;
 }
 type SweepResult =
-  | { ok: true; patterns: LrPattern[]; source: CatalogSource }
+  | { ok: true; patterns: LrPattern[]; products: LrProductPage[]; source: CatalogSource }
   | { ok: false; error: string; status: number };
 
 // Sweep the WHOLE US catalog into clean patterns. Shared by the user-facing
@@ -375,9 +383,21 @@ async function sweepCatalog(): Promise<SweepResult> {
   });
 
   const patterns = toPatterns(acc);
+  // Per-PRODUCT fabric lists — the same sweep, kept instead of discarded. The
+  // { all } / cron merges only need the flat pattern roster; the model-link
+  // pass needs to know WHICH page offers what (modelLink.ts groups them into
+  // collections). Titles are NOT fetched here (that's a page read per product);
+  // `withTitles` adds them only for the link pass.
+  const products: LrProductPage[] = [];
+  for (const [code, pids] of codeToPids) {
+    const fabrics = [...pids].map((pid) => acc.get(pid)?.name).filter((n): n is string => !!n);
+    if (fabrics.length) products.push({ code, url: codeToUrl.get(code)!, title: null, fabrics });
+  }
+
   return {
     ok: true,
     patterns,
+    products,
     source: {
       mode: 'catalog',
       productsScanned: codes.length,
@@ -436,18 +456,235 @@ function materialToRow(m: Material): Record<string, unknown> {
   return out;
 }
 
+// ---- model auto-link ({ link: true } + the weekly cron) --------------------
+//
+// "Vincular con Ligne Roset" for the WHOLE catalog at once. The dealer used to
+// paste one product URL per model, so the material picker only knew the offered
+// fabrics of the handful of models somebody had gotten around to. Fabrics are a
+// property of the COLLECTION (every TOGO page offers the same 56), so one sweep
+// + the name→collection match in modelLink.ts links every graded root there is.
+//
+// Fetch/shape only, as always: the matching is the pure module's, this just
+// reads the catalog, hands it over, and writes what comes back. Hand-made links
+// are never touched (`source <> 'auto'` stays), and stale auto rows are pruned
+// only on a COMPLETE sweep — the same rule that gates discontinuation flagging.
+
+const TITLE_CONCURRENCY = 12;
+const TITLE_SCAN_BYTES = 16_384; // the <title> sits in the first KB of <head>
+const PRODUCT_PAGE_SIZE = 1000;  // PostgREST's row cap — the repo's paging unit
+const WRITE_CHUNK = 200;
+
+const TITLE_RE = /<title>([^<]*)<\/title>/i;
+
+/**
+ * A product page's <title>, read from the HEAD OF THE STREAM and then hung up
+ * on. An LR product page is ~370 KB; 755 of them is 280 MB of HTML to download,
+ * decode and regex, and doing that killed the isolate outright
+ * (WORKER_RESOURCE_LIMIT, 2026-08-20). The title lives in the first kilobyte of
+ * <head>, so we read chunks until it appears (or 16 KB, whichever comes first)
+ * and cancel the body — ~4 KB per page instead of 370 KB.
+ */
+async function fetchTitle(url: string): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: ctrl.signal, redirect: 'manual' });
+    if (!r.ok || !r.body) {
+      await r.body?.cancel().catch(() => {});
+      return null;
+    }
+    reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (buf.length < TITLE_SCAN_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const hit = buf.match(TITLE_RE);
+      if (hit) return hit[1].trim() || null;
+    }
+    return buf.match(TITLE_RE)?.[1]?.trim() || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+    // Hang up on whatever is left — an un-cancelled body keeps buffering.
+    await reader?.cancel().catch(() => {});
+  }
+}
+
+/** Stamp each fabric-bearing page with its <title> (modelKeyOf needs it). */
+async function withTitles(products: LrProductPage[]): Promise<LrProductPage[]> {
+  await mapPool(products, TITLE_CONCURRENCY, async (p) => {
+    p.title = await fetchTitle(p.url);
+  });
+  return products;
+}
+
+/**
+ * Every grade-priced model in the LR catalog, one row per family root. Paged
+ * (PostgREST caps a select) and deduped in code — a root has one row per grade
+ * letter, and they all carry the same name/family code.
+ */
 // deno-lint-ignore no-explicit-any
-async function runWeeklySync(admin: any): Promise<Response> {
+async function readCatalogRoots(client: any): Promise<{ roots: CatalogRoot[]; error?: string }> {
+  const byRoot = new Map<string, CatalogRoot>();
+  for (let from = 0; ; from += PRODUCT_PAGE_SIZE) {
+    const { data, error } = await client
+      .from('products')
+      .select('reference, name, family_code')
+      .eq('profile_id', TEAM)
+      .eq('brand', 'ligne-roset')
+      .order('reference', { ascending: true })
+      .range(from, from + PRODUCT_PAGE_SIZE - 1);
+    if (error) return { roots: [], error: error.message };
+    const rows = (data ?? []) as Array<{ reference: string; name: string | null; family_code: string | null }>;
+    for (const row of rows) {
+      const root = rootOfSku(row.reference);
+      if (!root || byRoot.has(root)) continue;
+      byRoot.set(root, { root, name: row.name || '', familyCode: row.family_code || null });
+    }
+    // A short page is the end. `reference` is unique per tenant, so the sort is
+    // total and no row can slip across a page boundary.
+    if (rows.length < PRODUCT_PAGE_SIZE) break;
+  }
+  return { roots: [...byRoot.values()] };
+}
+
+interface LinkSummary {
+  collections: number;
+  roots: number;
+  linked: number;
+  matched: number;
+  adopted: number;
+  manual: number;
+  pruned: number;
+  unmatched: number;
+  complete: boolean;
+  dryRun: boolean;
+  /** Up to 40 unlinked model names — the site has no collection for these. */
+  unmatchedNames: string[];
+}
+
+// deno-lint-ignore no-explicit-any
+async function runModelLink(
+  client: any,
+  swept: SweepResult,
+  dryRun: boolean,
+): Promise<{ ok: true; summary: LinkSummary } | { ok: false; error: string; status: number }> {
+  if (!swept.ok) return { ok: false, error: swept.error, status: swept.status };
+
+  const { roots, error: rootsErr } = await readCatalogRoots(client);
+  if (rootsErr) return { ok: false, error: rootsErr, status: 502 };
+  if (!roots.length) return { ok: false, error: 'no Ligne Roset models in the catalog', status: 422 };
+
+  // Paged: a hand-made link past the cap would look absent to the sweep and
+  // get overwritten by it — the one thing the `keep` set exists to prevent.
+  let rows: Array<{ id: string; source: string | null }>;
+  try {
+    rows = await readAllPages<{ id: string; source: string | null }>(async (from, to) => {
+      const { data, error } = await client
+        .from('model_fabrics').select('id, source').eq('profile_id', TEAM)
+        .order('id').range(from, to);
+      return { data: (data || []) as Array<{ id: string; source: string | null }>, error };
+    }, 'model_fabrics');
+  } catch (e) {
+    return { ok: false, error: (e as Error).message, status: 502 };
+  }
+  // A link somebody made by hand outranks the sweep, forever — the unattended
+  // pass may only ever (re)write rows it wrote itself.
+  const keep = new Set(rows.filter((r) => r.source !== 'auto').map((r) => r.id));
+  const auto = new Set(rows.filter((r) => r.source === 'auto').map((r) => r.id));
+
+  await withTitles(swept.products);
+  const plan = planModelLinks(roots, swept.products, keep);
+
+  const complete = !swept.source.partial;
+  const planned = new Set(plan.links.map((l) => l.root));
+  // An auto row whose model no longer resolves would keep restricting the
+  // picker to a fabric set the site stopped publishing. Prune it — but only
+  // when the sweep saw the whole catalog, so a read gap can't strip links, and
+  // only 8-digit FAMILY ROOTS: a compound quote line keys its link by line id
+  // (carryModelLink), and that row is never this pass's to delete.
+  const stale = complete ? [...auto].filter((id) => !planned.has(id) && /^\d{8}$/.test(id)) : [];
+
+  const summary: LinkSummary = {
+    collections: plan.collections,
+    roots: roots.length,
+    linked: plan.links.length,
+    matched: plan.matched,
+    adopted: plan.adopted,
+    manual: keep.size,
+    pruned: stale.length,
+    unmatched: plan.unmatched.length,
+    complete,
+    dryRun,
+    unmatchedNames: [...new Set(plan.unmatched.map((r) => r.name).filter(Boolean))].sort().slice(0, 40),
+  };
+  if (dryRun) return { ok: true, summary };
+
+  const nowIso = new Date().toISOString();
+  for (let i = 0; i < plan.links.length; i += WRITE_CHUNK) {
+    const chunk = plan.links.slice(i, i + WRITE_CHUNK).map((l) => ({
+      id: l.root,
+      profile_id: TEAM,
+      source_url: l.sourceUrl,
+      title: l.title,
+      pattern_names: l.patternNames,
+      collection: l.collection,
+      source: 'auto',
+      fetched_at: nowIso,
+      updated_at: nowIso,
+    }));
+    const { error } = await client.from('model_fabrics').upsert(chunk);
+    if (error) return { ok: false, error: error.message, status: 502 };
+  }
+  for (let i = 0; i < stale.length; i += WRITE_CHUNK) {
+    const { error } = await client
+      .from('model_fabrics').delete()
+      .eq('profile_id', TEAM).eq('source', 'auto')
+      .in('id', stale.slice(i, i + WRITE_CHUNK));
+    if (error) return { ok: false, error: error.message, status: 502 };
+  }
+  return { ok: true, summary };
+}
+
+// deno-lint-ignore no-explicit-any
+async function runWeeklySync(admin: any, tenant: string): Promise<Response> {
+  return withImportRun(
+    admin,
+    // The tenant is the one THREADED in, not the default-tenant constant: this
+    // function still only ever runs for the default tenant (the cron gate above
+    // fails closed for anyone else), but the log records the tenant it was GIVEN,
+    // so parameterizing the sweep later needs no change here.
+    { module: 'lr-catalog', brand: BOOK_LIGNE_ROSET, trigger: 'cron', profileId: tenant },
+    () => crypto.randomUUID(),
+    () => weeklySync(admin, tenant),
+  );
+}
+
+async function weeklySync(admin: any, tenant: string): Promise<Response> {
   const swept = await sweepCatalog();
   if (!swept.ok) return json({ cron: true, ok: false, error: swept.error }, swept.status);
 
-  const { data: existingRows, error: readErr } = await admin
-    .from('materials').select('*').eq('profile_id', TEAM);
-  if (readErr) return json({ cron: true, ok: false, error: readErr.message }, 502);
+  // Paged: mergeCatalog treats an unseen fabric as no-longer-offered, so a
+  // truncated read would flag live telas as discontinued.
+  let existingRows: Array<Record<string, unknown>>;
+  try {
+    existingRows = await readAllPages<Record<string, unknown>>(async (from, to) => {
+      const { data, error } = await admin
+        .from('materials').select('*').eq('profile_id', tenant)
+        .order('id').range(from, to);
+      return { data: (data || []) as Array<Record<string, unknown>>, error };
+    }, 'materials');
+  } catch (e) {
+    return json({ cron: true, ok: false, error: (e as Error).message }, 502);
+  }
 
-  const existing = (existingRows ?? []).map(materialFromRow);
+  const existing = existingRows.map(materialFromRow);
   const { rows, summary } = mergeCatalog(existing, swept.patterns, {
-    profileId: TEAM,
+    profileId: tenant,
     now: Date.now(),
     newId: () => crypto.randomUUID(),
     // Only flag no-longer-offered fabrics when the sweep saw the whole catalog.
@@ -459,7 +696,25 @@ async function runWeeklySync(admin: any): Promise<Response> {
     if (error) return json({ cron: true, ok: false, error: error.message }, 502);
   }
 
-  return json({ cron: true, ok: true, complete: !swept.source.partial, changed: rows.length, summary });
+  // Same sweep, second effect: re-link every model to its collection's page, so
+  // a model added by the last price list (or a collection that changed its
+  // fabric roster) is linked by Monday without anyone pasting a URL. Never
+  // fatal to the materials merge that already landed — reported instead.
+  let linked: { ok: true; summary: LinkSummary } | { ok: false; error: string; status: number };
+  try {
+    linked = await runModelLink(admin, swept, false);
+  } catch (e) {
+    linked = { ok: false, error: String((e as Error)?.message || e), status: 502 };
+  }
+
+  return json({
+    cron: true,
+    ok: true,
+    complete: !swept.source.partial,
+    changed: rows.length,
+    summary,
+    link: linked.ok ? linked.summary : { error: linked.error },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -476,7 +731,10 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Authorization header required' }, 401);
   }
 
-  let body: { url?: string; all?: boolean; cron?: boolean; ensureCron?: boolean; pieces?: boolean } = {};
+  let body: {
+    url?: string; all?: boolean; cron?: boolean; ensureCron?: boolean; pieces?: boolean;
+    link?: boolean; dryRun?: boolean;
+  } = {};
   try {
     body = await req.json();
   } catch {
@@ -491,7 +749,10 @@ Deno.serve(async (req: Request) => {
     if (authHeader !== `Bearer ${SERVICE_ROLE_KEY}`) return json({ error: 'forbidden' }, 403);
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     try {
-      return await runWeeklySync(admin);
+      // The unattended sweep leaves an `import_runs` row (runWeeklySync wraps
+      // itself). Nobody holds this response — a Monday that fails had no in-app
+      // trace before, and the 227-row foreign-books outage was exactly this run.
+      return await runWeeklySync(admin, TEAM);
     } catch (e) {
       return json({ cron: true, ok: false, error: String((e as Error)?.message || e) }, 502);
     }
@@ -523,6 +784,22 @@ Deno.serve(async (req: Request) => {
     });
     if (error) return json({ ok: false, error: error.message });
     return json({ ok: true });
+  }
+
+  // ── link: the on-demand twin of the cron's auto-link pass. Admin-gated (it
+  // rewrites every model's fabric restriction) and `dryRun` previews the exact
+  // same plan without writing, which is what the Materials modal shows first.
+  if (body?.link === true) {
+    const { data: prof } = await caller.from('profiles').select('role, active').eq('id', userData.user.id).maybeSingle();
+    if (!prof || prof.role !== 'admin' || !prof.active) return json({ ok: false, error: 'Solo un administrador.' }, 403);
+    try {
+      const swept = await sweepCatalog();
+      const res = await runModelLink(caller, swept, body?.dryRun === true);
+      if (!res.ok) return json({ ok: false, error: res.error }, res.status);
+      return json({ ok: true, summary: res.summary });
+    } catch (e) {
+      return json({ ok: false, error: 'link failed: ' + String((e as Error)?.message || e) }, 502);
+    }
   }
 
   try {

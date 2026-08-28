@@ -156,7 +156,7 @@ export default function TogoRequests() {
               key={tb.key}
               type="button"
               onClick={() => setTab(tb.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-micro transition-colors ${
                 tab === tb.key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500 hover:text-ink-800'
               }`}
             >
@@ -172,7 +172,7 @@ export default function TogoRequests() {
                 key={s.key}
                 type="button"
                 onClick={() => setDealerFilter(s.key)}
-                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-micro transition-colors ${
                   dealerFilter === s.key ? 'border-ink-800 text-ink-900' : 'border-ink-200 text-ink-500 hover:text-ink-800'
                 }`}
               >
@@ -269,29 +269,29 @@ function RequestCard({ row, planModels, resolvedById, svgById, busy, error, onQu
           <Link to={`/solicitudes/${row.id}`} className="font-display font-semibold text-sm truncate hover:underline">
             {row.name}
           </Link>
-          <div className="text-[11px] text-ink-500">{formatDateTime(row.createdAt)}</div>
+          <div className="text-micro text-ink-500">{formatDateTime(row.createdAt)}</div>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${row.isDirect ? TONE.neutral : TONE.info}`}>
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-micro ${row.isDirect ? TONE.neutral : TONE.info}`}>
               <Store size={11} aria-hidden /> {row.dealerLabel}
             </span>
-            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${TONE[row.status.tone] || TONE.neutral}`}>
+            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-micro ${TONE[row.status.tone] || TONE.neutral}`}>
               {row.status.label}
             </span>
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-[10px] text-ink-500 uppercase tracking-wide">Estimado</div>
+          <div className="text-micro text-ink-500 uppercase tracking-wide">Estimado</div>
           <div className="text-sm font-semibold tabular-nums">{row.estimateLabel || '—'}</div>
-          <div className="text-[11px] text-ink-500 tabular-nums">
+          <div className="text-micro text-ink-500 tabular-nums">
             {row.items.length} pieza{row.items.length === 1 ? '' : 's'}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
         {row.phone && (
           <a href={`https://wa.me/${row.phoneDigits}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 hover:bg-ink-50">
-            <MessageCircle size={13} className="text-emerald-600" aria-hidden /> {row.phone}
+            <MessageCircle size={13} className="text-status-good-ink" aria-hidden /> {row.phone}
           </a>
         )}
         {row.email && (
@@ -318,7 +318,7 @@ function RequestCard({ row, planModels, resolvedById, svgById, busy, error, onQu
       {row.fabrics.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           {row.fabrics.map((f) => (
-            <span key={f.fabric} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-[11px]">
+            <span key={f.fabric} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-micro">
               {f.code && <img src={swatchUrl(f.code)} alt="" loading="lazy" decoding="async" className="w-3 h-3 rounded-sm object-cover" />}
               <span className="truncate max-w-[180px]">{f.fabric}</span>
             </span>
@@ -326,7 +326,7 @@ function RequestCard({ row, planModels, resolvedById, svgById, busy, error, onQu
         </div>
       )}
 
-      {row.note && <p className="text-[12px] text-ink-600 bg-ink-50 rounded-md px-2.5 py-1.5 whitespace-pre-wrap">{row.note}</p>}
+      {row.note && <p className="text-xs text-ink-600 bg-ink-50 rounded-md px-2.5 py-1.5 whitespace-pre-wrap">{row.note}</p>}
 
       <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
         {planItems.length > 0 && (
@@ -375,7 +375,7 @@ function RequestCard({ row, planModels, resolvedById, svgById, busy, error, onQu
           </button>
         )}
       </div>
-      {error && <p className="text-[11px] text-rose-600 dark:text-rose-400" role="alert">{error}</p>}
+      {error && <p className="text-micro text-rose-600 dark:text-rose-400" role="alert">{error}</p>}
     </div>
   );
 }

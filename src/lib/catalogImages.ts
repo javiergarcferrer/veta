@@ -20,11 +20,46 @@ import { imageProxyUrl } from './swatchImage.js';
  *  sync, `lrimg-<filename>` by the Escaparate's Ligne Roset photo matcher
  *  (lib/lrPieceImages.ts), and `togosnap-<requestId>` by togo-embed (the
  *  visitor-captured composition render, shared by the Solicitudes card AND
- *  the quote line it becomes). All are SHARED rows — never delete on behalf
- *  of a single owner (clearing a quote line's cover must not blank the
- *  request's thumbnail). */
+ *  the quote line it becomes), and `chimg-<sha1 of url>` by the Carl Hansen
+ *  importer (admincms.carlhansen.com variant renders — one pointer per photo,
+ *  shared by every configuration that imports the same shot).
+ *
+ *  `freimg-<sha1 of url>` is the Fredericia importer's, minted from the Anthom
+ *  storefront's photo urls by the same shared helper (`db/catalogPointers`).
+ *  Before it existed that importer wrote raw urls and no pointers at all, so a
+ *  Spanish Chair with eighteen photographs on file quoted blank.
+ *
+ *  `chswatch-<collection>-<colourway>` is the odd one out: written by the Carl
+ *  Hansen configurator, it holds STORED BYTES rather than a CDN pointer — a
+ *  ~10 KB WebP chip downscaled in the browser from a 4–6 MB CMYK print master
+ *  range-read out of the factory's material archive. It is shared even more
+ *  widely than the others (one row per colourway, reused by every axis, model
+ *  and quote that shows that fabric), so deleting one on behalf of a single
+ *  owner would blank the swatch everywhere it appears.
+ *
+ *  `lretq-<the reference's 8-digit root>` is the Ligne Roset LINE DRAWING the
+ *  `lr-etiquette` function mirrors off Roset's feed — stored bytes, ~7 KB of
+ *  outline, one row per MODEL and the single most widely shared of the lot: it
+ *  is `products.spec_image_id` for every grade of that model, it prints on the
+ *  /etiquetas tag, and since `coverImageOf` it is the seeded cover of every
+ *  quote line of that model (an LR article has no photograph, so this is the
+ *  only picture it has). Deleting one because a dealer swapped in their own
+ *  photo on ONE line would blank the tag and every other quote of that piece,
+ *  and leave `spec_image_id` pointing at a row that isn't there — which the
+ *  linking migration goes out of its way to never do.
+ *
+ *  All are SHARED rows — never delete on behalf of a single owner (clearing a
+ *  quote line's cover must not blank the request's thumbnail). */
 export function isSharedCatalogImage(id: string | null | undefined): boolean {
-  return !!id && (id.startsWith('lsgimg-') || id.startsWith('lrimg-') || id.startsWith('togosnap-'));
+  return !!id && (
+    id.startsWith('lsgimg-')
+    || id.startsWith('lrimg-')
+    || id.startsWith('togosnap-')
+    || id.startsWith('chimg-')
+    || id.startsWith('chswatch-')
+    || id.startsWith('freimg-')
+    || id.startsWith('lretq-')
+  );
 }
 
 /**

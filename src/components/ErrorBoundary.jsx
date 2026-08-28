@@ -46,7 +46,7 @@ export default class ErrorBoundary extends React.Component {
               ? 'La descarga falló — puede ser un problema de conexión o una actualización de la app. Reintenta en un momento.'
               : 'La aplicación encontró un error inesperado. Recarga la página para continuar.'}
           </p>
-          <pre className="surface-subtle mt-4 text-[11px] text-ink-500 p-3 text-left overflow-x-auto whitespace-pre-wrap break-words">
+          <pre className="surface-subtle mt-4 text-micro text-ink-500 p-3 text-left overflow-x-auto whitespace-pre-wrap break-words">
             {this.state.error?.message || String(this.state.error)}
           </pre>
           <button

@@ -291,7 +291,17 @@ export function swatchTextureUrl(
  * used as the fallback when no color carries an uploaded photo.
  */
 export function heroSwatchUrl(
-  material: { colors?: { code?: string | null }[] } | null | undefined,
+  material: { colors?: { code?: string | null; imageUrl?: string | null }[] } | null | undefined,
 ): string | null {
-  return swatchUrl(material?.colors?.[0]?.code);
+  const colors = material?.colors || [];
+  // A PUBLISHED PHOTO WINS. `swatchUrl` below composes a LIGNE ROSET CDN path
+  // out of the code, which is right for Ligne Roset and wrong for everyone
+  // else: a Fredericia colourway (`220`) or a Carl Hansen price code
+  // (`020104`) run through it produces a Ligne Roset url that 404s, and the
+  // list renders a broken tile instead of admitting it has no picture.
+  for (const c of colors) {
+    const url = String(c?.imageUrl || '').trim();
+    if (url) return url;
+  }
+  return swatchUrl(colors[0]?.code);
 }

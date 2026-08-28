@@ -55,7 +55,7 @@ export default function SortMenu({ sortOptions, sort, onSortChange, triggerClass
       >
         <ArrowUpDown size={14} />
         <span className="hidden sm:inline">{current.label}</span>
-        {dir === 'asc' ? <ArrowUp size={13} className="text-ink-400" /> : <ArrowDown size={13} className="text-ink-400" />}
+        {dir === 'asc' ? <ArrowUp size={13} className="text-ink-500" /> : <ArrowDown size={13} className="text-ink-500" />}
       </button>
 
       {open && (
@@ -87,7 +87,7 @@ export default function SortMenu({ sortOptions, sort, onSortChange, triggerClass
                   {o.label}
                 </span>
                 {isCurrent && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-brand-400">
+                  <span className="inline-flex items-center gap-1 text-micro text-brand-400">
                     {dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
                     {dir === 'asc' ? 'Asc.' : 'Desc.'}
                   </span>

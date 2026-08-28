@@ -47,7 +47,7 @@ export default function ColumnsMenu({ columns, visible, onChange, onReset }) {
       >
         <Columns3 size={14} />
         <span className="hidden lg:inline">Columnas</span>
-        <span className="tabular-nums rounded-full bg-ink-100 px-1.5 text-[11px] font-semibold text-ink-500">
+        <span className="tabular-nums rounded-full bg-ink-100 px-1.5 text-micro font-semibold text-ink-500">
           {shownCount}
         </span>
       </button>
@@ -58,7 +58,7 @@ export default function ColumnsMenu({ columns, visible, onChange, onReset }) {
           aria-label="Columnas visibles"
           className="absolute right-0 z-30 mt-1 w-60 rounded-xl border border-ink-100 bg-surface py-1.5 shadow-pop"
         >
-          <div className="px-3 pb-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+          <div className="eyebrow px-3 pb-1.5 pt-1">
             Columnas
           </div>
           {hideable.map((col) => {
@@ -75,7 +75,7 @@ export default function ColumnsMenu({ columns, visible, onChange, onReset }) {
                 <span className={on ? 'font-medium text-ink-900' : 'text-ink-500'}>{col.label}</span>
                 {on
                   ? <Eye size={15} className="text-brand-600" />
-                  : <EyeOff size={15} className="text-ink-300" />}
+                  : <EyeOff size={15} className="text-ink-400" />}
               </button>
             );
           })}

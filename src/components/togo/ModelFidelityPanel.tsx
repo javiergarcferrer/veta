@@ -25,7 +25,9 @@
  * three-gpu-pathtracer + three-mesh-bvh at all). The stage IS the live view; the estado pill
  * lives on the model's own table row, one click away in the same grid.
  */
-import { AlertTriangle, Check, Minus, X } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, Check, ChevronDown, Minus, X } from 'lucide-react';
+import Notice from '../primitives/Notice.jsx';
 import { ALCOVER_MESH_V } from './togoModelLoader.js';
 import { readGlbMeshVersion } from './sceneImport.js';
 
@@ -143,7 +145,7 @@ type Props = {
 export default function ModelFidelityPanel({ row, resolved, report, building = false, meshV }: Props) {
   if (!row) {
     return (
-      <div className="border-b border-ink-200 px-3 py-3 text-[11px] leading-snug text-ink-400">
+      <div className="border-b border-ink-200 px-3 py-3 text-micro leading-snug text-ink-500">
         Elige un modelo de la tabla para editarlo y revisar si trajo su malla, su textura y su acabado.
       </div>
     );
@@ -151,17 +153,92 @@ export default function ModelFidelityPanel({ row, resolved, report, building = f
 
   const checks = resolveChecks({ row, resolved, report, meshV, code: '', fab: null, building });
 
+  return <FidelityBlock checks={checks} estado={row.estado} />;
+}
+
+/**
+ * THE SIX, BY EXCEPTION.
+ *
+ * Six rows of prose, always, cost ~200px at the top of the ficha — the first
+ * thing you see about every piece, and on a healthy one it says nothing you
+ * needed. So the block leads with WHAT IS WRONG: the warn/bad rows in full,
+ * and the checks that passed folded into one quiet line you can open. A piece
+ * with nothing wrong is a single green line, and the ficha starts at the fields
+ * you actually came to edit.
+ *
+ * Nothing is hidden that matters: the moment a check turns amber or red it is
+ * open, at the top, unfoldable-away. The fold only ever holds good news.
+ *
+ * AND IT READS THE PIECE'S ESTADO, because the same six verdicts mean two
+ * different things depending on it — the fact this block used to leave the
+ * reader to supply from an 8px dot two panes away:
+ *
+ *   • all clear + borrador → «lista para publicar»: an invitation.
+ *   • all clear + activo   → «publicada»: nothing to do. It used to say «lista
+ *     para publicar» over a piece that has been live for weeks, which is a
+ *     sentence that makes a dealer go and check whether it really is.
+ *   • something wrong + activo → THE ONE THAT MATTERS. These are not defects
+ *     waiting to be fixed before release; the customer is looking at them right
+ *     now. That is a different urgency and it gets said, once, in a band.
+ */
+function FidelityBlock({ checks, estado }: { checks: FidelityCheck[]; estado: string }) {
+  const [open, setOpen] = useState(false);
+  const bad = checks.filter((c) => c.level === 'warn' || c.level === 'bad');
+  const rest = checks.filter((c) => c.level !== 'warn' && c.level !== 'bad');
+  const worst = checks.some((c) => c.level === 'bad') ? 'bad' : bad.length ? 'warn' : 'ok';
+  const live = estado === 'activo';
+
   return (
     <section className="space-y-2 border-b border-ink-200 px-3 py-3">
       <div className="flex items-center justify-between gap-2">
         <span className="label mb-0">Fidelidad</span>
-        <span className="text-[10px] text-ink-400">Como lo ve el cliente</span>
+        <span className="text-micro text-ink-500">Como lo ve el cliente</span>
       </div>
 
-      <ul className="space-y-1">
-        {checks.map((c) => <li key={c.key}><CheckRow check={c} /></li>)}
-      </ul>
+      {/* Live AND broken. Said before the list, because it changes what the
+          list below it is: a to-do becomes an outage. The recipe is `<Notice>`
+          — a tinted band is never hand-typed (§5b), and the dark half is the
+          part a call site forgets. The glyph is the TONE's, not ours: it is
+          §6's second cue, and one icon over both tones would leave hue as the
+          only thing separating the amber band from the red one. */}
+      {live && bad.length > 0 && (
+        <Notice tone={worst === 'bad' ? 'danger' : 'warn'} dense>
+          Publicada así — el cliente la está viendo ahora mismo con {bad.length === 1 ? 'este problema' : `estos ${bad.length} problemas`}.
+        </Notice>
+      )}
 
+      {bad.length > 0 && (
+        <ul className="space-y-1">
+          {bad.map((c) => <li key={c.key}><CheckRow check={c} /></li>)}
+        </ul>
+      )}
+
+      {/* The fold. Closed it is the headline — «lista para publicar», or how
+          many checks are fine besides the ones above; open it is the same six
+          rows this block always showed. */}
+      {rest.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="flex w-full items-center gap-2 rounded-md py-0.5 text-left text-micro text-ink-500 transition-colors hover:text-ink-800"
+          >
+            {worst === 'ok' && <Check size={13} className="shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />}
+            <span className="min-w-0 flex-1 truncate">
+              {worst === 'ok'
+                ? (live ? 'Todo en orden — publicada en el configurador.' : 'Todo en orden — lista para publicar.')
+                : `${rest.length} comprobación${rest.length === 1 ? '' : 'es'} más, sin problemas.`}
+            </span>
+            <ChevronDown size={13} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
+          </button>
+          {open && (
+            <ul className="space-y-1">
+              {rest.map((c) => <li key={c.key}><CheckRow check={c} /></li>)}
+            </ul>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -264,13 +341,13 @@ const LEVEL_CLASS: Record<FidelityLevel, string> = {
   ok: 'text-emerald-600 dark:text-emerald-400',
   warn: 'text-amber-600 dark:text-amber-400',
   bad: 'text-red-600 dark:text-red-400',
-  idle: 'text-ink-400',
+  idle: 'text-ink-500',
 };
 
 function CheckRow({ check }: { check: FidelityCheck }) {
   const Icon = LEVEL_ICON[check.level];
   return (
-    <div className="flex items-start gap-2 text-[11px] leading-snug">
+    <div className="flex items-start gap-2 text-micro leading-snug">
       <Icon size={13} className={`mt-px shrink-0 ${LEVEL_CLASS[check.level]}`} aria-hidden />
       <span className="w-[5.6rem] shrink-0 font-medium text-ink-700">{check.label}</span>
       <span className="min-w-0 text-ink-500">{check.detail}</span>

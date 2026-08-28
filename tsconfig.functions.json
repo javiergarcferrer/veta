@@ -6,7 +6,10 @@
      reached production on 2026-08-16.
      Deno's URL/npm specifiers and its globals are declared in
      supabase/functions-env.d.ts; this pass is about UNBOUND NAMES, not deep
-     types, so it stays deliberately loose otherwise. */
+     types, so it stays deliberately loose otherwise.
+     The npm script greps TS2304 *and* TS2552 — tsc reports the latter when the
+     unbound name resembles one in scope, so TS2304 alone misses every typo of
+     a real identifier (see tsconfig.names.json for the full note). */
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],

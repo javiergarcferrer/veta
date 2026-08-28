@@ -42,7 +42,7 @@ npm run dev
 | `npm run dev` | Vite dev server |
 | `npm run build` | production bundle into `dist/` |
 | `npm run typecheck` | three passes: `tsc --noEmit`, then the two unbound-name sweeps below |
-| `npm run typecheck:names` | `checkJs` over `src`, grepping **TS2304 only** — the root config runs `checkJs:false` for the incremental TS migration, so a free identifier in a `.jsx` compiles, ships, and throws `ReferenceError` on first render |
+| `npm run typecheck:names` | `checkJs` over `src`, keeping only the **unbound-name** codes (TS2304 + TS2552, the "did you mean" downgrade a typo of a real variable gets) — the root config runs `checkJs:false` for the incremental TS migration, so a free identifier in a `.jsx` compiles, ships, and throws `ReferenceError` on first render. Runs through `scripts/checkUnboundNames.mjs`, which fails loudly when tsc itself can't run instead of reporting a green it never measured |
 | `npm run typecheck:functions` | the same sweep over the Deno Edge Functions, which the root config never included |
 | `npm test` | the whole suite (see below) |
 

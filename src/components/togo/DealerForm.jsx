@@ -35,17 +35,17 @@ function Section({ icon: Icon, step, title, blurb, children, issues }) {
       <header className="flex items-start gap-2.5 px-4 py-3 border-b border-ink-100">
         <span className="icon-tile tint-brand w-8 h-8 shrink-0"><Icon size={15} /></span>
         <div className="min-w-0">
-          <h3 className="font-display text-[13px] font-semibold leading-tight">
-            <span className="text-ink-400 tabular-nums mr-1.5">{step}</span>{title}
+          <h3 className="font-display text-sm font-semibold leading-tight">
+            <span className="text-ink-500 tabular-nums mr-1.5">{step}</span>{title}
           </h3>
-          <p className="text-[11px] text-ink-500 leading-snug mt-0.5">{blurb}</p>
+          <p className="text-micro text-ink-500 leading-snug mt-0.5">{blurb}</p>
         </div>
       </header>
       <div className="p-4 space-y-3">
         {issues?.length > 0 && (
           <ul className="space-y-1">
             {issues.map((i) => (
-              <li key={i.key} className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+              <li key={i.key} className="flex items-start gap-1.5 text-micro text-amber-700 dark:text-amber-300">
                 <AlertTriangle size={12} className="mt-px shrink-0" /> {i.text}
               </li>
             ))}
@@ -63,7 +63,7 @@ function Field({ label, hint, children, className = '' }) {
     <div className={className}>
       <label className="label">{label}</label>
       {children}
-      {hint && <p className="text-[11px] text-ink-400 leading-snug mt-1">{hint}</p>}
+      {hint && <p className="text-micro text-ink-500 leading-snug mt-1">{hint}</p>}
     </div>
   );
 }
@@ -87,7 +87,7 @@ function CollectionPicker({ catalog, value, onChange }) {
   // que elegir y no se toca lo guardado.
   if (!catalog.catalogKnown) {
     return (
-      <p className="text-[11px] text-ink-400 leading-relaxed">
+      <p className="text-micro text-ink-500 leading-relaxed">
         Todavía no hay modelos publicados en el catálogo, así que no hay colecciones que elegir.
         {catalog.all
           ? ' Este distribuidor servirá lo que se publique en Modelos.'
@@ -131,7 +131,7 @@ function CollectionPicker({ catalog, value, onChange }) {
                 className="shrink-0"
               />
               <span className="text-sm text-ink-800 truncate flex-1 min-w-0">{o.label}</span>
-              <span className="text-[11px] text-ink-400 tabular-nums shrink-0">
+              <span className="text-micro text-ink-500 tabular-nums shrink-0">
                 {o.missing ? (
                   <span className="text-amber-600 dark:text-amber-400">ya no está en el catálogo</span>
                 ) : (
@@ -147,7 +147,7 @@ function CollectionPicker({ catalog, value, onChange }) {
       )}
 
       {catalog.unknown.length > 0 && (
-        <p className="text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+        <p className="text-micro text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
           <AlertTriangle size={12} className="mt-px shrink-0" />
           <span>
             {catalog.unknown.map((u) => u.label).join(', ')}: ya no está en el catálogo. Sigue guardado y sin servir
@@ -156,7 +156,7 @@ function CollectionPicker({ catalog, value, onChange }) {
         </p>
       )}
 
-      <p className="text-[11px] text-ink-500 tabular-nums">
+      <p className="text-micro text-ink-500 tabular-nums">
         Su configurador servirá <strong className="text-ink-800 font-semibold">{catalog.servedPieces}</strong>
         {' '}de {catalog.catalogPieces} {catalog.catalogPieces === 1 ? 'pieza' : 'piezas'}
         {all && ' — y cualquier pieza nueva que se publique.'}
@@ -174,7 +174,7 @@ export function DealerPricePreview({ pricing }) {
   if (!pricing.ok) {
     return (
       <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/40 px-3 py-2.5">
-        <p className="text-[11px] text-ink-500 leading-relaxed flex items-start gap-1.5">
+        <p className="text-micro text-ink-500 leading-relaxed flex items-start gap-1.5">
           <Info size={12} className="mt-px shrink-0" /> {pricing.note}
         </p>
       </div>
@@ -183,26 +183,26 @@ export function DealerPricePreview({ pricing }) {
   return (
     <div className="rounded-lg border border-ink-200 bg-ink-50/40 overflow-hidden">
       <div className="px-3 py-2.5 border-b border-ink-100">
-        <p className="text-[10px] uppercase tracking-[0.08em] text-ink-400 font-semibold">
+        <p className="text-micro uppercase tracking-[0.08em] text-ink-500 font-semibold">
           Ejemplo real · {pricing.sample.label}
         </p>
         <p className="mt-1 flex flex-wrap items-baseline gap-2 font-display">
           <span className="text-sm text-ink-500 tabular-nums">{pricing.headline.from}</span>
-          <span className="text-ink-300" aria-hidden>→</span>
-          <span className={`text-lg font-semibold tabular-nums ${pricing.headline.muted ? 'text-ink-400' : 'text-ink-900'}`}>
+          <span className="text-ink-400" aria-hidden>→</span>
+          <span className={`text-lg font-semibold tabular-nums ${pricing.headline.muted ? 'text-ink-500' : 'text-ink-900'}`}>
             {pricing.headline.to}
           </span>
         </p>
-        <p className="text-[11px] text-ink-400 mt-0.5">Lo que ve el visitante de este distribuidor.</p>
+        <p className="text-micro text-ink-500 mt-0.5">Lo que ve el visitante de este distribuidor.</p>
       </div>
       <dl className="divide-y divide-ink-100">
         {pricing.steps.map((s) => (
           <div key={s.key} className="px-3 py-1.5 flex items-baseline justify-between gap-3">
             <dt className="min-w-0">
-              <span className="text-[11px] text-ink-600">{s.label}</span>
-              <span className="block text-[10px] text-ink-400 truncate">{s.hint}</span>
+              <span className="text-micro text-ink-600">{s.label}</span>
+              <span className="block text-micro text-ink-500 truncate">{s.hint}</span>
             </dt>
-            <dd className="text-[11px] tabular-nums text-ink-800 shrink-0">{s.value}</dd>
+            <dd className="text-micro tabular-nums text-ink-800 shrink-0">{s.value}</dd>
           </div>
         ))}
       </dl>
@@ -285,7 +285,7 @@ export default function DealerForm({ form, setForm, draft, dealer = null }) {
         </Field>
 
         <DealerPricePreview pricing={draft.pricing} />
-        <p className="text-[10px] text-ink-400 leading-relaxed">
+        <p className="text-micro text-ink-500 leading-relaxed">
           El margen de Alcover ({money(draft.pricing.marginPct)}%) sale de Configuración y es el mismo para todos los distribuidores.
         </p>
       </Section>
@@ -294,24 +294,24 @@ export default function DealerForm({ form, setForm, draft, dealer = null }) {
         icon={Inbox} step="4." title="Entrega de solicitudes"
         blurb="Dónde caen sus leads y quién los trabaja."
       >
-        <ul className="space-y-1.5 text-[12px] text-ink-600 leading-relaxed">
+        <ul className="space-y-1.5 text-xs text-ink-600 leading-relaxed">
           <li className="flex items-start gap-1.5">
-            <Check size={13} className="mt-0.5 shrink-0 text-emerald-600" />
+            <Check size={13} className="mt-0.5 shrink-0 text-status-good-ink" />
             Cada solicitud de su widget entra en una bandeja privada, con un enlace propio y sin cuenta ni contraseña.
           </li>
           <li className="flex items-start gap-1.5">
-            <Check size={13} className="mt-0.5 shrink-0 text-emerald-600" />
+            <Check size={13} className="mt-0.5 shrink-0 text-status-good-ink" />
             Alcover <strong className="font-semibold text-ink-800">no cotiza automáticamente</strong> los leads de un distribuidor: se quedan en su bandeja y los trabaja él.
           </li>
           <li className="flex items-start gap-1.5">
-            <Check size={13} className="mt-0.5 shrink-0 text-emerald-600" />
+            <Check size={13} className="mt-0.5 shrink-0 text-status-good-ink" />
             Tú los ves igual en Solicitudes, filtrados por distribuidor.
           </li>
         </ul>
         {dealer?.inboxToken ? (
-          <p className="text-[11px] text-ink-400 break-all font-mono">{dealerInboxUrl(dealer.inboxToken)}</p>
+          <p className="text-micro text-ink-500 break-all font-mono">{dealerInboxUrl(dealer.inboxToken)}</p>
         ) : (
-          <p className="text-[11px] text-ink-400">El enlace de la bandeja se genera al guardar; lo copias del kit de instalación.</p>
+          <p className="text-micro text-ink-500">El enlace de la bandeja se genera al guardar; lo copias del kit de instalación.</p>
         )}
         <Field label="Notas internas" hint="Solo para ti — nunca sale al widget ni a la bandeja del distribuidor.">
           <textarea className="input min-h-[60px]" value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Contacto, acuerdo comercial, condiciones…" />
@@ -319,7 +319,7 @@ export default function DealerForm({ form, setForm, draft, dealer = null }) {
         <label className="inline-flex items-center gap-2 text-sm text-ink-700 cursor-pointer select-none">
           <input type="checkbox" checked={form.active} onChange={(e) => setField('active', e.target.checked)} />
           Activo
-          <span className="text-[11px] text-ink-400">— inactivo apaga su enlace y su embed al instante.</span>
+          <span className="text-micro text-ink-500">— inactivo apaga su enlace y su embed al instante.</span>
         </label>
       </Section>
     </div>

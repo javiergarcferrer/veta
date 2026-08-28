@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   catalogKindOf, setSizeOf, planPartCount, checkPartBinding, blocks,
-  COMPONENT_MAX_SHARE, COMPONENT_WARN_SHARE,
 } from '../src/lib/togo/partBinding.js';
 
 // ── Las ocho ligaduras equivocadas que había EN PRODUCCIÓN, todas activas, con
@@ -56,11 +55,27 @@ const PROD_GOOD = [
   { role: 'bolster', basePrice: 7890, baseRoot: '11370400', root: '11370022', product: { name: 'PRADO S/2 BOLSTERS', subtype: 'S/2 BOLSTERS', priceUsd: 575 } },
 ];
 
-test('checkPartBinding: las OCHO ligaduras equivocadas de producción quedan bloqueadas', () => {
+// El EXCLUSIF (PROD_ERRORS[5]) sólo se delataba por PRECIO, y el precio dejó de
+// ser una señal: en esa colección un componente puede SER la base y costar ~70%
+// de la pieza (dueño, 2026-08-22). Frenarlo costaba trabajo legítimo, así que la
+// regla se fue y con ella la detección de este caso. Sigue en la lista porque el
+// dato es cierto — lo que cambió es que ya no lo atrapamos, y eso se dice aquí
+// en vez de quedar como un hueco silencioso.
+const PRICE_ONLY = PROD_ERRORS[5];
+
+test('checkPartBinding: las SIETE ligaduras que el catálogo DICE quedan bloqueadas', () => {
   for (const c of PROD_ERRORS) {
+    if (c === PRICE_ONLY) continue;
     const checks = checkPartBinding(c);
     assert.ok(blocks(checks), `${c.modelo} · ${c.role} debería bloquearse`);
   }
+});
+
+test('checkPartBinding: la que sólo delataba el precio YA NO se frena, a propósito', () => {
+  // Si algún día vuelve a atraparse, que sea por lo que la pieza ES (su root es
+  // el product_root de otro modelo), nunca por lo que cuesta.
+  assert.equal(blocks(checkPartBinding(PRICE_ONLY)), false);
+  assert.deepEqual(checkPartBinding(PRICE_ONLY), []);
 });
 
 test('checkPartBinding: las ligaduras correctas del dueño pasan limpias', () => {
@@ -80,26 +95,34 @@ test('checkPartBinding: cada motivo se nombra, no se mezcla en uno solo', () => 
   const z = zona.find((c) => c.code === 'component-is-materialization-zone');
   assert.equal(z.suggestRole, 'interior');
   assert.equal(checkPartBinding(PROD_ERRORS[2]).find((c) => c.code === 'component-is-materialization-zone').suggestRole, 'exterior');
-  // EXCLUSIF SOFA no declara subtipo de base: lo delata el PRECIO (82%).
-  const caro = checkPartBinding(PROD_ERRORS[5]);
-  assert.deepEqual(caro.map((c) => c.code), ['component-costs-like-a-base']);
   // Ligarse a la propia base se dice por su nombre y corta ahí mismo.
   const propio = checkPartBinding({ role: 'cushion', root: '11370400', baseRoot: '11370400', basePrice: 7890, product: { name: 'PRADO MEDIUM SOFA', subtype: 'BASE', priceUsd: 7890 } });
   assert.deepEqual(propio.map((c) => c.code), ['component-is-own-base']);
 });
 
-test('checkPartBinding: el umbral de precio deja pasar el componente legítimo más caro', () => {
-  // El más caro que el dueño ligó de verdad: PRADO S/3 BACK CUSHIONS, 34% de su
-  // base. El corte está en 50% justamente para que éste no roce el borde.
-  assert.equal(blocks(checkPartBinding(PROD_GOOD[3])), false);
-  assert.ok(3535 / 10395 < COMPONENT_WARN_SHARE);
-  // La banda intermedia AVISA sin frenar — ahí todavía no hay medición.
-  const medio = checkPartBinding({ role: 'cushion', root: 'x', basePrice: 1000, product: { name: 'algo', subtype: '', priceUsd: 400 } });
-  assert.deepEqual(medio.map((c) => c.level), ['warn']);
-  assert.equal(blocks(medio), false);
-  const alto = checkPartBinding({ role: 'cushion', root: 'x', basePrice: 1000, product: { name: 'algo', subtype: '', priceUsd: 500 } });
-  assert.ok(blocks(alto));
-  assert.equal(COMPONENT_MAX_SHARE, 0.5);
+test('checkPartBinding: el PRECIO no es una señal, por caro que sea el componente', () => {
+  // La regla que había frenaba a partir del 50% de la base y avisaba desde el
+  // 35%. Los dos números salieron de diez ligaduras hechas a mano, y diez casos
+  // no son el catálogo: en EXCLUSIF un componente puede ser la base, ~70%.
+  // Este test existe para que nadie vuelva a introducir el umbral sin querer.
+  const caro = checkPartBinding({
+    role: 'cushion', root: 'x', baseRoot: 'y', basePrice: 1000,
+    product: { name: 'EXCLUSIF ALGO', subtype: '', priceUsd: 700 },
+  });
+  assert.deepEqual(caro, [], 'un componente al 70% de su base es legítimo y pasa limpio');
+
+  const carisimo = checkPartBinding({
+    role: 'cushion', root: 'x', baseRoot: 'y', basePrice: 1000,
+    product: { name: 'EXCLUSIF ALGO', subtype: '', priceUsd: 990 },
+  });
+  assert.deepEqual(carisimo, [], 'ni siquiera al 99%: el precio no dice nada aquí');
+
+  // Y lo que el catálogo SÍ dice sigue frenando, sea cual sea el precio.
+  const barato = checkPartBinding({
+    role: 'cushion', root: 'x', baseRoot: 'y', basePrice: 1000,
+    product: { name: 'ALGO', subtype: 'BASE', priceUsd: 10 },
+  });
+  assert.deepEqual(barato.map((c) => c.code), ['component-is-complete-element']);
 });
 
 test('checkPartBinding: una ranura que NO factura nunca se vigila', () => {

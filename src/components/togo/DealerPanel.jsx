@@ -2,6 +2,7 @@ import {
   Boxes, Coins, Inbox, Pencil, Power, Trash2, AlertTriangle, Loader2, Package,
 } from 'lucide-react';
 import { formatDateTime } from '../../lib/format.js';
+import { Stat as QuantStat } from '../quant/Figures.jsx';
 import { dealerMoneyLabel } from '../../core/quote/index.js';
 import DealerKit, { RegenerateTokenButton } from './DealerKit.jsx';
 import { DealerPricePreview } from './DealerForm.jsx';
@@ -17,21 +18,17 @@ import EmptyState from '../EmptyState.jsx';
  * zero leads renders an empty state that says zero, never a placeholder row.
  */
 
+/** Prop adapter over the shared figure recipe. */
 function Stat({ label, value, tone = '' }) {
-  return (
-    <div className="rounded-lg border border-ink-200/80 bg-surface px-3 py-2">
-      <div className="text-[10px] uppercase tracking-[0.08em] text-ink-400 font-semibold">{label}</div>
-      <div className={`font-display text-lg font-semibold tabular-nums leading-tight ${tone || 'text-ink-900'}`}>{value}</div>
-    </div>
-  );
+  return <QuantStat size="panel" frame="box" label={label} value={value} accentClass={tone} />;
 }
 
 function Block({ icon: Icon, title, action, children, flush = false }) {
   return (
     <section className="rounded-xl border border-ink-200/80 bg-surface overflow-hidden">
       <header className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-ink-100">
-        <h3 className="font-display text-[12px] font-semibold flex items-center gap-1.5">
-          <Icon size={13} className="text-ink-400" /> {title}
+        <h3 className="font-display text-xs font-semibold flex items-center gap-1.5">
+          <Icon size={13} className="text-ink-500" /> {title}
         </h3>
         {action}
       </header>
@@ -68,8 +65,8 @@ export default function DealerPanel({
               <h2 className="font-display text-base font-semibold truncate">{vm.name}</h2>
               <span className={`status-pill ${vm.statusCls}`}>{vm.statusLabel}</span>
             </div>
-            <p className="text-[11px] text-ink-500 font-mono truncate">/{vm.slug}</p>
-            <p className="text-[11px] text-ink-400 truncate">
+            <p className="text-micro text-ink-500 font-mono truncate">/{vm.slug}</p>
+            <p className="text-micro text-ink-500 truncate">
               {[vm.localeLabel, vm.contactEmail, vm.createdAt ? `alta ${formatDateTime(vm.createdAt)}` : null]
                 .filter(Boolean).join(' · ')}
             </p>
@@ -89,9 +86,9 @@ export default function DealerPanel({
       </div>
 
       {vm.warnings.length > 0 && (
-        <ul className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-2.5 space-y-1">
+        <ul className="notice notice-warn space-y-1">
           {vm.warnings.map((w, i) => (
-            <li key={i} className="text-[11px] text-amber-800 dark:text-amber-200 flex items-start gap-1.5 leading-snug">
+            <li key={i} className="text-micro text-amber-800 dark:text-amber-200 flex items-start gap-1.5 leading-snug">
               <AlertTriangle size={12} className="mt-px shrink-0" /> {w}
             </li>
           ))}
@@ -110,36 +107,36 @@ export default function DealerPanel({
         <Block icon={Boxes} title="Su catálogo">
           <p className="text-sm text-ink-800">{catalog.summary}</p>
           {catalog.all ? (
-            <p className="text-[11px] text-ink-500 leading-relaxed">
+            <p className="text-micro text-ink-500 leading-relaxed">
               Sirve el catálogo completo: cada colección que se publique en Modelos le llega sin tocar esta ficha.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {catalog.options.filter((o) => o.selected).map((o) => (
-                <span key={o.key} className="chip bg-ink-100 text-ink-700 normal-case tracking-normal text-[11px] font-medium">
-                  {o.label} <span className="text-ink-400 tabular-nums">{o.count}</span>
+                <span key={o.key} className="chip bg-ink-100 text-ink-700 normal-case tracking-normal text-micro font-medium">
+                  {o.label} <span className="text-ink-500 tabular-nums">{o.count}</span>
                 </span>
               ))}
               {catalog.selectedLabels.length === 0 && (
-                <span className="text-[11px] text-amber-700 dark:text-amber-300">Ninguna colección asignada.</span>
+                <span className="text-micro text-amber-700 dark:text-amber-300">Ninguna colección asignada.</span>
               )}
             </div>
           )}
           {!catalog.all && catalog.catalogPieces > catalog.servedPieces && (
-            <p className="text-[11px] text-ink-400 tabular-nums">
+            <p className="text-micro text-ink-500 tabular-nums">
               {catalog.catalogPieces - catalog.servedPieces} piezas del catálogo quedan fuera de su configurador.
             </p>
           )}
         </Block>
 
         <Block icon={Coins} title="Su presentación de precios">
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5 text-micro">
             <span className="chip bg-ink-100 text-ink-700 normal-case tracking-normal font-medium">{pricing.pricingLabel}</span>
             <span className="chip bg-ink-100 text-ink-700 normal-case tracking-normal font-medium">{pricing.currency}</span>
             <span className="chip bg-ink-100 text-ink-700 normal-case tracking-normal font-medium">tasa ×{pricing.usdRate}</span>
             <span className="chip bg-ink-100 text-ink-700 normal-case tracking-normal font-medium">margen ×{pricing.priceMultiplier}</span>
           </div>
-          <p className="text-[11px] text-ink-500 leading-snug">{pricing.pricingHint}</p>
+          <p className="text-micro text-ink-500 leading-snug">{pricing.pricingHint}</p>
           <DealerPricePreview pricing={pricing} />
         </Block>
       </div>
@@ -152,7 +149,7 @@ export default function DealerPanel({
         icon={Inbox}
         title="Sus solicitudes"
         action={leads.total > 0 ? (
-          <span className="text-[11px] text-ink-400 tabular-nums">
+          <span className="text-micro text-ink-500 tabular-nums">
             {leads.open} abierta{leads.open === 1 ? '' : 's'}
             {leads.pipelineUsd > 0 && ` · ${dealerMoneyLabel(leads.pipelineUsd, 'USD', { locale: 'en-US', display: 'code' })} en juego`}
           </span>
@@ -169,7 +166,7 @@ export default function DealerPanel({
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-1.5 text-[11px]">
+            <div className="flex flex-wrap gap-1.5 text-micro">
               <span className="status-pill status-pill-pending">Pendientes {leads.pending}</span>
               <span className="status-pill status-pill-sent">Contactadas {leads.contacted}</span>
               <span className="status-pill status-pill-accepted">Convertidas {leads.converted}</span>
@@ -180,13 +177,13 @@ export default function DealerPanel({
                 <li key={r.id} className="px-4 py-2 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm text-ink-900 truncate">{r.name}</div>
-                    <div className="text-[11px] text-ink-400 truncate">
+                    <div className="text-micro text-ink-500 truncate">
                       {[formatDateTime(r.createdAt), r.contact, `${r.pieces} ${r.pieces === 1 ? 'pieza' : 'piezas'}`]
                         .filter(Boolean).join(' · ')}
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="text-[11px] tabular-nums text-ink-700">
+                    <div className="text-micro tabular-nums text-ink-700">
                       {r.estimateUsd != null
                         ? dealerMoneyLabel(r.estimateUsd, 'USD', { locale: 'en-US', display: 'code' })
                         : 'Sin estimado'}
@@ -197,7 +194,7 @@ export default function DealerPanel({
               ))}
             </ul>
             {leads.total > leads.recent.length && (
-              <p className="text-[11px] text-ink-400">
+              <p className="text-micro text-ink-500">
                 Mostrando las {leads.recent.length} más recientes de {leads.total}. El resto está en Solicitudes.
               </p>
             )}
@@ -207,8 +204,8 @@ export default function DealerPanel({
 
       {vm.notes && (
         <div className="rounded-xl border border-ink-200/80 bg-surface px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.08em] text-ink-400 font-semibold mb-1">Notas internas</div>
-          <p className="text-[12px] text-ink-600 whitespace-pre-wrap leading-relaxed">{vm.notes}</p>
+          <div className="text-micro uppercase tracking-[0.08em] text-ink-500 font-semibold mb-1">Notas internas</div>
+          <p className="text-xs text-ink-600 whitespace-pre-wrap leading-relaxed">{vm.notes}</p>
         </div>
       )}
     </div>

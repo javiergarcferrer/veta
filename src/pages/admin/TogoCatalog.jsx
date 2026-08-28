@@ -53,10 +53,21 @@ const CAN_PICK_FOLDER = supportsDirectoryPicker();
  * ONE DASHBOARD, ONE GRID, nothing hidden behind anything (owner, three times
  * over: «merge the studio and the management side into one»). There is no
  * Gestor|Estudio switch, no drill-in, no «Volver al gestor» and no separate
- * fidelity screen — `ModelStudio` lays out three columns and the leftmost one
- * IS the manager's table:
+ * fidelity screen — `ModelStudio` lays out ONE grid, two panes:
  *
- *      [ TABLA · gestión ]  [ ESCENARIO 3D ]  [ INSPECTOR · fidelidad + edición ]
+ *      ┌───────────┬──────────────────────────┬────────────┐
+ *      │  PIEZAS   │   ESCENARIO 3D           │  MALLA     │
+ *      │  (lista,  │                          │  FIDELIDAD │
+ *      │   a la    │                          │  PORTADA   │
+ *      │   izq.)   ├──────────────────────────┴────────────┤
+ *      │           │   FICHA · tarjetas en 2–3 columnas    │
+ *      └───────────┴───────────────────────────────────────┘
+ *
+ * And ONE fold-out: «Tabla» gives the list the whole dashboard — every column,
+ * selección múltiple, publicar en lote, «Completar con Claude» — then «Pieza»
+ * folds it back. Same component, same rows, same selection; only the density
+ * changes. That is `listMode`, and it lives here beside `selectedId` for the
+ * same reason: two panes read it, so neither owns it.
  *
  * SELECTING A ROW IS OPENING IT. One click, and the stage and the inspector are
  * already on that piece — which only works because `selectedId` lives HERE and
@@ -208,6 +219,14 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
   // brand shows an empty brand.
   const canSeed = !!seeds?.load;
 
+  // ── WHICH LIST is up: the rail beside the stage, or the whole-dashboard
+  // table. It lives HERE, next to the selection, because it decides two things
+  // at once — how ModelManager renders and how ModelStudio lays its grid out —
+  // and a value two components read is a value neither of them owns. NOT
+  // persisted: it is a posture for the next thirty seconds («let me publish
+  // these borradores»), and a dealer opening Modelos wants the piece.
+  const [listMode, setListMode] = useState('rail');
+
   const [addOpen, setAddOpen] = useState(false);
 
   if (!isAdmin) {
@@ -241,11 +260,14 @@ export default function TogoModels({ droppedFile = null, onDroppedFileConsumed }
         onNeedCatalog={requestCatalog}
         onAddModel={() => setAddOpen(true)}
         onImportSeeds={canSeed ? importSeeds : null}
+        listExpanded={listMode === 'tabla'}
         table={(
           <ModelManager
             models={models}
             selectedId={selectedId}
             onSelect={select}
+            mode={listMode}
+            onModeChange={setListMode}
             onAddModel={() => setAddOpen(true)}
             onImportSeeds={canSeed ? importSeeds : undefined}
             // The table's «Sugerir SKUs con Claude» narrows the catalog in the
@@ -681,7 +703,7 @@ function AddModelModal({
                 like is exactly what differs between manufacturers, and telling
                 a brand on the generic module to export from pCon is how a
                 dealer concludes the app isn't for him. */}
-            <p className="text-[11px] text-ink-500">
+            <p className="text-micro text-ink-500">
               Arrastra el <b>modelo 3D</b> de una pieza, una <b>escena con varias piezas</b>, <b>o una carpeta completa</b>
               {brandName ? <> de la biblioteca de <b>{brandName}</b></> : ' de la biblioteca'}. Se detecta solo: una pieza
               abre el editor, varias se importan de una vez, y de la ruta se leen el <b>grupo</b>, la <b>categoría</b> y la{' '}
@@ -706,7 +728,7 @@ function AddModelModal({
                   <span className="block text-sm text-ink-500">
                     Suelta archivos o una <b>carpeta completa</b> aquí ({modelHint})
                     <br />
-                    <span className="text-[11px] text-ink-400">
+                    <span className="text-micro text-ink-500">
                       Una pieza, varias o todo un árbol de carpetas — se detecta automáticamente.
                       Si la carpeta trae las texturas del producto (.jpg/.png), se aplican al modelo.
                     </span>
@@ -721,11 +743,11 @@ function AddModelModal({
                       browser can't do this"; dragging the folder still works
                       wherever the OS supports dragging one. */}
                   <span className="mt-3 flex items-center justify-center gap-2">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); intake.open(); }} className="btn-secondary text-[11px]">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); intake.open(); }} className="btn-secondary text-micro">
                       Elegir archivos
                     </button>
                     {CAN_PICK_FOLDER && (
-                      <button type="button" onClick={(e) => { e.stopPropagation(); folderIntake.open(); }} className="btn-secondary text-[11px]" title="Elegir una carpeta completa: la colección sale del nombre del archivo, y el grupo y la categoría de la ruta">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); folderIntake.open(); }} className="btn-secondary text-micro" title="Elegir una carpeta completa: la colección sale del nombre del archivo, y el grupo y la categoría de la ruta">
                         <FolderOpen size={13} aria-hidden /> Elegir carpeta
                       </button>
                     )}
@@ -737,19 +759,19 @@ function AddModelModal({
         )}
 
         {notice && (
-          <div role="status" className="rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-800 flex items-start gap-2 dark:bg-amber-950/30 dark:border-amber-900/40 dark:text-amber-200">
+          <div role="status" className="notice notice-sm notice-warn">
             <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> {notice}
           </div>
         )}
 
         {error && (
-          <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-xs text-red-800 dark:text-red-200 flex items-start gap-2">
+          <div role="alert" className="notice notice-sm notice-danger">
             <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> {error}
           </div>
         )}
 
         {stage === 'done' && result && (
-          <div className={`rounded-md px-3 py-2 text-xs flex items-start gap-2 ${result.failed.length ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-800'}`}>
+          <div className="notice notice-sm notice-warn ${result.failed.length ? ' ' : ' '}">
             <Check size={14} className="mt-0.5 shrink-0" />
             <span>
               {result.created} modelo{result.created === 1 ? '' : 's'} creado{result.created === 1 ? '' : 's'}.
@@ -768,25 +790,25 @@ function AddModelModal({
                 <div className="w-32 h-32 rounded-lg bg-ink-50 grid place-items-center overflow-hidden" title="Vista 3D del modelo">
                   {pendingThumb
                     ? <img src={pendingThumb} alt="Vista 3D del modelo" draggable={false} className="w-full h-full object-contain select-none" />
-                    : <Loader2 size={16} className="animate-spin text-ink-400" />}
+                    : <Loader2 size={16} className="animate-spin text-ink-500" />}
                 </div>
               )}
               <div className="w-32 h-32 rounded-lg bg-ink-50 text-ink-700 p-2 grid place-items-center" title="Planta" dangerouslySetInnerHTML={{ __html: sanitizeSvg(plan.svg) }} />
             </div>
             <div className="flex-1 space-y-2.5 min-w-0">
-              <div className="text-[11px] text-ink-500 tabular-nums flex items-center gap-2 flex-wrap">
+              <div className="text-micro text-ink-500 tabular-nums flex items-center gap-2 flex-wrap">
                 <span>Huella detectada: <b className="text-ink-700">{plan.widthCm}×{plan.depthCm} cm</b></span>
-                {meshUrl && <span className="text-emerald-600">· del modelo 3D</span>}
+                {meshUrl && <span className="text-status-good-ink">· del modelo 3D</span>}
                 {meshUrl && (
-                  <button type="button" onClick={flipAxis} disabled={busy} className="btn-ghost text-[11px] py-0 h-6 disabled:opacity-50" title="Si el plano se ve girado, cambia el eje vertical">Eje {upAxis === 'z' ? 'Z' : 'Y'}</button>
+                  <button type="button" onClick={flipAxis} disabled={busy} className="btn-ghost text-micro py-0 h-6 disabled:opacity-50" title="Si el plano se ve girado, cambia el eje vertical">Eje {upAxis === 'z' ? 'Z' : 'Y'}</button>
                 )}
               </div>
-              <div>
-                <label className="label">Nombre</label>
+              <label className="block">
+                <span className="label">Nombre</span>
                 <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="p. ej. Sillón Togo" />
-              </div>
-              <div>
-                <label className="label">Colección</label>
+              </label>
+              <label className="block">
+                <span className="label">Colección</span>
                 <input
                   className="input"
                   list="togo-collections-add"
@@ -797,7 +819,7 @@ function AddModelModal({
                 <datalist id="togo-collections-add">
                   {collections.map((c) => <option key={c} value={c} />)}
                 </datalist>
-              </div>
+              </label>
               <div>
                 <label className="label">Producto (precio por grado)</label>
                 {/* Opens the quote pane's catalog browser (ProductBindModal) —
@@ -807,12 +829,12 @@ function AddModelModal({
                   onClick={() => setPickOpen(true)}
                   className="input w-full flex items-center justify-between gap-2 text-left"
                 >
-                  <span className={`truncate ${root ? '' : 'text-ink-400'}`}>
+                  <span className={`truncate ${root ? '' : 'text-ink-500'}`}>
                     {root
                       ? (rootName || families.find((f) => f.root === root)?.name || root)
                       : 'Sin vincular (precio manual) — toca para elegir del catálogo'}
                   </span>
-                  <Link2 size={14} className="text-ink-400 shrink-0" />
+                  <Link2 size={14} className="text-ink-500 shrink-0" />
                 </button>
                 {/* Opens on whatever is already picked (the seed is selected, so
                     retyping replaces it) with the colección being typed above as
@@ -842,12 +864,12 @@ function AddModelModal({
         {/* Many pieces → the batch review: name/uncheck each, one collection for all. */}
         {stage === 'review' && scene && (
           <div className="space-y-3">
-            <div className="text-[11px] text-ink-500">
+            <div className="text-micro text-ink-500">
               Se detectaron <b className="text-ink-700">{scene.pieces.length} piezas</b>. Ajusta los nombres y desmarca lo que no quieras importar.
               {' '}(¿Salen piezas pegadas como una sola? Sepáralas más en pCon y vuelve a exportar.)
             </div>
             {(folderSummary.groups > 0 || folderSummary.categories > 0 || folderSummary.collections > 0) && (
-              <div className="text-[11px] text-ink-500">
+              <div className="text-micro text-ink-500">
                 Detectado:{' '}
                 <b className="text-ink-700">{folderSummary.groups} grupo{folderSummary.groups === 1 ? '' : 's'}</b>
                 {' · '}
@@ -861,14 +883,14 @@ function AddModelModal({
                 <li key={i} className="space-y-1 py-1.5">
                   <div className="flex items-center gap-2.5">
                     <input type="checkbox" checked={p.include} onChange={(e) => setPiece(i, { include: e.target.checked })} className="shrink-0" />
-                    <input className="input h-8 py-0 text-[13px] flex-1 min-w-0" value={p.name} onChange={(e) => setPiece(i, { name: e.target.value })} />
+                    <input className="input h-8 py-0 text-sm flex-1 min-w-0" value={p.name} onChange={(e) => setPiece(i, { name: e.target.value })} />
                     {p.variant && (
-                      <span className="shrink-0 rounded-full bg-ink-100 px-1.5 py-px text-[10px] text-ink-500" title="Variante detectada en la ruta">
+                      <span className="shrink-0 rounded-full bg-ink-100 px-1.5 py-px text-micro text-ink-500" title="Variante detectada en la ruta">
                         {p.variant}
                       </span>
                     )}
-                    {p.sourceName && <span className="hidden sm:block shrink-0 max-w-[10rem] truncate text-[10px] text-ink-400" title={p.sourceName}>{p.sourceName}</span>}
-                    <span className="shrink-0 text-[11px] text-ink-500 tabular-nums">{p.widthCm}×{p.depthCm} cm</span>
+                    {p.sourceName && <span className="hidden sm:block shrink-0 max-w-[10rem] truncate text-micro text-ink-500" title={p.sourceName}>{p.sourceName}</span>}
+                    <span className="shrink-0 text-micro text-ink-500 tabular-nums">{p.widthCm}×{p.depthCm} cm</span>
                   </div>
                   {/* Prefilled from where the file sits in the LR library,
                       editable, and INDEPENDENT per row — two models under one
@@ -878,7 +900,7 @@ function AddModelModal({
                       narrow to read what's in it. */}
                   <div className="flex flex-wrap items-center gap-1.5 pl-[1.6rem]">
                     <input
-                      className="input h-7 min-w-0 flex-1 basis-28 py-0 text-[11px]"
+                      className="input h-7 min-w-0 flex-1 basis-28 py-0 text-micro"
                       list="togo-groups-scene"
                       value={p.group ?? ''}
                       onChange={(e) => setPiece(i, { group: e.target.value })}
@@ -886,14 +908,14 @@ function AddModelModal({
                       aria-label={`Grupo de ${p.name}`}
                     />
                     <input
-                      className="input h-7 min-w-0 flex-1 basis-28 py-0 text-[11px]"
+                      className="input h-7 min-w-0 flex-1 basis-28 py-0 text-micro"
                       value={p.category ?? ''}
                       onChange={(e) => setPiece(i, { category: e.target.value })}
                       placeholder="Categoría"
                       aria-label={`Categoría de ${p.name}`}
                     />
                     <input
-                      className="input h-7 min-w-0 flex-1 basis-28 py-0 text-[11px]"
+                      className="input h-7 min-w-0 flex-1 basis-28 py-0 text-micro"
                       list="togo-collections-scene"
                       value={p.collection ?? ''}
                       onChange={(e) => setPiece(i, { collection: e.target.value })}
@@ -911,13 +933,13 @@ function AddModelModal({
               {groupOptions.map((g) => <option key={g} value={g} />)}
             </datalist>
             <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-              <div className="flex-1">
-                <label className="label">Colección (para las filas en blanco)</label>
+              <label className="block flex-1">
+                <span className="label">Colección (para las filas en blanco)</span>
                 <input className="input" list="togo-collections-scene" value={collection} onChange={(e) => setCollection(e.target.value)} placeholder="Togo" />
                 <datalist id="togo-collections-scene">
                   {collections.map((c) => <option key={c} value={c} />)}
                 </datalist>
-              </div>
+              </label>
               <div className="flex items-center gap-2 shrink-0">
                 <button type="button" onClick={() => { setScene(null); setCollection(''); setStage('idle'); }} className="btn-ghost text-sm">Cancelar</button>
                 <button type="button" onClick={runImport} disabled={!scene.pieces.some((p) => p.include)} className="btn-primary text-sm disabled:opacity-50">

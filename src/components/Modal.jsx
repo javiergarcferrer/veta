@@ -134,7 +134,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
           <h2 className="font-display text-lg font-semibold text-ink-900 break-words leading-snug pr-3 min-w-0">{title}</h2>
           <button
             onClick={onClose}
-            className="btn-icon -mr-1.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 transition-colors"
+            className="btn-icon -mr-1.5 text-ink-500 hover:text-ink-600 hover:bg-ink-100 transition-colors"
             aria-label="Cerrar"
           >
             <X size={18} aria-hidden />

@@ -8,8 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && npm run typecheck:names && npm run typecheck:functions",
-    "typecheck:names": "tsc -p tsconfig.names.json --noEmit --pretty false 2>&1 | grep 'TS2304' && echo 'UNBOUND NAMES in src (see above)' && exit 1 || echo 'src: no unbound names'",
-    "typecheck:functions": "tsc -p tsconfig.functions.json --noEmit --pretty false 2>&1 | grep 'TS2304' && echo 'UNBOUND NAMES in supabase/functions (see above)' && exit 1 || echo 'functions: no unbound names'",
+    "typecheck:names": "node scripts/checkUnboundNames.mjs names",
+    "typecheck:functions": "node scripts/checkUnboundNames.mjs functions",
     "test": "node --import tsx --test tests/*.test.js"
   },
   "dependencies": {

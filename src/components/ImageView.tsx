@@ -169,7 +169,7 @@ export default function ImageView({ id, fallbackUrl = null, alt = '', className 
 
   if (missing || !url || errored) {
     return (
-      <div className={`flex items-center justify-center bg-ink-100 text-ink-400 ${placeholderClassName || className}`}>
+      <div className={`flex items-center justify-center bg-ink-100 text-ink-500 ${placeholderClassName || className}`}>
         <ImageOff size={18} />
       </div>
     );
@@ -205,7 +205,7 @@ export default function ImageView({ id, fallbackUrl = null, alt = '', className 
       />
       {preview && createPortal(
         <div
-          className="fixed z-[80] pointer-events-none rounded-lg overflow-hidden bg-white shadow-2xl border border-ink-200"
+          className="fixed z-[80] pointer-events-none rounded-lg overflow-hidden bg-white shadow-pop border border-ink-200"
           style={{ left: preview.left, top: preview.top, width: preview.width }}
         >
           <img src={url} alt={alt} className="block w-full h-auto max-h-[70vh] object-contain bg-white" />

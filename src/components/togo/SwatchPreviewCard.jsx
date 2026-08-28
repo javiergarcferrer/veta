@@ -68,7 +68,7 @@ export function SwatchPreviewBody({ preview, row = false }) {
       }`}>
         {bare && (
           <span className="absolute inset-0 grid place-items-center" aria-hidden>
-            <Palette size={30} className="text-ink-300" />
+            <Palette size={30} className="text-ink-400" />
           </span>
         )}
         {preview.color
@@ -101,7 +101,7 @@ export function SwatchPreviewBody({ preview, row = false }) {
       </span>
       <div className={row ? 'min-w-0 flex-1' : 'px-0.5 pt-1.5 pb-0.5'}>
         <div className="truncate text-xs font-semibold leading-tight text-ink-800">{preview.title}</div>
-        {preview.meta && <div className="mt-px truncate text-[10px] leading-snug text-ink-400">{preview.meta}</div>}
+        {preview.meta && <div className="mt-px truncate text-micro leading-snug text-ink-500">{preview.meta}</div>}
       </div>
     </div>
   );

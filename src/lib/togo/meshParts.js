@@ -19,46 +19,19 @@
  * set and are unit-testable.
  */
 
-/** The taggable roles, in display order. `base` prices via the model's own
- *  product_root; cushion/bolster/armCushion via parts.roots[role]; exterior/
- *  interior are MATERIALIZATION ZONES and `structure` is a FINISH-ONLY part
- *  (both below) — none of those three ever price at all. */
-export const PART_ROLES = ['base', 'structure', 'exterior', 'interior', 'cushion', 'bolster', 'armCushion'];
+// The slot KINDS and the three role lists they derive from live in their own
+// module (`./partKinds.js`) — `meshParts.js` is a size-ledger file, and the Deno
+// side already keeps them in one place too. Re-exported here so every existing
+// consumer of these names is untouched.
+export {
+  PART_KINDS, PART_ROLES, MATERIALIZATION_ROLES, UNPRICED_ROLES, BILLED_ROLES,
+  partKind, rolesOfKind, billsMoney, takesMaterial,
+} from './partKinds.js';
+import { BILLED_ROLES, PART_ROLES, UNPRICED_ROLES } from './partKinds.js';
 
-/**
- * Materialization ZONES — the Prado ottomans' two-fabric split. The ottoman's
- * ONE graded SKU covers the COMPLETE materialization (verified against the
- * catalog: 11370050/100/200/300 are single A–X ladders, no bicolor SKU), with
- * two modes: MONOCOLOR (every zone rides the base fabric — the default, no
- * picks) or BICOLOR (the exterior body and the interior plinth each pick a
- * fabric). A zone therefore NEVER bills as its own line; a bicolor pick can
- * only re-grade the base SKU (dearest zone wins — see materializedBase in the
- * configurator VM).
- */
-export const MATERIALIZATION_ROLES = ['exterior', 'interior'];
 
-/**
- * The roles that can NEVER bill — the ONE question `partCount` asks.
- *
- * Two different reasons, one answer, which is exactly why they must be asked
- * as one thing: a materialization ZONE is already INSIDE the base SKU (that
- * single ladder is the complete materialization), while a STRUCTURE (patas,
- * marcos, bases en acero o lacado negro) is a FINISH choice on metal — same
- * piece, same SKU, same price, whichever lacquer the client picks (owner,
- * 2026-07: «se eligen pero no cambian el precio»). Code that asks "does this
- * bill?" reads this list, so the next price-neutral role can't leak into the
- * billed slots — the studio's BILLED_SLOTS derives itself from it.
- */
-export const UNPRICED_ROLES = [...MATERIALIZATION_ROLES, 'structure'];
 
-/**
- * The BILLED roles — the slots a model can bind a part SKU to. Derived from the
- * role list MINUS `base` (it bills as the model itself) and the price-neutral
- * ones, so a new unpriced role can never leak in as an extra billable slot.
- * The studio reads it as `BILLED_SLOTS`; the join/split planner below reads it
- * to know which `roots`/`counts` a vacated role must give back.
- */
-export const BILLED_ROLES = PART_ROLES.filter((r) => r !== 'base' && !UNPRICED_ROLES.includes(r));
+
 
 /** Spanish labels the pickers/chips render (the app copy is Spanish-first). */
 export const PART_LABELS = {

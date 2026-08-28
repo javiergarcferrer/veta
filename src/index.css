@@ -134,6 +134,91 @@
     /* card sheen (lit-from-above) + stat-card inset top highlight */
     --card-sheen: linear-gradient(180deg, #ffffff 0%, #fcfbf9 100%);
     --card-hi: rgba(255, 255, 255, 0.75);
+
+    /* ── DATA-VIZ PALETTE ────────────────────────────────────────────────
+       Chart color is COMPUTED, not picked. These slots were validated with
+       the dataviz validator against THIS app's surfaces (light #ffffff,
+       dark #201e1a) — lightness band, chroma floor, CVD separation under
+       protanopia/deuteranopia, normal-vision floor, contrast. Re-run it
+       before changing any value here; never eyeball a chart color.
+
+       Categorical = IDENTITY (which series). Eight hues in a FIXED order,
+       assigned in sequence and never cycled — the order is the CVD-safety
+       mechanism, not a mood. Slot 1 is the brand terracotta so the app's
+       own color leads every chart. Light run: worst adjacent CVD ΔE 9.1,
+       normal-vision 19.6. A 9th series never gets a generated hue; it folds
+       into «Otros» or the chart facets.
+
+       Slots 3/4/5 sit below 3:1 on the light surface BY DESIGN (same as the
+       reference palette) — the relief rule applies: anything wearing them
+       ships visible direct labels or the table view. `<ChartFrame>` gives
+       every chart a table twin, which is what pays that debt. */
+    --viz-1: 199 107 41;   /* terracotta — brand, slot 1 */
+    --viz-2: 42 120 214;   /* blue    */
+    --viz-3: 27 175 122;   /* aqua    */
+    --viz-4: 237 161 0;    /* yellow  */
+    --viz-5: 232 123 164;  /* magenta */
+    --viz-6: 0 131 0;      /* green   */
+    --viz-7: 74 58 167;    /* violet  */
+    --viz-8: 227 73 72;    /* red     */
+
+    /* Ordinal/sequential = ORDER and MAGNITUDE, one hue, light→dark. Funnel
+       stages, tiers, age bands, heatmap cells. Validated --ordinal: monotone
+       lightness, every adjacent ΔL ≥ 0.06, light end 2.06:1 on white. */
+    --viz-seq-1: 232 167 109;
+    --viz-seq-2: 217 136 63;
+    --viz-seq-3: 199 107 41;
+    --viz-seq-4: 168 86 32;
+    --viz-seq-5: 125 62 28;
+
+    /* Status = STATE. A fixed, reserved scale — never "series 4", always
+       shipped with an icon + label so meaning never rides on hue alone. */
+    --viz-good: 12 163 12;
+    --viz-warning: 250 178 25;
+    --viz-serious: 236 131 90;
+    --viz-critical: 208 59 59;
+    /* The destructive FILL — a third role the status family did not have. The
+       four above are MARK tones (3:1, for a dot or a bar) and the `-ink` four
+       are TEXT; a solid button that carries white text is neither, and it was
+       reaching for Tailwind `red-600` (#dc2626). Screenshotted beside the
+       terracotta: the only pure red on a clay page, and in dark mode the
+       brightest object on the screen. This brick is the same family as the
+       brand and MORE legible — white measures 5.99:1 on it against 4.83:1 on
+       red-600. One value for both themes: a solid fill's contrast with its own
+       white label does not depend on the page behind it. */
+    --danger: 179 55 47;
+
+    /* ── The TEXT step of the status family ──────────────────────────────
+       The four slots above are MARK tones: they clear the 3:1 that SC
+       1.4.11 asks of a dot, a bar, a rule or an arrowhead. `--viz-good`
+       measures 3.36:1 on the light surface, which makes it correct for the
+       triangle in a delta and ILLEGAL for the number beside it — a figure
+       is text and owes the 4.5:1 of SC 1.4.3.
+       So valence gets two steps, exactly like the status pills do, and the
+       call site says which one it means: `text-status-good` paints the mark,
+       `text-status-good-ink` paints the figure. Measured on this app's own
+       surfaces: 5.48:1 and 6.47:1 light, 8.66:1 and 6.18:1 dark.
+       Four ink steps, because a figure carries four kinds of emphasis and
+       the accounting boards were spelling each one with a raw Tailwind class
+       (six of `text-emerald-700`, seven of `text-rose-600`, five of
+       `text-sky-700`, two of `text-amber-700`, plus a `text-rose-700` that
+       means the same as the `-600`). `info` is the odd one and is deliberate:
+       it has no MARK twin because it is not a state — it is "look at this
+       figure", the emphasis a treasury band puts on cash. `serious` gets no
+       ink step; it is a band on a scale, and a band ships as a
+       `.status-pill-*` (a measured tint + foreground pair), which is the
+       right shape for it. */
+    --viz-good-ink: 4 120 87;
+    --viz-critical-ink: 185 28 28;
+    --viz-warning-ink: 180 83 9;
+    --viz-info-ink: 3 105 161;
+
+    /* Chart chrome: recessive by law. Solid hairlines one step off the
+       surface — never dashed (dashing reads as "projection" or "threshold"
+       when it is just a grid). */
+    --viz-grid: 232 231 227;
+    --viz-axis: 207 204 196;
+    --viz-muted: 135 131 116;
   }
 
   .dark {
@@ -157,6 +242,64 @@
     --surface-2: 40 37 32;
     --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 55%);
     --card-hi: rgba(255, 255, 255, 0.05);
+
+    /* ── DATA-VIZ PALETTE (dark) ─────────────────────────────────────────
+       SELECTED for the dark surface (#201e1a), never an automatic flip of
+       the light values — the same eight hues re-stepped into the dark
+       lightness band (OKLCH L 0.48–0.67) and re-validated as a set: worst
+       adjacent CVD ΔE 8.4, normal-vision 19.3, and all eight clear 3:1 on
+       the dark surface (so dark mode carries no contrast debt at all).
+
+       Slot 1 is `#c47c55`, one step down the clay ladder from the dark
+       `--brand-500`: the brand step itself measures L 0.704 and falls
+       OUTSIDE the band, so it is snapped to the nearest passing step. That
+       is the snap-to-passing rule, not a taste call. */
+    --viz-1: 196 124 85;   /* terracotta — brand, slot 1 */
+    --viz-2: 57 135 229;   /* blue    */
+    --viz-3: 25 158 112;   /* aqua    */
+    --viz-4: 201 133 0;    /* yellow  */
+    --viz-5: 213 81 129;   /* magenta */
+    --viz-6: 0 131 0;      /* green   */
+    --viz-7: 144 133 233;  /* violet  */
+    --viz-8: 230 103 103;  /* red     */
+
+    /* Ordinal/sequential, dark: the ramp's ANCHOR FLIPS — the dark end sits
+       nearest the surface and the light end carries the magnitude.
+       Re-validated --ordinal: monotone, adjacent ΔL ≥ 0.06, near end 2.78:1. */
+    --viz-seq-1: 140 86 56;
+    --viz-seq-2: 184 116 80;
+    --viz-seq-3: 214 138 102;
+    --viz-seq-4: 233 173 132;
+    --viz-seq-5: 245 205 175;
+
+    /* Status is MODE-INVARIANT — the same four steps clear 3:1 on the dark
+       surface and stay distinct from the dark categorical slots. */
+    --viz-good: 12 163 12;
+    --viz-warning: 250 178 25;
+    --viz-serious: 236 131 90;
+    --viz-critical: 208 59 59;
+    /* The destructive FILL — a third role the status family did not have. The
+       four above are MARK tones (3:1, for a dot or a bar) and the `-ink` four
+       are TEXT; a solid button that carries white text is neither, and it was
+       reaching for Tailwind `red-600` (#dc2626). Screenshotted beside the
+       terracotta: the only pure red on a clay page, and in dark mode the
+       brightest object on the screen. This brick is the same family as the
+       brand and MORE legible — white measures 5.99:1 on it against 4.83:1 on
+       red-600. One value for both themes: a solid fill's contrast with its own
+       white label does not depend on the page behind it. */
+    --danger: 179 55 47;
+    /* Text step, re-selected for the dark surface. The light inks are far too
+       dark on #201e1a — `text-emerald-700` measures 3.03:1 there, which is how
+       every accented figure on the accounting boards was failing AA in dark
+       mode while passing in light. Re-selected: 8.66 / 6.18 / 9.97 / 7.77:1. */
+    --viz-good-ink: 52 211 153;
+    --viz-critical-ink: 251 113 133;
+    --viz-warning-ink: 251 191 36;
+    --viz-info-ink: 56 189 248;
+
+    --viz-grid: 44 42 38;
+    --viz-axis: 61 57 50;
+    --viz-muted: 122 116 104;
   }
 
   /* Pin a subtree to the LIGHT ramp regardless of the global theme. Two uses:
@@ -579,6 +722,34 @@
 }
 
 @layer base {
+  /* ── Numerals: a column of figures must line up ────────────────────────────
+     MEASURED, not stylistic. Lausanne's default figures are PROPORTIONAL —
+     advances, in font units: 0=1245, 1=890, 4=1175, 7=1087. A "1" is 29%
+     narrower than a "0", so in an unmarked column of money every row starts
+     its digits at a different offset and the thousands place stops being a
+     place. `tnum` sets all ten to 1280 and the column becomes a grid.
+
+     That matters more than it looks. Comparing magnitudes down a column is
+     not reading — it is a length judgement on the digit block, the most
+     accurate elementary perceptual task there is (Cleveland & McGill 1984)
+     and one that costs no working memory. Proportional figures break it: the
+     eye has to parse each number as a word instead of measuring it as a bar.
+
+     So the rule is STRUCTURAL, not per-call-site: a `<table>` is a set of
+     figures BY DEFINITION, and inherits tabular figures for everything inside
+     it. Numbers that are read one at a time inside a sentence keep the
+     proportional default, which is what proportional figures are for. Figures
+     outside a table that are still read as a set (a KPI row, a grid of tiles,
+     a totals dock) opt in with `.num` — that is what the quant primitives in
+     `components/quant` carry.
+
+     Both faces ship the feature (verified with fontkit: Lausanne and Söhne
+     each expose `tnum` and `zero`), so this is a real substitution, not a
+     no-op the browser silently drops. */
+  table { font-variant-numeric: tabular-nums; }
+}
+
+@layer base {
   /* Vercel/Linear style keyboard focus ring — invisible until tabbed. In the
      terracotta brand color so keyboard focus reads as a deliberate brand cue
      instead of a plain dark box. */
@@ -601,7 +772,9 @@
   .btn-primary   { @apply btn bg-ink-900 text-ink-50 shadow-sm hover:bg-ink-800 hover:shadow-md hover:-translate-y-px active:bg-ink-700 active:shadow-sm active:translate-y-0; }
   .btn-secondary { @apply btn bg-surface text-ink-900 border border-ink-200 shadow-xs hover:bg-ink-50 hover:border-ink-300 hover:shadow-sm hover:-translate-y-px active:bg-ink-100 active:translate-y-0; }
   .btn-ghost    { @apply btn text-ink-700 hover:bg-ink-100 hover:shadow-xs hover:-translate-y-px active:bg-ink-200 active:translate-y-0; }
-  .btn-danger   { @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-md hover:-translate-y-px active:bg-red-800 active:translate-y-0; }
+  /* Brightness rather than a darker shade on hover: `red-700`/`red-800` walk
+     out of the clay family the fill was just brought into. */
+  .btn-danger   { @apply btn bg-danger text-white shadow-sm hover:brightness-110 hover:shadow-md hover:-translate-y-px active:brightness-95 active:translate-y-0; }
   /* Brand CTA — the terracotta primary action. A lit clay gradient surface
      with a warm glow so it reads as the single loudest control on screen;
      brightness nudges replace flat hover/active color swaps on the gradient. */
@@ -613,17 +786,38 @@
   .btn-icon {
     @apply inline-flex items-center justify-center w-9 h-9 coarse:w-11 coarse:h-11 rounded-md text-ink-700 hover:bg-ink-100 active:bg-ink-200 active:scale-[0.94] transition-[background-color,transform] duration-100 disabled:opacity-50 disabled:pointer-events-none select-none;
   }
-  /* Destructive icon button — quiet at rest (ink-300), turns red on intent.
-     One recipe for every per-row delete/detach across Quotes, Orders and
-     OrderDetail, so the danger affordance reads identically everywhere. */
+  /* The SMALL icon button, for rows too tight to give 36px of visible chrome —
+     a timeline entry, a sheet cell, a filter chip's ×. The glyph stays small;
+     the TARGET does not. `before:` paints an invisible 24×24 hit area centred on
+     the button (44×44 once a coarse pointer is detected), because what a finger
+     hits is the target, not what the eye sees.
+     WCAG 2.2 SC 2.5.8 puts the AA floor at 24×24 CSS px; Apple asks 44pt and
+     Material 48dp. Before 2026-08-21 thirty-eight controls hand-rolled a bare
+     `p-1` and landed at 20–23px — below the floor, and bypassing `.btn-icon`,
+     which had solved this since it was written. tests/targetSize.test.js keeps
+     them from drifting back. */
+  .btn-icon-sm {
+    @apply relative inline-flex items-center justify-center rounded p-1 transition-[background-color,color] duration-100 disabled:opacity-50 disabled:pointer-events-none
+      before:absolute before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2
+      before:w-6 before:h-6 coarse:before:w-11 coarse:before:h-11 before:content-[''];
+  }
+
+  /* Destructive icon button — quiet at rest, turns red on intent. One recipe
+     for every per-row delete/detach across Quotes, Orders and OrderDetail, so
+     the danger affordance reads identically everywhere.
+     It rested on ink-300 until 2026-08-21 — 2.13:1 on the canvas, under even
+     the 3:1 floor WCAG 1.4.11 sets for controls. The destructive button on
+     every row was the least visible thing on that row until you happened to
+     hover it. ink-500 is 4.95:1 and still plainly quieter than the ink-900 the
+     row's own text carries; "quiet" was never supposed to mean "invisible". */
   .btn-icon-danger {
-    @apply btn-icon text-ink-300 hover:text-red-600 hover:bg-red-50 active:text-red-700 active:bg-red-100;
+    @apply btn-icon text-ink-500 hover:text-danger hover:bg-danger/10 active:text-danger active:bg-danger/20;
   }
 
   /* Inputs. Same coarse-pointer touch-target treatment as buttons. The
      16px-on-mobile rule above keeps Safari from auto-zooming on focus. */
   .input {
-    @apply w-full rounded-md border border-ink-200 bg-surface px-3 py-2 min-h-9 coarse:min-h-11 text-sm text-ink-900 placeholder:text-ink-400 shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-ink-300 focus:border-brand-500 focus:outline-none focus:shadow-focus;
+    @apply w-full rounded-md border border-ink-200 bg-surface px-3 py-2 min-h-9 coarse:min-h-11 text-sm text-ink-900 placeholder:text-ink-500 shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-ink-300 focus:border-brand-500 focus:outline-none focus:shadow-focus;
     caret-color: rgb(var(--brand-500));
   }
   /* A `type="search"` input whose component already renders its own clear (×)
@@ -643,7 +837,7 @@
     width: 0;
     margin: 0;
   }
-  .label { @apply block font-display text-[11px] font-medium text-ink-500 mb-1.5 uppercase tracking-[0.06em]; }
+  .label { @apply block font-display text-micro font-medium text-ink-500 mb-1.5 uppercase tracking-[0.06em]; }
   /* Card = the resting elevated surface. Softer 2xl radius (warm editorial),
      a faint top-down gradient sheen (lit-from-above), a warm hairline border,
      and the warm layered `soft` shadow. This is the tonal step above the
@@ -727,7 +921,10 @@
     height: 95%;
     background: radial-gradient(closest-side, rgba(199, 107, 41, 0.08), transparent 72%);
   }
-  .stat-value { @apply font-display text-2xl leading-none font-semibold tabular-nums tracking-tight text-ink-900; }
+  /* The headline figure of a KPI tile. NO colour: the tone comes from the
+     figure's own valence (components/quant/Figures maps it to the measured
+     `--viz-*-ink` steps), and a hard-coded ink here would win over it. */
+  .stat-value { @apply font-display text-2xl leading-none font-semibold tracking-tight; font-variant-numeric: tabular-nums; }
   .icon-tile { @apply w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ring-black/5 shadow-xs; }
   .tint-brand   { background-image: linear-gradient(135deg, #f7e7d4, #eecbab); color: #7d3e1c; }
   .tint-emerald { background-image: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #047857; }
@@ -752,7 +949,7 @@
     @apply h-px flex-1;
     background: linear-gradient(90deg, theme('colors.ink.200'), transparent);
   }
-  .kbd   { @apply rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-[10px] font-mono text-ink-600; }
+  .kbd   { @apply rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 text-micro font-mono text-ink-600; }
   .badge { @apply inline-flex items-center rounded-md bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-700; }
   .badge-brand { @apply inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700; }
   /* Chip — the small uppercase micro-pill used for line-item status
@@ -766,7 +963,7 @@
      while still collapsing the 10-line shape boilerplate to one token.
      Distinct from `.badge` (rounded-md, sentence-case) by being a pill in
      tracked small-caps. */
-  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-semibold uppercase tracking-[0.08em] transition-colors; }
   /* Interactive chip — a .chip-sized control that is a BUTTON (the quote
      editor's Opcional / Alternativa / family toggles). Deliberately NOT the
      .chip pill: actions must read as buttons (Shopify school) — sentence
@@ -774,7 +971,7 @@
      badges stay small-caps pills. Toggle call sites paint their ON state
      (e.g. `text-brand-700 bg-brand-50 border-brand-200`); the OFF state is
      this base. Coarse-pointer floor so a thumb can actually hit it. */
-  .chip-action { @apply inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-surface px-2 py-1 text-[11px] font-medium text-ink-600 shadow-xs transition-colors hover:border-ink-300 hover:bg-ink-50 hover:text-ink-900 active:bg-ink-100 coarse:min-h-11 coarse:px-3; }
+  .chip-action { @apply inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-surface px-2 py-1 text-micro font-medium text-ink-600 shadow-xs transition-colors hover:border-ink-300 hover:bg-ink-50 hover:text-ink-900 active:bg-ink-100 coarse:min-h-11 coarse:px-3; }
   /* Tab pill — the in-page tab switcher of the accounting module (Ledger,
      Facturación, Gastos/606, Estados, CxC/CxP). Compose with .btn:
      `btn tab-pill` at rest, `btn tab-pill-active` for the open tab. */
@@ -822,22 +1019,35 @@
      five different surfaces stitched together.
      =========================================================== */
 
-  /* ── Type scale ──────────────────────────────────────────────
-     Canonical ladder. Prefer these roles over arbitrary text-[Npx]
-     sizes, which had drifted to eight different values across the app:
-       Display    text-2xl / text-3xl   page + quote titles      ▸ Söhne
-       Title      text-lg               card / dialog titles      ▸ Söhne
-       Subtitle   text-base             product / entity names    ▸ Söhne
-       Body       text-sm               default running text  ← DEFAULT
-       Meta       text-xs               secondary / helper text
-       Micro      text-[11px]           dense numeric, captions
-       Eyebrow    .eyebrow              small-caps section label  ▸ Söhne
-       Eyebrow·xs .eyebrow-xs           dense in-component label  ▸ Söhne
-     The named Tailwind sizes are exact equivalents of the old arbitrary
-     ones — text-xs = 12px, text-sm = 14px, text-base = 16px, text-lg =
-     18px — so always use the named token, never text-[12px]/[14px]/etc.
-     9 / 10 / 11 / 13 / 15px have no named equivalent and remain as
-     deliberate in-between steps (the eyebrow primitives cover 10/11).
+  /* ── Type scale — a CLOSED ladder ────────────────────────────
+     Eight rungs, each with one job. Nothing else is a size:
+       Display    text-3xl (30)   the one hero figure on a page  ▸ Söhne
+                  text-2xl (24)   page + quote titles, KPI value ▸ Söhne
+       Section    text-xl  (20)   section headline               ▸ Söhne
+       Title      text-lg  (18)   card / dialog titles           ▸ Söhne
+       Subtitle   text-base(16)   product / entity names         ▸ Söhne
+       Body       text-sm  (14)   running text, table data  ← DEFAULT
+       Meta       text-xs  (12)   secondary / helper text
+       Micro      text-micro(11)  dense numeric, captions, table meta
+       Eyebrow    .eyebrow        small-caps section label       ▸ Söhne
+       Eyebrow·xs .eyebrow-xs     dense in-component label       ▸ Söhne
+
+     WHY A CLOSED SET, and why 13 and 15 are gone. A rung earns its
+     place by being TELLABLE APART; if two sizes read the same, the
+     reader gets no hierarchy from them and the codebase gets two
+     values to keep in step. 13 against 14 is a 7% difference — under
+     the just-noticeable difference for type at reading sizes — so it
+     never signalled anything, it only drifted. The app carried 10 /
+     11 / 12 / 12.5 / 13 / 14 / 15px as arbitrary `text-[Npx]` in
+     1,602 places; they are folded onto the rungs above (11→micro,
+     12 & 12.5→xs, 13 & 14→sm, 15→base) and `tests/designSystem.test.js`
+     keeps the set closed. `text-[Npx]` is now a test failure, not a
+     style choice; `.eyebrow-xs` (10px, all-caps) is the one exemption
+     and it is a documented primitive, not an arbitrary size.
+
+     `text-micro` is declared in tailwind.config.js as a BARE size (no
+     paired line-height) so it is an exact rename of the `text-[11px]`
+     it replaced — naming a size must not silently re-lead the app.
 
      ── Typographic identity (two faces, complementary jobs) ─────
      Every HEADING role (Display / Title / Subtitle / Eyebrow — page
@@ -861,8 +1071,46 @@
      11px contextual/section label; `.eyebrow-xs` is the denser 10px
      in-component label (pricing-cell captions, popover headers); add
      `text-brand-700` to either for the terracotta variant. */
-  .eyebrow { @apply font-display text-[11px] font-medium uppercase tracking-wider text-ink-500; }
+  .eyebrow { @apply font-display text-micro font-medium uppercase tracking-wider text-ink-500; }
+  /* THE ONE DOCUMENTED EXEMPTION to the 11px type floor (tests/typeContrast.test.js).
+     Every other sub-11px size in the app was raised on 2026-08-21; this one
+     stays at 10 because it is ALL CAPS, semibold and letterspaced. Uppercase
+     has no x-height penalty — every letter is full cap-height — so a tracked
+     10px cap reads at roughly the size of 13px lowercase, and the weight puts
+     its strokes back in the eye's good range. It is also a label, never
+     content. If you find yourself wanting a second exemption, raise the floor
+     instead. */
   .eyebrow-xs { @apply font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500; }
+
+  /* ── The numeric roles ───────────────────────────────────────
+     Type has a ladder; QUANTITY has a ladder of its own, and it is
+     shorter, because a figure only ever does one of four jobs.
+
+       .num       a figure read as part of a SET — a KPI row, a grid
+                  of tiles, a totals dock, anything outside a <table>
+                  (tables get tabular figures structurally, see base).
+       .num-col   a numeric TABLE COLUMN: right-aligned so the digit
+                  places stack, tabular so they stack straight. Units
+                  belong in the header, never repeated down the rows.
+       .num-neg   a NEGATIVE figure. Colour is the second cue, never
+                  the only one — the minus sign stays, because red is
+                  invisible to ~8% of men and means "danger" to the
+                  rest even when the number is merely a debit.
+       .code      an IDENTIFIER, not a quantity: NCF/e-CF, RNC,
+                  container ID, product reference. Tabular so codes of
+                  one format align, SLASHED ZERO so `0` can never be
+                  read as `O` — these are strings a dealer retypes
+                  into DGII forms and carrier trackers, where one
+                  misread glyph costs a filing.
+
+     Not on this list, deliberately: a "big number" class. How LOUD a
+     figure is belongs to the type ladder (text-2xl / text-lg / …) and
+     to the quant primitives that compose the two; duplicating it here
+     is how a design system grows two answers to one question. */
+  .num     { font-variant-numeric: tabular-nums; }
+  .num-col { @apply text-right; font-variant-numeric: tabular-nums; }
+  .num-neg { @apply text-status-critical-ink; font-variant-numeric: tabular-nums; }
+  .code    { @apply font-mono; font-variant-numeric: tabular-nums slashed-zero; }
 
   /* Section header inside a card — used 12+ times across
      Dashboard, OrderDetail, ProfessionalDetail, Settings,
@@ -903,16 +1151,42 @@
        active    emerald   currently signed in / working
        inactive  ink-100   muted, off the team
    */
-  .status-pill { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium; }
+  /* The status vocabulary. TWO levers, not one — hue says WHICH KIND of state,
+     fill weight says HOW FAR ALONG. A pale tint is a state you are still
+     waiting on; a SOLID fill is a state that has actually landed. That second
+     lever is what lets `sent` and `transit` share the blue family (both "in the
+     pipeline") while staying instantly separable in a scanned column: a
+     lightness difference survives peripheral vision, a nudge between two pale
+     tints does not.
+     NO TWO STATES INSIDE ONE STATUS MAP MAY SHARE A VARIANT — pinned by
+     tests/statusPills.test.js. Before 2026-08-21 the Pedidos column ran seven
+     stages through five appearances: Colocado and En ruta were both `sent`, and
+     Confirmado and Recibido were both emerald tint (`accepted` and `active` are
+     the same two declarations). Those are the two questions that column exists
+     to answer — has it left the factory, is it in the warehouse — so colour was
+     actively claiming "same" about the app's most operational distinction.
+     Every text/tint pair here clears 4.5:1 at the pill's 11px; `deposito` used
+     to sit at 3.77:1 on emerald-600 (the LOUDEST pill was the failing one) and
+     now rides emerald-700 at 5.48:1. */
+  .status-pill { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-micro font-medium; }
   .status-pill-draft    { @apply bg-ink-100 text-ink-700; }
   .status-pill-sent     { @apply bg-blue-100 text-blue-800; }
   .status-pill-accepted { @apply bg-emerald-100 text-emerald-800; }
-  .status-pill-deposito { @apply bg-emerald-600 text-white; }
   .status-pill-declined { @apply bg-red-100 text-red-700; }
   .status-pill-archived { @apply bg-ink-100 text-ink-500; }
   .status-pill-pending  { @apply bg-amber-100 text-amber-800; }
   .status-pill-active   { @apply bg-emerald-100 text-emerald-800; }
   .status-pill-inactive { @apply bg-ink-100 text-ink-500; }
+  /* En ruta — the same blue family as Colocado (still in the pipeline), one
+     full step darker so the two never read as one blob down a column. */
+  .status-pill-transit  { @apply bg-blue-600 text-white; }
+  /* IT LANDED. One rule, two names, on purpose: the deposit hitting the account
+     and the container hitting the warehouse are the same kind of event on the
+     two sides of the business, so they wear the same solid emerald. They live
+     in different maps (quote stages vs order statuses) and never share a
+     column, which is why sharing a variant here is vocabulary, not collision. */
+  .status-pill-deposito,
+  .status-pill-received { @apply bg-emerald-700 text-white; }
   /* Dark mode: the light Tailwind tints (blue-100 / emerald-100 …) glare on a
      dark canvas, so each maps to a deep, desaturated tint with a bright, AA
      foreground. draft / archived / inactive ride the ink ramp and flip on their
@@ -922,7 +1196,72 @@
   .dark .status-pill-active   { background-color: rgb(22 39 30);  color: rgb(110 231 168); }
   .dark .status-pill-declined { background-color: rgb(42 20 24);  color: rgb(251 113 133); }
   .dark .status-pill-pending  { background-color: rgb(42 33 16);  color: rgb(251 191 36); }
-  .dark .status-pill-deposito { background-color: rgb(5 120 87);  color: #ffffff; }
+  .dark .status-pill-deposito,
+  .dark .status-pill-received { background-color: rgb(5 120 87);  color: #ffffff; }
+  .dark .status-pill-transit  { background-color: rgb(29 78 216); color: #ffffff; }
+
+  /* ===========================================================
+     THE NOTICE BAND — a sentence the page needs you to read before
+     you act on what is under it. §13's "one recipe per job", applied
+     to the last job in the app that had none.
+
+     126 of these were hand-typed across 62 files and no two agreed:
+     three radii (`rounded`, `-md`, `-lg`), five paddings (`px-2 py-1`
+     through `p-3`), three type sizes (micro / xs / sm), and both
+     `-700` and `-800` foregrounds inside the SAME valence. The tell
+     that it was drift and not intent: 59 of them had no `dark:`
+     anything, so a light amber strip stayed light amber on the dark
+     canvas — the brightest thing on the screen, saying "careful".
+
+     THE FOREGROUND IS THE HOUSE INK, not a Tailwind shade. §6 already
+     fought this for figures ("95 figure lines moved onto the tokens")
+     because `text-amber-700` measures ~3:1 in dark mode. `status-*-ink`
+     is a CSS variable that swaps with the theme, so the band needs no
+     `dark:` variant on its text at all — which is precisely why the
+     hand-typed ones kept forgetting it. Measured ON THE TINT (not on
+     the page), both grounds:
+
+       warn    amber   4.84:1 light   9.71:1 dark
+       danger  red     5.91          6.26
+       success emerald 5.21          8.40
+       info    sky     5.57          7.33
+
+     All clear 4.5:1, so the band is legal down to the 11px floor.
+     Pinned by `tests/notice.test.js`, which recomputes every one of
+     those eight numbers rather than pattern-matching a shade. */
+  /* THE SPINE (`border-l-[3px]`). Screenshotted side by side before it was
+     adopted: with a 1px `-200` edge all round, the band reads as a faint
+     highlight someone forgot to remove — the tint is a 2–4 % step off white
+     and the border barely darker. The 3 px bar in the valence's MARK tone is
+     the one high-contrast element, so the band gets weight AND its valence is
+     legible from the bar before the pale fill is parsed. The mark tones are
+     3:1 — illegal for text, correct for a bar (SC 1.4.11), which is exactly
+     what §6 reserves them for. They are also theme-invariant, so the spine
+     needs no dark rule. */
+  .notice {
+    @apply flex items-start gap-2.5 rounded-lg border border-l-[3px] px-3 py-2 text-sm;
+  }
+  /* Dense variant — inside a card that is already tight (a line item, a
+     drawer footer). Smaller type, tighter box; SAME colours, because a
+     quieter warning is still a warning. */
+  .notice-sm { @apply gap-1.5 rounded-md px-2.5 py-1.5 text-xs; }
+  /* The spine is a RAW declaration, deliberately: `@apply border-l-*` and
+     `@apply border-*` set `border-left-color` and the `border-color`
+     shorthand, and Tailwind emits @apply'd utilities in ITS order, not the
+     order written — so the shorthand can land last and swallow the spine.
+     A raw property after the @apply wins by source order, every time. */
+  .notice-info    { @apply bg-sky-50     border-sky-200     text-status-info-ink;     border-left-color: rgb(var(--viz-info-ink)); }
+  .notice-success { @apply bg-emerald-50 border-emerald-200 text-status-good-ink;     border-left-color: rgb(var(--viz-good)); }
+  .notice-warn    { @apply bg-amber-50   border-amber-200   text-status-warning-ink;  border-left-color: rgb(var(--viz-warning)); }
+  .notice-danger  { @apply bg-red-50     border-red-200     text-status-critical-ink; border-left-color: rgb(var(--viz-critical)); }
+  /* Dark: the tint goes deep and translucent so the band reads as a
+     tinted pane of the page rather than a lit panel on top of it. The
+     foreground needs no rule — `status-*-ink` already swapped — and the
+     spine is re-asserted because `border-*-900/40` resets the shorthand. */
+  .dark .notice-info    { @apply bg-sky-950/40     border-sky-900/40;     border-left-color: rgb(var(--viz-info-ink)); }
+  .dark .notice-success { @apply bg-emerald-950/40 border-emerald-900/40; border-left-color: rgb(var(--viz-good)); }
+  .dark .notice-warn    { @apply bg-amber-950/40   border-amber-900/40;   border-left-color: rgb(var(--viz-warning)); }
+  .dark .notice-danger  { @apply bg-red-950/40     border-red-900/40;     border-left-color: rgb(var(--viz-critical)); }
 
   /* Auth card — Login + SetPassword centered cards. Same chrome
      as regular cards but with `p-8` for a generous breathing
@@ -1453,7 +1792,7 @@
 /* Permanent origin/destination labels: quiet, legible, no marker box. */
 .vmap-leaf .leaflet-tooltip.vmap-label {
   background: rgba(255,255,255,0.92); border: 1px solid theme('colors.ink.100');
-  border-radius: 6px; padding: 1px 6px; font-size: 10px; font-weight: 600;
+  border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 600;
   color: theme('colors.ink.700'); box-shadow: theme('boxShadow.soft');
   text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
 }
@@ -1468,6 +1807,19 @@
    Dropdown primitive (primitives/Dropdown) — the portaled panel's enter
    animation. Plain CSS so the keyframe is never purged.
    =================================================================== */
+/* The sidebar's active-row mark — a clay bar on the row's left edge. It grows
+   from the row's centre instead of appearing, so moving between nav rows reads
+   as the selection TRAVELLING down the column rather than two separate blinks.
+   Scale-only (a compositor property): no layout, no paint of its neighbours. */
+.nav-mark { animation: nav-mark 0.2s cubic-bezier(0.16, 1, 0.3, 1); transform-origin: center; }
+@keyframes nav-mark {
+  from { opacity: 0; transform: scaleY(0.2); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-mark { animation: none; }
+}
+
 .dropdown-pop { animation: dropdown-pop 0.14s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes dropdown-pop {
   from { opacity: 0; transform: translateY(-4px) scale(0.98); }
@@ -1654,7 +2006,7 @@ body.togo-rams .hud-panel {
 body.togo-rams .btn { @apply font-normal transition-[background-color,color,border-color,transform] duration-150; }
 body.togo-rams .btn-primary,
 body.togo-rams .btn-brand {
-  @apply border bg-ink-900 text-white text-[11px] uppercase tracking-[0.08em] px-5;
+  @apply border bg-ink-900 text-white text-micro uppercase tracking-[0.08em] px-5;
   border-color: rgb(var(--ink-900));
   background-image: none;
   box-shadow: none;
@@ -1668,7 +2020,7 @@ body.togo-rams .btn-brand:hover {
   box-shadow: none;
 }
 body.togo-rams .btn-secondary {
-  @apply bg-white text-ink-900 text-[11px] uppercase tracking-[0.08em] px-5;
+  @apply bg-white text-ink-900 text-micro uppercase tracking-[0.08em] px-5;
   border-color: rgb(var(--ink-300));
   box-shadow: none;
 }
@@ -1821,6 +2173,43 @@ body.togo-rams .hud-panel-solid {
 button.hud-panel:focus-visible {
   outline-offset: -2px;
 }
+/* ── Adaptive HUD tools ─────────────────────────────────────────────────────
+   A tool that carries its WORD when the toolbar has room, and folds back to a
+   glyph when it doesn't. The fold is driven by a measurement, not a breakpoint:
+   the bar stamps data-compact="on" when it and the left-hand cluster would
+   collide (see `useToolbarFit` in TogoEmbed) — which is the only honest test,
+   since how much room the tools have depends on the collection name, on
+   whether undo/redo are showing, and on the locale (the German labels run half
+   again as long as the Spanish ones a breakpoint would have been tuned for).
+
+   Height stays put across both states so the row never jumps as it folds. */
+.hud-tool-labelled {
+  height: 2.5rem;
+  padding-inline: 0.75rem;
+  gap: 0.4rem;
+}
+@media (pointer: coarse) {
+  .hud-tool-labelled { height: 2.75rem; }
+}
+[data-compact='on'] .hud-tool-label { display: none; }
+[data-compact='on'] .hud-tool-labelled {
+  width: 2.5rem;
+  padding-inline: 0;
+  gap: 0;
+}
+@media (pointer: coarse) {
+  [data-compact='on'] .hud-tool-labelled { width: 2.75rem; }
+}
+/* The hairline that sets the destructive tool apart from the rest of the row —
+   the same separation the phone menu makes with its divider. */
+.hud-tool-sep {
+  width: 1px;
+  height: 1.5rem;
+  align-self: center;
+  margin-inline: 0.3rem;
+  background: rgb(var(--ink-300) / 0.9);
+}
+
 /* The hotbar scrolls without a visible track (a game inventory strip). */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

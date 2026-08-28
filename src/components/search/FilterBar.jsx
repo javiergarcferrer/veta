@@ -88,7 +88,7 @@ export default function FilterBar({ filters, activeFilters = {}, onFiltersChange
         <button
           type="button"
           onClick={() => onFiltersChange({})}
-          className="text-xs font-medium text-ink-400 underline-offset-2 transition-colors hover:text-ink-600 hover:underline active:scale-[0.97] min-h-[2.25rem] coarse:min-h-[2.75rem] inline-flex items-center px-1"
+          className="text-xs font-medium text-ink-500 underline-offset-2 transition-colors hover:text-ink-600 hover:underline active:scale-[0.97] min-h-[2.25rem] coarse:min-h-[2.75rem] inline-flex items-center px-1"
         >
           Limpiar todo
         </button>
@@ -139,12 +139,12 @@ function FilterPill({ filter, value, onChange }) {
           aria-expanded={open}
           className={`inline-flex items-center gap-1 py-1.5 min-h-[2rem] coarse:min-h-[2.5rem] ${active ? 'pl-2.5 pr-1' : 'px-2.5'}`}
         >
-          {!active && <CirclePlus size={12} className="text-ink-400" aria-hidden />}
+          {!active && <CirclePlus size={12} className="text-ink-500" aria-hidden />}
           <span className={active ? 'text-brand-400 font-normal' : 'font-medium'}>
             {filter.label}{active ? ':' : ''}
           </span>
           {active && <span className="font-semibold text-brand-800">{valueText}</span>}
-          {!active && <ChevronDown size={12} className="text-ink-400" aria-hidden />}
+          {!active && <ChevronDown size={12} className="text-ink-500" aria-hidden />}
         </button>
         {active && (
           <button
@@ -208,7 +208,7 @@ function FilterControl({ filter, value, onCommit, onDone, isDesktop }) {
       <div className="p-3 space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <span className="block text-[10px] text-ink-400 mb-1">Desde</span>
+            <span className="block text-micro text-ink-500 mb-1">Desde</span>
             <input
               type="date"
               className="input"
@@ -218,7 +218,7 @@ function FilterControl({ filter, value, onCommit, onDone, isDesktop }) {
             />
           </div>
           <div>
-            <span className="block text-[10px] text-ink-400 mb-1">Hasta</span>
+            <span className="block text-micro text-ink-500 mb-1">Hasta</span>
             <input
               type="date"
               className="input"

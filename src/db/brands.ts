@@ -142,3 +142,27 @@ export interface BrandMember {
   role?: string;
   createdAt?: number;
 }
+
+/**
+ * Una corrida de un módulo de importación — la fila que deja
+ * `supabase/functions/_shared/importRun.ts`. READ-ONLY desde el navegador:
+ * sólo las Edge Functions la escriben (service role), así que ninguna
+ * superficie puede falsificar una corrida verde. `ok` null = todavía en vuelo
+ * (o una corrida que MURIÓ, si lleva abierta más de lo esperable).
+ */
+export interface ImportRun {
+  id: string;
+  profileId: string;
+  /** El módulo que corrió: 'lr-catalog', 'anthom-catalog', … */
+  module: string;
+  /** La marca sobre cuyos datos reclama autoridad; null si no aplica. */
+  brand?: string | null;
+  trigger?: 'cron' | 'manual' | 'webhook';
+  startedAt?: number;
+  finishedAt?: number | null;
+  ok?: boolean | null;
+  rowsWritten?: number | null;
+  rowsFlagged?: number | null;
+  error?: string | null;
+  createdAt?: number;
+}

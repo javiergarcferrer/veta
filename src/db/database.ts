@@ -7,7 +7,7 @@ import { cacheKey, getCached, setCached, purgeTable, purgeAll } from './queryCac
 import {
   tableScopeFor, brandStampFor, catalogBrandScope, getBrandScope, type TableScope,
 } from './brandScope.js';
-import type { Brand, BrandMember, BrandMaterialSource, BrandMaterialOverride } from './brands.js';
+import type { Brand, BrandMember, BrandMaterialSource, BrandMaterialOverride, ImportRun } from './brands.js';
 import type {
   Profile,
   Settings,
@@ -94,6 +94,12 @@ const TABLES = {
   modelFabrics:  { db: 'model_fabrics', pk: 'id' },
   dealers:       { db: 'dealers',       pk: 'id' },
   togoRequests:  { db: 'togo_requests', pk: 'id' },
+  // EL LIBRO MAYOR DE IMPORTACIONES. Cada corrida de un módulo de marca deja
+  // una fila (supabase/functions/_shared/importRun.ts) — un cron que falla
+  // deja de ser invisible. READ-ONLY from the browser BY DESIGN: RLS grants
+  // `authenticated` a select and nothing else; only the Edge Functions write
+  // it, so no surface can forge a green run.
+  importRuns:    { db: 'import_runs',   pk: 'id' },
 
   // ── The price list (partitioned by its own `brand` discriminator) ──────
   products:      { db: 'products',      pk: 'id' },
@@ -125,6 +131,7 @@ export interface TableRowMap {
   modelFabrics: ModelFabrics;
   dealers: Dealer;
   togoRequests: TogoRequest;
+  importRuns: ImportRun;
   products: Product;
   vetaQuotes: VetaQuote;
 }

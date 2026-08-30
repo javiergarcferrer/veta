@@ -420,6 +420,30 @@ export async function updateDealerLead(token, id, status) {
   return body;
 }
 
+/**
+ * ONE dealer quote op, token-gated — the dealer dashboard's write path.
+ *   POST { inbox: <token>, quoteOp, ...payload }
+ * The inbox token is the only authorization, and the server scopes every op to
+ * that dealer's own rows (a foreign id answers 404, exactly like a missing
+ * one). Ops: 'create' {requestId} · 'list' · 'get' {id} ·
+ * 'setStatus' {id,status} · 'share' {id,enabled}.
+ * Mirrors updateDealerLead's error idiom (an Error carrying `.status`).
+ */
+export async function dealerQuoteOp(token, quoteOp, payload = {}) {
+  const r = await fetch(endpoint(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inbox: token, quoteOp, ...payload }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok || body?.error) {
+    const e = new Error(body?.error || `HTTP ${r.status}`);
+    e.status = r.status;
+    throw e;
+  }
+  return body;
+}
+
 // Once per visit: a view is a signal, not a counter.
 let togoViewReported = false;
 

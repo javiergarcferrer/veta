@@ -57,8 +57,13 @@ async function seed(client) {
       ('r-a', 'brand-a', 'd-a'), ('r-b', 'brand-b', 'd-b')`);
   await q(`insert into public.products (id, profile_id, reference, brand) values
       ('p-a', 'team', 'REF-A', 'cat-a'), ('p-b', 'team', 'REF-B', 'cat-b')`);
-  await q(`insert into public.veta_quotes (id, number, dealer_id) values
-      ('q-a', 1001, 'd-a'), ('q-b', 1002, 'd-b'), ('q-direct', 1003, null)`);
+  await q(`insert into public.veta_quotes (id, number, dealer_id, brand_id) values
+      ('q-a', 1001, 'd-a', 'brand-a'), ('q-b', 1002, 'd-b', 'brand-b'), ('q-direct', 1003, null, null)`);
+  // …and one row as an OLD function bundle wrote it during the deploy window:
+  // dealer-routed but unstamped. The policy's dealer-join arm must still hand
+  // it to its brand.
+  await q(`insert into public.veta_quotes (id, number, dealer_id, brand_id) values
+      ('q-a-old', 1004, 'd-a', null)`);
 }
 
 const idsIn = async (client, table, col = 'id') =>
@@ -86,7 +91,7 @@ if (!PG_URL) {
       assert.deepEqual(await idsIn(client, 'dealers'), ['d-a', 'd-b']);
       assert.deepEqual(await idsIn(client, 'togo_requests'), ['r-a', 'r-b']);
       assert.deepEqual(await idsIn(client, 'products'), ['p-a', 'p-b']);
-      assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-a', 'q-b', 'q-direct']);
+      assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-a', 'q-a-old', 'q-b', 'q-direct']);
     });
   });
 
@@ -126,11 +131,27 @@ if (!PG_URL) {
     });
   });
 
-  test('a quote follows its DEALER\'s brand; the direct-embed one stays install-wide', async () => {
+  test('a quote follows its BRAND stamp (dealer join as fallback); direct-embed stays install-wide', async () => {
     await withMigratedDatabase(async ({ client, asUser, asService }) => {
       await asService(); await seed(client);
       await asUser(TENANT_A);
-      assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-a']);
+      // q-a by its stamp, q-a-old (unstamped, deploy-window) by the dealer join.
+      assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-a', 'q-a-old']);
+      await asUser(TENANT_B);
+      assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-b']);
+    });
+  });
+
+  test('a STAMPED quote survives its dealer\'s deletion inside its brand', async () => {
+    await withMigratedDatabase(async ({ client, asUser, asService }) => {
+      await asService(); await seed(client);
+      // The failure mode the stamp exists for: the join arm alone loses the
+      // document the moment dealer_id goes null (on delete set null).
+      await client.query(`delete from public.togo_requests where dealer_id = 'd-a'`);
+      await client.query(`delete from public.dealers where id = 'd-a'`);
+      await asUser(TENANT_A);
+      assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-a'],
+        'the stamped document stays in its brand; the unstamped deploy-window row is the one that falls to install-wide');
       await asUser(TENANT_B);
       assert.deepEqual(await idsIn(client, 'veta_quotes'), ['q-b']);
     });

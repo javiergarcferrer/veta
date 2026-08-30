@@ -1208,7 +1208,13 @@ test('the dealer’s scope reaches the catalog AND the products sweep behind it'
   assert.ok(iCtx > 0 && iDealerBySlug > iCtx, 'loadContext is where the catalog is shaped');
   const ctx = EMBED_SRC.slice(iCtx, iDealerBySlug);
   assert.match(ctx, /loadContext\(admin: Admin, dealer: Row \| null = null\)/, 'the scope reaches the reader');
-  const iFilter = ctx.indexOf('filterModelsForDealer(injectCollectionStructure(modelRows), dealer)');
+  // The BRAND silo comes first (one brand's environment), the dealer's
+  // collection scope narrows within it — both through shared pure filters.
+  const iFilter = ctx.indexOf('filterModelsForDealer(brandModels, dealer)');
+  assert.ok(
+    ctx.indexOf('filterRowsForBrand(injectCollectionStructure(modelRows), wantBrand, houseId)') > 0,
+    'the models pass the brand silo before the dealer scope',
+  );
   const iRoots = ctx.indexOf('const roots');
   assert.ok(iFilter > 0, 'the models are scoped, through the shared pure filter');
   assert.ok(

@@ -67,11 +67,13 @@ import {
   publicQuoteBundle,
   quoteDetailShape,
   quoteListShape,
+  scopeAllowsRow,
   statusStampColumn,
   withInternalRequestFields,
   type QuoteBrand,
+  type QuoteOpScope,
 } from './quotes.ts';
-import { loadHouseGradeSet } from '../_shared/brandGrades.ts';
+import { loadGradeSet, loadHouseGradeSet } from '../_shared/brandGrades.ts';
 import {
   cacheHeadersFor,
   catalogModelShape,
@@ -165,6 +167,39 @@ async function readAll(
   }, table);
 }
 
+/** The deploy's FOUNDING brand — what an unstamped environment row belongs to
+ *  and what a dealer with no brand of its own reads. Null when no brand is
+ *  marked house (a bare test database): every brand filter then stands down
+ *  rather than inventing a scope. */
+async function houseBrandId(admin: Admin): Promise<string | null> {
+  try {
+    const { data } = await admin.from('brands').select('id').eq('is_house', true).maybeSingle();
+    return data ? String((data as Row).id) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The grade ladder that prices THIS dealer's widget, inbox and quotes — the
+ *  dealer's own brand's row, else the house's. One resolver for every pricing
+ *  surface, so the widget, the inbox and the freeze can never read different
+ *  ladders for one dealer. */
+async function gradeLadderFor(admin: Admin, dealer: Row | null): Promise<ReadonlySet<string>> {
+  const brandId = dealer ? String(dealer.brand_id || '') : '';
+  return brandId ? loadGradeSet(admin, brandId) : loadHouseGradeSet(admin);
+}
+
+/** THE BRAND SILO on the catalog read: keep only the rows of ONE brand's
+ *  environment. An unstamped row (brand_id null — pre-brand data) belongs to
+ *  the HOUSE brand, mirroring the RLS backfill; a foreign brand's models,
+ *  materials and fabric links never reach another brand's widget. With no
+ *  house brand resolved (bare database) nothing is filtered — today's
+ *  behaviour, honestly degraded rather than silently empty. */
+function filterRowsForBrand(rows: Row[], wantBrand: string | null, houseId: string | null): Row[] {
+  if (!wantBrand) return rows;
+  return rows.filter((r) => String(r.brand_id || houseId || '') === wantBrand);
+}
+
 /** The shared catalog, optionally SCOPED to the colecciones one dealer carries.
     `dealer` null (Alcover's own embed) — and a dealer with no `collections` —
     read the whole catalog, exactly as before the column existed. */
@@ -176,8 +211,8 @@ async function loadContext(admin: Admin, dealer: Row | null = null) {
   const [settingsRes, modelRows, materialRows, fabricRows] = await Promise.all([
     admin.from('settings').select('*').eq('profile_id', TEAM_PROFILE_ID).maybeSingle(),
     readAll(admin, 'togo_models', '*', { orderBy: 'id' }),
-    readAll(admin, 'materials', 'id, name, grade, category, composition, price, price_unit, colors, not_in_pricelist_at, discontinued_at', { orderBy: 'id' }),
-    readAll(admin, 'model_fabrics', 'id, pattern_names', { orderBy: 'id' }),
+    readAll(admin, 'materials', 'id, brand_id, name, grade, category, composition, price, price_unit, colors, not_in_pricelist_at, discontinued_at', { orderBy: 'id' }),
+    readAll(admin, 'model_fabrics', 'id, brand_id, pattern_names', { orderBy: 'id' }),
   ]);
   const settings = (settingsRes.data as Row) || {};
   const ex = (settings.exchange_rate || settings.bsc || settings.bpd || {}) as { buy?: unknown; sell?: unknown };
@@ -197,7 +232,13 @@ async function loadContext(admin: Admin, dealer: Row | null = null) {
   // scoped dealer neither offers a colección it doesn't carry nor pays for its
   // price list. The estructura injection still runs over EVERY row first (the
   // palette belongs to the family, not to whichever piece a dealer stocks).
-  const models = filterModelsForDealer(injectCollectionStructure(modelRows), dealer)
+  // THE BRAND SILO comes first: a dealer serves ONE brand's environment, and
+  // the manufacturer's own embed serves the house's. Collection scope then
+  // narrows WITHIN the brand — it can never widen across one.
+  const houseId = await houseBrandId(admin);
+  const wantBrand = (dealer ? String(dealer.brand_id || '') : '') || houseId;
+  const brandModels = filterRowsForBrand(injectCollectionStructure(modelRows), wantBrand, houseId);
+  const models = filterModelsForDealer(brandModels, dealer)
     .filter((m) => m.active !== false && m.svg)
     .sort((a, b) => num(a.sort_order) - num(b.sort_order));
 
@@ -228,7 +269,11 @@ async function loadContext(admin: Admin, dealer: Row | null = null) {
     })
     : [];
 
-  return { settings, rates, marginPct, models, products, materials: materialRows, fabrics: fabricRows };
+  return {
+    settings, rates, marginPct, models, products,
+    materials: filterRowsForBrand(materialRows, wantBrand, houseId),
+    fabrics: filterRowsForBrand(fabricRows, wantBrand, houseId),
+  };
 }
 
 // Resolve an ACTIVE dealer by its public ?dealer slug (the catalog + lead paths).
@@ -264,10 +309,9 @@ async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Ro
   const { settings, rates, marginPct, models, products, materials, fabrics } = await loadContext(admin, dealer);
   const retail = (list: number) => Math.round(list * (1 + marginPct / 100) * 100) / 100;
   // The grade ladder the pure pricers read. It used to be a hardcoded 23-letter
-  // set inside dealer.ts; it is now the brand's own row. This widget prices ONE
-  // catalog per deploy — the HOUSE brand's — so asking for the house keeps the
-  // brand id out of this function.
-  const ladder = await loadHouseGradeSet(admin);
+  // set inside dealer.ts; it is now the brand's own row — the DEALER'S brand's,
+  // falling back to the house for the manufacturer's own embed.
+  const ladder = await gradeLadderFor(admin, dealer);
 
   // Offered fabrics per family root (model_fabrics.pattern_names, already stored
   // fabricKey-normalized) → the picker's per-model fabric allowlist.
@@ -565,6 +609,11 @@ async function captureLead(
     // rows the worker can actually take, and it self-documents in the row itself
     // WHY this lead was never auto-quoted. Alcover's own stays null = fresh.
     auto_state: dealer ? 'dealer' : null,
+    // THE BRAND SILO on the lead itself: a routed lead belongs to its dealer's
+    // brand, so a brand-assigned member sees it and a foreign brand's member
+    // does not (the RLS template on togo_requests reads exactly this column).
+    // The manufacturer's own embed stays null = whole-install, per that policy.
+    brand_id: dealer && dealer.brand_id ? String(dealer.brand_id) : null,
     contact: { name, phone, email }, items, note: note || null,
     estimate_usd: est > 0 ? est : null,
     snapshot_image_id: snapshotImageId,
@@ -758,7 +807,7 @@ async function priceRequestRows(
   // always sees its own prices).
   // Same ladder source as buildCatalog — the inbox must price identically to the
   // widget the visitor saw, so it may not resolve grades a different way.
-  const ladder = await loadHouseGradeSet(admin);
+  const ladder = await gradeLadderFor(admin, dealer);
   const priceIndex = buildPriceIndex(referenced, products, retail, ladder);
   const requests = requestRows.map((r) => {
     const shaped = shapeInboxRequest(r);
@@ -824,11 +873,17 @@ async function inboxSetStatus(admin: Admin, dealer: Row, body: Row): Promise<Row
  * the divergence this codebase keeps paying for elsewhere. One pricer, one
  * function, three surfaces.
  *
- * AUTHORIZATION, both halves:
+ * AUTHORIZATION, all three halves:
  *   • the app ops verify the CALLER'S OWN JWT here (verify_jwt is off at the
  *     gateway so the public widget can reach the catalog without one), then
  *     require an ACTIVE profile row — the same self-verification lr-catalog and
- *     bpd-rate do.
+ *     bpd-rate do. A brand-ASSIGNED member's ops are further cut to their
+ *     brands' documents (teamCaller → QuoteOpScope), mirroring the RLS the
+ *     service role bypasses.
+ *   • a DEALER runs the same ops through its INBOX TOKEN
+ *     (POST { inbox, quoteOp, … }) — no account, no JWT; the server scopes
+ *     every op to that dealer's own rows and refuses the internal lead view
+ *     (requestDetail). This is the per-dealer quoting dashboard's write path.
  *   • the customer page is gated by the share TOKEN alone — 32 hex chars of
  *     CSPRNG, unique-indexed, revocable via `share_enabled`, and it returns ONLY
  *     the whitelisted `publicQuoteBundle` for THAT ONE quote. No listing, no
@@ -886,11 +941,13 @@ const fail = (message: string, status: number) =>
 /** ONE lead, priced, for the manufacturer's request detail screen: the same
  *  numbers its dealer's inbox and the visitor's widget saw (priceRequestRows),
  *  plus the internal-only fields and the quote it already became, if any. */
-async function loadRequestDetail(admin: Admin, id: string): Promise<Row> {
+async function loadRequestDetail(admin: Admin, id: string, scope: QuoteOpScope = {}): Promise<Row> {
   const { data } = await admin.from('togo_requests').select('*')
     .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).maybeSingle();
   const row = (data as Row) || null;
-  if (!row) return fail('request not found', 404);
+  // Out-of-scope answers EXACTLY like missing — "not yours" vs "not there" is
+  // a disclosure (same rule as the revoked share link).
+  if (!row || !scopeAllowsRow(scope, row)) return fail('request not found', 404);
   const dealer = row.dealer_id ? await dealerById(admin, String(row.dealer_id)) : null;
   const { requests, models } = await priceRequestRows(admin, [row], dealer);
   let quote: Row | null = null;
@@ -955,12 +1012,12 @@ async function liveQuoteFor(admin: Admin, requestId: string): Promise<Row | null
  * number on it. Partially-priced builds ARE allowed through: those lines keep
  * their place, flagged, exactly as they read everywhere else (no-vanish).
  */
-async function createQuoteFromRequest(admin: Admin, requestId: string): Promise<Row> {
+async function createQuoteFromRequest(admin: Admin, requestId: string, scope: QuoteOpScope = {}): Promise<Row> {
   const id = str(requestId, 80).trim();
   const { data } = await admin.from('togo_requests').select('*')
     .eq('profile_id', TEAM_PROFILE_ID).eq('id', id).maybeSingle();
   const row = (data as Row) || null;
-  if (!row) return fail('request not found', 404);
+  if (!row || !scopeAllowsRow(scope, row)) return fail('request not found', 404);
 
   // Asked of the QUOTES table, not of the lead's stamp: the stamp is written
   // after the insert, so a racing second call would still read it empty.
@@ -996,6 +1053,11 @@ async function createQuoteFromRequest(admin: Admin, requestId: string): Promise<
       number: highest + 1,
       request_id: id,
       dealer_id: dealer ? String(dealer.id) : null,
+      // The quote inherits its brand from the dealer that priced it, else from
+      // the lead's own stamp; the manufacturer's own embed stays null =
+      // whole-install (the RLS policy's rule, restated at write time).
+      brand_id: (dealer && dealer.brand_id ? String(dealer.brand_id) : null)
+        || (row.brand_id ? String(row.brand_id) : null),
       brand_name: brand.name,
       status: 'draft',
       currency,
@@ -1031,22 +1093,36 @@ async function createQuoteFromRequest(admin: Admin, requestId: string): Promise<
   return { quote: await quoteWithSnapshot(admin, inserted) };
 }
 
-/** The manufacturer's quote list (newest first, capped) — list shapes only. */
-async function listQuotes(admin: Admin): Promise<Row> {
-  const { data, error } = await admin.from('veta_quotes').select('*')
-    .eq('profile_id', TEAM_PROFILE_ID)
-    .order('created_at', { ascending: false }).limit(500);
+/** The quote list (newest first, capped) — list shapes only, cut to the
+ *  caller's scope: a dealer gets its own documents, a brand-assigned member its
+ *  brands', a whole-install member everything (as before). The dealer filter is
+ *  in the QUERY (their list should page by their rows, not by everyone's);
+ *  brand rows are re-checked through the same scopeAllowsRow the other ops use
+ *  so the two rules cannot drift. */
+async function listQuotes(admin: Admin, scope: QuoteOpScope = {}): Promise<Row> {
+  let q = admin.from('veta_quotes').select('*').eq('profile_id', TEAM_PROFILE_ID);
+  if (scope.dealerId != null) q = q.eq('dealer_id', String(scope.dealerId));
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(500);
   if (error) throw error;
-  return { quotes: ((data || []) as Row[]).map(quoteListShape) };
+  const rows = ((data || []) as Row[]).filter((r) => scopeAllowsRow(scope, r));
+  return { quotes: rows.map(quoteListShape) };
 }
 
-/** One quote, whole, for the manufacturer's detail screen (+ the geometry its
- *  plan drawing needs — catalogue shapes, never money). */
-async function loadQuote(admin: Admin, id: string): Promise<Row> {
+/** ONE quote row, inside the caller's scope — the shared gate of get/setStatus/
+ *  share. Out of scope answers exactly like missing (404, never 403): which
+ *  documents exist is itself the secret. */
+async function scopedQuoteRow(admin: Admin, id: string, scope: QuoteOpScope): Promise<Row> {
   const { data } = await admin.from('veta_quotes').select('*')
     .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).maybeSingle();
   const row = (data as Row) || null;
-  if (!row) return fail('quote not found', 404);
+  if (!row || !scopeAllowsRow(scope, row)) return fail('quote not found', 404);
+  return row;
+}
+
+/** One quote, whole, for the detail screen (+ the geometry its plan drawing
+ *  needs — catalogue shapes, never money). */
+async function loadQuote(admin: Admin, id: string, scope: QuoteOpScope = {}): Promise<Row> {
+  const row = await scopedQuoteRow(admin, id, scope);
   return { quote: await quoteWithSnapshot(admin, row), models: await planModelsFor(admin, row) };
 }
 
@@ -1067,8 +1143,9 @@ async function planModelsFor(admin: Admin, quote: Row): Promise<Record<string, u
 /** Advance a quote's state (draft → sent → accepted/declined, and back). The
  *  money is untouched by construction: only the status and its stamp are
  *  written, and the freeze trigger would reject anything else. */
-async function setQuoteStatus(admin: Admin, id: string, status: string): Promise<Row> {
+async function setQuoteStatus(admin: Admin, id: string, status: string, scope: QuoteOpScope = {}): Promise<Row> {
   if (!isQuoteStatus(status)) return fail('invalid status', 400);
+  await scopedQuoteRow(admin, id, scope);
   const patch: Row = { status, updated_at: new Date().toISOString() };
   const stamp = statusStampColumn(status);
   // The stamp records WHEN it first reached that state; re-marking it later
@@ -1089,12 +1166,10 @@ async function setQuoteStatus(admin: Admin, id: string, status: string): Promise
 
 /** Open or revoke the customer link. Revoking keeps the token, so re-enabling
  *  restores the SAME URL rather than invalidating what was already sent. */
-async function setQuoteShare(admin: Admin, id: string, enabled: boolean): Promise<Row> {
-  const { data: current } = await admin.from('veta_quotes').select('*')
-    .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).maybeSingle();
-  if (!current) return fail('quote not found', 404);
+async function setQuoteShare(admin: Admin, id: string, enabled: boolean, scope: QuoteOpScope = {}): Promise<Row> {
+  const current = await scopedQuoteRow(admin, id, scope);
   const patch: Row = { share_enabled: enabled, updated_at: new Date().toISOString() };
-  if (enabled && !(current as Row).share_token) patch.share_token = mintShareToken();
+  if (enabled && !current.share_token) patch.share_token = mintShareToken();
   const { data, error } = await admin.from('veta_quotes').update(patch)
     .eq('profile_id', TEAM_PROFILE_ID).eq('id', str(id, 80)).select('*').maybeSingle();
   if (error) throw error;
@@ -1145,7 +1220,10 @@ async function loadPublicQuote(admin: Admin, token: string): Promise<Row> {
  * deleted or deactivated must not still be able to price leads or mint customer
  * links. Returns null for anything short of that — the caller answers 401.
  */
-async function teamUserId(admin: Admin, req: Request): Promise<string | null> {
+async function teamCaller(
+  admin: Admin,
+  req: Request,
+): Promise<{ userId: string; scope: QuoteOpScope } | null> {
   const authHeader = req.headers.get('Authorization') || '';
   if (!authHeader.startsWith('Bearer ')) return null;
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -1157,21 +1235,37 @@ async function teamUserId(admin: Admin, req: Request): Promise<string | null> {
   });
   const { data, error } = await caller.auth.getUser();
   if (error || !data?.user) return null;
-  const { data: profile } = await admin.from('profiles').select('active')
+  const { data: profile } = await admin.from('profiles').select('active, brand_access')
     .eq('id', data.user.id).maybeSingle();
   if (!profile || (profile as Row).active === false) return null;
-  return data.user.id;
+  // THE MEMBER'S BRAND SCOPE, resolved here because this function runs on the
+  // service role and the RLS the direct table reads obey cannot see it. Same
+  // rule as veta_visible_brand_ids(): 'assigned' narrows to brand_members,
+  // anything else is the whole install.
+  if (String((profile as Row).brand_access || 'all') !== 'assigned') {
+    return { userId: data.user.id, scope: {} as QuoteOpScope };
+  }
+  const { data: memberships } = await admin.from('brand_members')
+    .select('brand_id').eq('profile_id', data.user.id);
+  const brandIds = ((memberships || []) as Row[])
+    .map((m) => String(m.brand_id || '')).filter(Boolean);
+  return { userId: data.user.id, scope: { brandIds } as QuoteOpScope };
 }
 
-/** Dispatch one authenticated quote op. The caller has already been verified. */
-async function runQuoteOp(admin: Admin, body: Row): Promise<Row> {
+/** Dispatch one quote op inside the caller's scope. The caller has already been
+ *  verified — a signed-in member (scope = their brand set) or a dealer holding
+ *  its inbox token (scope = their own rows). `requestDetail` is the one op a
+ *  dealer never gets: it returns withInternalRequestFields, and the inbox
+ *  already prices their leads without the internal half. */
+async function runQuoteOp(admin: Admin, body: Row, scope: QuoteOpScope = {}): Promise<Row> {
   const op = str(body.quoteOp, 40);
-  if (op === 'requestDetail') return loadRequestDetail(admin, str(body.id, 80));
-  if (op === 'create') return createQuoteFromRequest(admin, str(body.requestId, 80));
-  if (op === 'list') return listQuotes(admin);
-  if (op === 'get') return loadQuote(admin, str(body.id, 80));
-  if (op === 'setStatus') return setQuoteStatus(admin, str(body.id, 80), str(body.status, 20));
-  if (op === 'share') return setQuoteShare(admin, str(body.id, 80), body.enabled !== false);
+  const dealerCaller = scope.dealerId != null;
+  if (op === 'requestDetail' && !dealerCaller) return loadRequestDetail(admin, str(body.id, 80), scope);
+  if (op === 'create') return createQuoteFromRequest(admin, str(body.requestId, 80), scope);
+  if (op === 'list') return listQuotes(admin, scope);
+  if (op === 'get') return loadQuote(admin, str(body.id, 80), scope);
+  if (op === 'setStatus') return setQuoteStatus(admin, str(body.id, 80), str(body.status, 20), scope);
+  if (op === 'share') return setQuoteShare(admin, str(body.id, 80), body.enabled !== false, scope);
   return fail('unknown operation', 400);
 }
 
@@ -1218,11 +1312,19 @@ Deno.serve(async (req: Request) => {
     }
     if (req.method === 'POST') {
       const body = (await req.json().catch(() => ({}))) as Row;
-      // The manufacturer's own quoting surface — its JWT, verified here.
+      // Quote ops. TWO doors, one dispatch:
+      //   • a DEALER, authorized by its inbox token — scope is its own rows;
+      //   • the manufacturer's screens — their JWT, scoped to the member's
+      //     brand set ('assigned' members see only their brands' documents).
       if (body.quoteOp) {
-        const userId = await teamUserId(admin, req);
-        if (!userId) return json({ error: 'sesión no válida' }, 401);
-        return json(await runQuoteOp(admin, body));
+        if (body.inbox) {
+          const dealer = await dealerByToken(admin, str(body.inbox, 200));
+          if (!dealer) return json({ error: 'unknown dealer' }, 404);
+          return json(await runQuoteOp(admin, body, { dealerId: String(dealer.id) }));
+        }
+        const member = await teamCaller(admin, req);
+        if (!member) return json({ error: 'sesión no válida' }, 401);
+        return json(await runQuoteOp(admin, body, member.scope));
       }
       // Inbox action (mark a lead pending/contacted) — token-gated, not a lead.
       if (body.inbox) {

@@ -1200,6 +1200,11 @@ export interface VetaQuote {
   /** The configurator lead it was made from; survives the lead's removal. */
   readonly requestId?: string | null;
   readonly dealerId?: string | null;
+  /** The brand silo this document belongs to (`brands.id`) — stamped at freeze
+   *  from the dealer, else the lead; null = the manufacturer's own embed,
+   *  visible to whole-install members only. SET-ONCE at the trigger: a
+   *  document does not change house after the fact. */
+  readonly brandId?: string | null;
   /** FROZEN identity: renaming a dealer must not restate a document sent under
    *  the old name. */
   readonly brandName: string;

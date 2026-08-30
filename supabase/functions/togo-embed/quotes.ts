@@ -50,6 +50,53 @@ export function statusStampColumn(status: string): string | null {
   return null;
 }
 
+/* --------------------------------- scope ---------------------------------- */
+
+/**
+ * WHO IS ASKING, for every quote op — the one object index.ts threads through
+ * the handlers so a single implementation serves three callers:
+ *
+ *   • `{}`                      — a whole-install member. Sees everything
+ *     (today's manufacturer behaviour, unchanged).
+ *   • `{ brandIds: [...] }`     — a brand-ASSIGNED member (profiles.brand_access
+ *     = 'assigned' + brand_members). Sees only rows stamped with one of their
+ *     brands — the same rule the RLS policies apply to direct table reads,
+ *     applied HERE because the Edge Function runs on the service role and RLS
+ *     cannot see it. An UNSTAMPED row (brand_id null) is visible only to a
+ *     whole-install member: "we could not tell whose it was" must not resolve
+ *     to "show it to everyone".
+ *   • `{ dealerId: '…' }`       — a DEALER, authorized by its inbox token.
+ *     Sees only its own rows, full stop; the brand dimension is implied (a
+ *     dealer belongs to one brand) and checking the id is the tighter gate.
+ *
+ * Pure and total on purpose (tests/dealerQuotes.test.js): a scope bug here is a
+ * cross-dealer or cross-brand disclosure, so the rule is a function that can be
+ * interrogated, not a filter re-typed per handler.
+ */
+export interface QuoteOpScope {
+  dealerId?: string | null;
+  brandIds?: readonly string[] | null;
+}
+
+/** May this scope see a row carrying (dealer_id, brand_id)? Works for quotes
+ *  and leads alike — both carry exactly these two ownership columns. */
+export function scopeAllowsRow(
+  scope: QuoteOpScope | null | undefined,
+  row: { dealer_id?: unknown; brand_id?: unknown } | null | undefined,
+): boolean {
+  if (!row) return false;
+  const s = scope || {};
+  if (s.dealerId != null) {
+    // A dealer sees its own rows only. `''` can never match a real id.
+    return String(row.dealer_id ?? '') === String(s.dealerId) && String(s.dealerId) !== '';
+  }
+  if (s.brandIds != null) {
+    const brand = String(row.brand_id ?? '');
+    return brand !== '' && s.brandIds.map(String).includes(brand);
+  }
+  return true;
+}
+
 /* ------------------------------- share token ------------------------------- */
 
 /** The secret in `#/q/<token>`. 32 hex chars of CSPRNG — the token IS the
@@ -214,6 +261,7 @@ export function quoteListShape(row: Row) {
     unpriced: num(totals.unpriced),
     customerName: str(customer.name, 120),
     brandName: str(row.brand_name, 120),
+    brandId: row.brand_id == null ? null : str(row.brand_id, 80),
     dealerId: row.dealer_id == null ? null : str(row.dealer_id, 80),
     requestId: row.request_id == null ? null : str(row.request_id, 80),
     shared: !!row.share_token && row.share_enabled !== false,

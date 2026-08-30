@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchDealerInbox, updateDealerLead } from '../lib/togoEmbed.js';
+import { fetchDealerInbox, updateDealerLead, dealerQuoteOp } from '../lib/togoEmbed.js';
 import { t, resolveTogoLocale, piecesLabel } from '../lib/togo/i18n.js';
 import { swatchUrl, swatchProxyUrl } from '../lib/swatchImage.js';
 import { planToDxf } from '../lib/togo/planToDxf.js';
 import { composePlanPreview, planPlacements } from '../lib/togo/planPreview.js';
 import { sanitizeSvg } from '../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
-import { resolveTogoScene, scenePlacementsFromPlaced } from '../core/quote/index.js';
+import { resolveTogoScene, scenePlacementsFromPlaced, quoteShareUrl } from '../core/quote/index.js';
 import { useTogoSceneSnapshot } from '../components/togo/togoThumbnails.js';
 import { safeDynamicImport } from '../lib/dynamicImport.js';
 import { disposeGroup } from '../components/togo/togoSceneBuilder.js';
@@ -37,6 +37,12 @@ import { loadTogoModels } from '../components/togo/togoModelLoader.js';
 // everything already handled recedes to neutral-400. No pills, no color.
 const statusInk = (status) => (status === 'pending' ? 'text-neutral-900' : 'text-neutral-400');
 
+// A document's states in the same register: what still needs the dealer's hand
+// (draft, sent) carries ink; what is answered recedes.
+const quoteStatusInk = (status) => (
+  status === 'declined' ? 'text-neutral-400 line-through decoration-1' : 'text-neutral-900'
+);
+
 // Shared eyebrow: 11px uppercase, letterspaced, muted.
 const EYEBROW = 'text-micro uppercase tracking-[0.15em] text-neutral-500';
 
@@ -56,6 +62,15 @@ export default function DealerInbox() {
   const [modelNames, setModelNames] = useState({});
   const [models, setModels] = useState({}); // { <id>: { name, widthCm, depthCm, svg } }
   const [openId, setOpenId] = useState(null); // inline-expanded lead (UI only)
+  // The dealer's OWN documents (dealerQuoteOp 'list' — the server scopes them
+  // to this token's dealer). `tab` splits the left column between the two
+  // registers; a quote failure degrades to an empty list rather than blanking
+  // the inbox — leads are the older, load-bearing half.
+  const [quotes, setQuotes] = useState([]);
+  const [tab, setTab] = useState('leads'); // 'leads' | 'quotes'
+  const [openQuoteId, setOpenQuoteId] = useState(null);
+  const [quoteBusyId, setQuoteBusyId] = useState(null); // requestId being frozen
+  const [opError, setOpError] = useState('');
 
   // Before the dealer (and its locale) is known, fall back to the browser's.
   const bootLocale = useMemo(
@@ -81,6 +96,9 @@ export default function DealerInbox() {
         setModels(data.models || {});
       })
       .catch(() => { if (active) setState({ status: 'error', dealer: null }); });
+    dealerQuoteOp(token, 'list')
+      .then((data) => { if (active) setQuotes(data.quotes || []); })
+      .catch(() => { /* the leads half still renders; the tab just reads empty */ });
     return () => { active = false; };
   }, [token]);
 
@@ -103,6 +121,47 @@ export default function DealerInbox() {
       await updateDealerLead(token, id, next);
     } catch {
       setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status: prev } : r)));
+    }
+  };
+
+  // A lead's LIVE document (any status but declined) — what decides whether the
+  // detail offers «Cotizar» or «Ver cotización». Same liveness rule the server
+  // enforces on the unique index, restated for the UI.
+  const liveQuoteByRequest = useMemo(() => {
+    const map = new Map();
+    for (const q of quotes) {
+      if (q.requestId && q.status !== 'declined' && !map.has(q.requestId)) map.set(q.requestId, q);
+    }
+    return map;
+  }, [quotes]);
+
+  // FREEZE a lead into a document. The server is idempotent (a lead with a live
+  // quote returns it), so a double-tap can never mint two numbers.
+  const createQuote = async (requestId) => {
+    if (quoteBusyId) return;
+    setQuoteBusyId(requestId);
+    setOpError('');
+    try {
+      const { quote } = await dealerQuoteOp(token, 'create', { requestId });
+      setQuotes((qs) => [quote, ...qs.filter((q) => q.id !== quote.id)]);
+      setRequests((rs) => rs.map((r) => (r.id === requestId ? { ...r, status: 'converted' } : r)));
+      setTab('quotes');
+      setOpenQuoteId(quote.id);
+    } catch (e) {
+      setOpError(e?.message || t(locale, 'quotes.error'));
+    }
+    setQuoteBusyId(null);
+  };
+
+  // Advance a document's state. The server answers with the row as stored, so
+  // the list re-reads truth instead of trusting the tap.
+  const setQuoteStatusOp = async (id, status) => {
+    setOpError('');
+    try {
+      const { quote } = await dealerQuoteOp(token, 'setStatus', { id, status });
+      setQuotes((qs) => qs.map((q) => (q.id === id ? quote : q)));
+    } catch (e) {
+      setOpError(e?.message || t(locale, 'quotes.error'));
     }
   };
 
@@ -138,7 +197,11 @@ export default function DealerInbox() {
     if (req.estimateUsd != null) parts.push(`${t(locale, 'inbox.estimate')} ${moneyFmt.format(req.estimateUsd)}`);
     return parts.join(' · ');
   };
-  const selected = requests.find((r) => r.id === openId) || null;
+  const selected = tab === 'leads' ? (requests.find((r) => r.id === openId) || null) : null;
+  const selectedQuote = tab === 'quotes' ? (quotes.find((q) => q.id === openQuoteId) || null) : null;
+  const detailOpen = !!(selected || selectedQuote);
+  const accepted = quotes.filter((q) => q.status === 'accepted');
+  const acceptedTotal = accepted.reduce((acc, q) => acc + (q.total || 0), 0);
 
   return (
     <div className="h-full overflow-hidden bg-white text-neutral-900">
@@ -150,29 +213,95 @@ export default function DealerInbox() {
           "← back"). */}
       <div className="h-full max-w-6xl mx-auto lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
         {/* LEFT column — brand + master list. */}
-        <div className={`h-full min-h-0 flex-col px-6 sm:px-8 lg:pr-8 lg:border-r lg:border-neutral-200 ${selected ? 'hidden lg:flex' : 'flex'}`}>
+        <div className={`h-full min-h-0 flex-col px-6 sm:px-8 lg:pr-8 lg:border-r lg:border-neutral-200 ${detailOpen ? 'hidden lg:flex' : 'flex'}`}>
           {/* The official Ligne Roset "depuis 1860" logo is the hero; the
               dealer's own name is the eyebrow above it. White-ground asset on a
               white page — seamless. Pinned chrome: it never scrolls away. */}
           <header className="shrink-0 pt-8 sm:pt-10 pb-6 border-b border-neutral-200">
             <div className={EYEBROW}>{dealer.name}</div>
+            {/* THE BRAND'S OWN mark, per silo: a dealer carrying its own logo
+                shows it; the Ligne Roset wordmark is the HOUSE fallback only —
+                a second brand's dealer must never wear another maker's mark. */}
             <img
-              src="/ligne-roset-depuis-1860.png"
-              alt="Ligne Roset — depuis 1860"
-              className="mt-4 w-48 sm:w-56 h-auto select-none"
+              src={dealer.logoUrl || '/ligne-roset-depuis-1860.png'}
+              alt={dealer.logoUrl ? dealer.name : 'Ligne Roset — depuis 1860'}
+              className="mt-4 w-48 sm:w-56 max-h-20 object-contain object-left h-auto select-none"
               draggable={false}
             />
           </header>
 
-          {/* Quiet meta line between the lockup rule and the list. */}
-          <div className="shrink-0 flex items-baseline justify-between py-5">
-            <span className={EYEBROW}>{t(locale, 'inbox.title')}</span>
-            {requests.length > 0 && (
-              <span className="text-micro tracking-[0.15em] text-neutral-400 tabular-nums">{requests.length}</span>
+          {/* The dashboard's two registers — leads and documents — as quiet
+              uppercase tabs in the same eyebrow voice the meta line had. */}
+          <div className="shrink-0 flex items-baseline gap-6 py-5" role="tablist">
+            {[
+              ['leads', t(locale, 'inbox.title'), requests.length],
+              ['quotes', t(locale, 'quotes.tab'), quotes.length],
+            ].map(([key, label, count]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => { setTab(key); }}
+                className={`text-micro uppercase tracking-[0.15em] transition-colors ${
+                  tab === key
+                    ? 'text-neutral-900 underline underline-offset-8 decoration-1'
+                    : 'text-neutral-400 hover:text-neutral-700'
+                }`}
+              >
+                {label}
+                {count > 0 && <span className="ml-1.5 tabular-nums">{count}</span>}
+              </button>
+            ))}
+            {tab === 'quotes' && accepted.length > 0 && (
+              <span className="ml-auto text-micro tracking-[0.05em] text-neutral-500 tabular-nums normal-case">
+                {t(locale, 'quotes.acceptedSummary', {
+                  count: accepted.length,
+                  total: moneyFmt.format(acceptedTotal),
+                })}
+              </span>
             )}
           </div>
 
-          {requests.length === 0 ? (
+          {tab === 'quotes' ? (
+            quotes.length === 0 ? (
+              <div className={`${EYEBROW} flex-1 flex items-center justify-center text-center normal-case tracking-normal leading-relaxed max-w-[16rem] mx-auto`}>
+                {t(locale, 'quotes.empty')}
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-y-auto scroll-thin overscroll-contain border-t border-neutral-200 pb-[max(3rem,env(safe-area-inset-bottom))]">
+                {quotes.map((q) => {
+                  const on = openQuoteId === q.id;
+                  const qMoney = new Intl.NumberFormat(locale, {
+                    style: 'currency', currency: q.currency || dealer.currency || 'USD', maximumFractionDigits: 0,
+                  });
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => setOpenQuoteId(q.id)}
+                      aria-current={on}
+                      className={`w-full text-left py-5 px-3 -mx-3 border-b border-neutral-200 flex items-start justify-between gap-3 transition-colors ${on ? 'bg-neutral-50' : 'hover:bg-neutral-50/60'}`}
+                    >
+                      <div className="min-w-0">
+                        <div className={`text-micro uppercase tracking-[0.15em] ${quoteStatusInk(q.status)}`}>
+                          {t(locale, `quotes.status.${q.status}`)}
+                        </div>
+                        <div className="mt-1.5 text-lg font-light tracking-tight leading-snug text-neutral-900 break-words">
+                          {t(locale, 'quotes.doc', { n: q.number })}
+                        </div>
+                        <div className={`${EYEBROW} mt-1.5 normal-case tracking-normal text-neutral-500 leading-relaxed`}>
+                          {[q.customerName || EMDASH, q.total != null ? qMoney.format(q.total) : null]
+                            .filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      <span aria-hidden className={`shrink-0 text-lg font-light leading-none pt-1 ${on ? 'text-neutral-900' : 'text-neutral-300'}`}>→</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )
+          ) : requests.length === 0 ? (
             <div className={`${EYEBROW} flex-1 flex items-center justify-center text-center`}>{t(locale, 'inbox.empty')}</div>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto scroll-thin overscroll-contain border-t border-neutral-200 pb-[max(3rem,env(safe-area-inset-bottom))]">
@@ -210,8 +339,8 @@ export default function DealerInbox() {
             scroller. Keyed by the selected lead so switching leads remounts the
             scroller and lands at the top. */}
         <div
-          key={selected ? selected.id : 'empty'}
-          className={`h-full min-h-0 overflow-y-auto scroll-thin overscroll-contain px-6 sm:px-8 lg:pl-10 pb-[max(3rem,env(safe-area-inset-bottom))] ${selected ? 'block' : 'hidden lg:block'}`}
+          key={selected ? selected.id : (selectedQuote ? selectedQuote.id : 'empty')}
+          className={`h-full min-h-0 overflow-y-auto scroll-thin overscroll-contain px-6 sm:px-8 lg:pl-10 pb-[max(3rem,env(safe-area-inset-bottom))] ${detailOpen ? 'block' : 'hidden lg:block'}`}
         >
           {selected ? (
             <div className="pt-6 lg:pt-10">
@@ -241,10 +370,34 @@ export default function DealerInbox() {
                 locale={locale}
                 moneyFmt={moneyFmt}
                 onSetStatus={setLeadStatus}
+                liveQuote={liveQuoteByRequest.get(selected.id) || null}
+                onQuote={() => createQuote(selected.id)}
+                onOpenQuote={(id) => { setTab('quotes'); setOpenQuoteId(id); }}
+                quoteBusy={quoteBusyId === selected.id}
+                opError={opError}
+              />
+            </div>
+          ) : selectedQuote ? (
+            <div className="pt-6 lg:pt-10">
+              <button
+                type="button"
+                onClick={() => setOpenQuoteId(null)}
+                className="eyebrow lg:hidden mb-5 text-neutral-500 hover:text-neutral-900"
+              >
+                ← {t(locale, 'inbox.back')}
+              </button>
+              <QuoteDetailCard
+                quote={selectedQuote}
+                locale={locale}
+                dealer={dealer}
+                dateFmt={dateFmt}
+                onSetStatus={setQuoteStatusOp}
+                opError={opError}
+                token={token}
               />
             </div>
           ) : (
-            requests.length > 0 && (
+            (tab === 'quotes' ? quotes.length : requests.length) > 0 && (
               <div className={`${EYEBROW} hidden lg:flex h-full items-center justify-center text-center`}>
                 {t(locale, 'inbox.selectPrompt')}
               </div>
@@ -322,7 +475,7 @@ function downloadBlob(blob, filename) {
  * `models` map: without it (older prod payload) the detail falls back to the plain
  * text summary — no plan, no per-item prices — so the page never crashes.
  */
-function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) {
+function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus, liveQuote = null, onQuote, onOpenQuote, quoteBusy = false, opError = '' }) {
   const c = req.contact || {};
   const items = req.items || [];
   const phoneDigits = (c.phone || '').replace(/[^\d+]/g, '');
@@ -404,13 +557,41 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
       {/* ATOP — the primary action (mark contacted / reopen) as a clear button,
           then the contact links. First thing the dealer sees, so triaging a lead
           is one obvious tap — not a hidden underline at the bottom. */}
+      {/* THE DOCUMENT ACTION leads: a lead's endpoint is a quote, so «Cotizar»
+          (or the document it already became) stands first among the actions. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3 pt-1">
+        {liveQuote ? (
+          <button
+            type="button"
+            onClick={() => onOpenQuote?.(liveQuote.id)}
+            className="eyebrow inline-flex items-center border border-neutral-900 bg-neutral-900 text-white px-4 py-2 transition-colors hover:bg-white hover:text-neutral-900"
+          >
+            {t(locale, 'quotes.viewQuote')} · {t(locale, 'quotes.doc', { n: liveQuote.number })}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onQuote?.()}
+            disabled={quoteBusy}
+            className="eyebrow inline-flex items-center border border-neutral-900 bg-neutral-900 text-white px-4 py-2 transition-colors hover:bg-white hover:text-neutral-900 disabled:opacity-40"
+          >
+            {quoteBusy ? t(locale, 'quotes.quoteBusy') : t(locale, 'quotes.quoteCta')}
+          </button>
+        )}
+      </div>
+      {opError && (
+        <p role="alert" className="text-micro tracking-wide text-neutral-900 border-l-2 border-neutral-900 pl-3">
+          {opError}
+        </p>
+      )}
+
       {(req.status === 'pending' || req.status === 'contacted' || c.phone || c.email) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-3 pt-1">
           {req.status === 'pending' && (
             <button
               type="button"
               onClick={() => onSetStatus(req.id, 'contacted')}
-              className="eyebrow inline-flex items-center border border-neutral-900 bg-neutral-900 text-white px-4 py-2 transition-colors hover:bg-white hover:text-neutral-900"
+              className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
             >
               {t(locale, 'inbox.markContacted')}
             </button>
@@ -537,6 +718,173 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus }) 
           <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap">{req.note}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * ONE document, in the dealer's own register: status · number · customer, the
+ * frozen lines, the total AS FROZEN (the server already factored markup × FX
+ * into the document's own currency — nothing here converts), the customer link
+ * to copy or open, and the state controls. The state machine mirrors the
+ * server's (draft → sent → accepted/declined; declined frees the lead to be
+ * re-quoted at today's prices), and every transition round-trips — the row the
+ * server answers with is what renders, never the tap.
+ */
+function QuoteDetailCard({ quote, locale, dealer, dateFmt, onSetStatus, opError, token }) {
+  const [copied, setCopied] = useState(false);
+  // The full frozen document (lines + composition render): the list shape the
+  // left column holds has neither, so the card reads its own detail. A failed
+  // read degrades to the list shape — number, total and link still work.
+  const [detail, setDetail] = useState(null);
+  useEffect(() => {
+    let active = true;
+    setDetail(null);
+    dealerQuoteOp(token, 'get', { id: quote.id })
+      .then((data) => { if (active) setDetail(data); })
+      .catch(() => { /* degrade to the list shape */ });
+    return () => { active = false; };
+  }, [token, quote.id]);
+  const doc = detail?.quote || quote;
+  const money = useMemo(
+    () => new Intl.NumberFormat(locale, {
+      style: 'currency', currency: quote.currency || dealer.currency || 'USD', maximumFractionDigits: 0,
+    }),
+    [locale, quote.currency, dealer.currency],
+  );
+  const shareUrl = doc.shareToken && doc.shared !== false ? quoteShareUrl(doc.shareToken) : '';
+  const lines = Array.isArray(doc.lines) ? doc.lines : [];
+
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable — the Open link beside it still works */ }
+  };
+
+  return (
+    <div className="pb-8 space-y-5">
+      <div className={`text-micro uppercase tracking-[0.15em] ${quoteStatusInk(quote.status)}`}>
+        {t(locale, `quotes.status.${quote.status}`)}
+      </div>
+      <div className="!mt-2 text-2xl sm:text-3xl font-light tracking-tight leading-tight text-neutral-900">
+        {t(locale, 'quotes.doc', { n: quote.number })}
+      </div>
+      <div className={`${EYEBROW} !mt-2 normal-case tracking-normal text-neutral-500`}>
+        {[quote.customerName || EMDASH, quote.createdAt ? dateFmt.format(new Date(quote.createdAt)) : null]
+          .filter(Boolean).join(' · ')}
+      </div>
+
+      {/* The customer link + state controls — the two things a dealer comes
+          here to do. Copy confirms inline; the states that need a hand carry
+          the filled register. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3 pt-1">
+        {shareUrl && (
+          <>
+            <button
+              type="button"
+              onClick={copyLink}
+              className="eyebrow inline-flex items-center border border-neutral-900 bg-neutral-900 text-white px-4 py-2 transition-colors hover:bg-white hover:text-neutral-900"
+            >
+              {copied ? t(locale, 'quotes.linkCopied') : t(locale, 'quotes.copyLink')}
+            </button>
+            <a
+              href={shareUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            >
+              {t(locale, 'quotes.openLink')}
+            </a>
+          </>
+        )}
+        {quote.status === 'draft' && (
+          <button
+            type="button"
+            onClick={() => onSetStatus(quote.id, 'sent')}
+            className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+          >
+            {t(locale, 'quotes.markSent')}
+          </button>
+        )}
+        {quote.status === 'sent' && (
+          <>
+            <button
+              type="button"
+              onClick={() => onSetStatus(quote.id, 'accepted')}
+              className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-700 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            >
+              {t(locale, 'quotes.markAccepted')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetStatus(quote.id, 'declined')}
+              className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+            >
+              {t(locale, 'quotes.markDeclined')}
+            </button>
+          </>
+        )}
+        {(quote.status === 'accepted' || quote.status === 'declined') && (
+          <button
+            type="button"
+            onClick={() => onSetStatus(quote.id, 'draft')}
+            className="eyebrow inline-flex items-center border border-neutral-300 px-4 py-2 text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+          >
+            {t(locale, 'quotes.backToDraft')}
+          </button>
+        )}
+      </div>
+      {opError && (
+        <p role="alert" className="text-micro tracking-wide text-neutral-900 border-l-2 border-neutral-900 pl-3">
+          {opError}
+        </p>
+      )}
+
+      {/* The composition the customer built, as frozen with the document. */}
+      {doc.snapshotUrl && (
+        <div className="border border-neutral-200 bg-white overflow-hidden flex items-center justify-center">
+          <img src={doc.snapshotUrl} alt="" className="w-full h-auto max-h-[34vh] object-contain block" />
+        </div>
+      )}
+
+      {/* The frozen lines, hairline-ruled like the lead's items. */}
+      {lines.length > 0 && (
+        <div className="border-t border-neutral-200">
+          {lines.map((ln, i) => (
+            <div key={ln.id || i} className="flex items-center gap-4 py-3 min-h-[44px] border-b border-neutral-200">
+              <div className="min-w-0 flex-1">
+                <div className="text-base text-neutral-900 truncate">{ln.name || EMDASH}</div>
+                {(ln.material?.fabric || ln.material?.grade) && (
+                  <div className="mt-0.5 text-micro tracking-wide text-neutral-500 truncate">
+                    {[ln.material.fabric, ln.material.grade].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
+              <div className="shrink-0 text-sm tabular-nums text-neutral-900">
+                {ln.total != null ? money.format(ln.total) : EMDASH}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* The frozen total. */}
+      <div className="flex items-baseline justify-between border-t border-neutral-200 pt-4">
+        <span className={EYEBROW}>{t(locale, 'inbox.total')}</span>
+        <span className="text-2xl font-light tracking-tight tabular-nums text-neutral-900">
+          {doc.total != null ? money.format(doc.total) : EMDASH}
+        </span>
+      </div>
+
+      {/* The open receipt: has the customer looked. */}
+      <div className={`${EYEBROW} normal-case tracking-normal text-neutral-500`}>
+        {doc.viewCount > 0
+          ? t(locale, 'quotes.views', { count: doc.viewCount })
+          : t(locale, 'quotes.notViewed')}
+      </div>
     </div>
   );
 }

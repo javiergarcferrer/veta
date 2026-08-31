@@ -36,6 +36,7 @@ import {
   FREDERICIA_MODULES, planCatalogSourceImport, moduleSetFor,
 } from '../../brands/index.js';
 import FredericiaEnrichBar from '../../components/catalog/FredericiaEnrichBar.jsx';
+import Fredericia3dBar from '../../components/catalog/Fredericia3dBar.jsx';
 
 const SOURCE = FREDERICIA_MODULES.catalog.source;
 
@@ -361,6 +362,11 @@ export default function FredericiaImport() {
           importador porque enriquece SUS filas: sin importar primero, no hay
           nada que cruzar. */}
       <FredericiaEnrichBar profileId={profileId} />
+
+      {/* LA MITAD 3D del mismo camino: localizar el .obj de cada pieza que
+          vendemos y dejarlo en fredericia_assets — la extracción que la
+          pregunta del 2026-08-31 no encontraba en presscloud. */}
+      <Fredericia3dBar profileId={profileId} />
 
       <p className="text-[11px] text-ink-400 leading-relaxed">
         Una referencia Fredericia es <span className="font-mono">FRE-modelo-grupo-acabados</span>, y el

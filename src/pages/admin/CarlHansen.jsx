@@ -6,6 +6,7 @@ import { db, invalidate, productsByBrand } from '../../db/database.js';
 import { useLiveQueryStatus } from '../../db/hooks.js';
 import { useApp } from '../../context/AppContext.jsx';
 import PageHeader from '../../components/PageHeader.jsx';
+import { configuratorById, configuratorPath } from '../../brands/configurators/index.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import ListLoading from '../../components/ListLoading.jsx';
 import ListSearchHeader from '../../components/search/ListSearchHeader.jsx';
@@ -282,7 +283,12 @@ export default function CarlHansen() {
       <PageHeader
         title="Carl Hansen & Søn"
         subtitle={subtitle}
-        actions={<SweepControls state={sweep} onRun={runSweep} onStop={stopSweep} />}
+        actions={(
+          <>
+            <PublicConfiguratorLink />
+            <SweepControls state={sweep} onRun={runSweep} onStop={stopSweep} />
+          </>
+        )}
       />
 
       <SweepReport state={sweep} syncedAt={settings?.carlHansenSyncedAt ?? null} />
@@ -397,6 +403,33 @@ const pagesRead = (t) => (t ? t.fetched + t.unchanged + t.skipped : 0);
  * run is now minutes long — a button the dealer cannot interrupt would be worse
  * than the seven clicks this replaced.
  */
+/**
+ * EL CONFIGURADOR PÚBLICO, OFRECIDO DESDE AQUÍ.
+ *
+ * Sin esto la ruta existe y no la encuentra nadie: `/configurador/carl-hansen`
+ * es un documento propio (no una ruta de almohadilla), así que no aparece en
+ * ninguna navegación de la app y sólo llega quien escribe la URL.
+ *
+ * Abre en pestaña nueva a propósito: es la vista del CLIENTE, sin sesión, y el
+ * dealer la está inspeccionando o copiando el enlace para mandarlo — no
+ * navegando fuera de su back-office.
+ */
+function PublicConfiguratorLink() {
+  const path = configuratorPath(configuratorById('carl-hansen'));
+  return (
+    <a
+      href={path}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn-secondary min-h-11 whitespace-nowrap inline-flex items-center gap-1.5"
+      title="La vista pública, sin login, que ve un cliente"
+    >
+      <ExternalLink size={14} aria-hidden />
+      Ver el configurador público
+    </a>
+  );
+}
+
 function SweepControls({ state, onRun, onStop }) {
   if (state.running) {
     const read = pagesRead(state.totals);

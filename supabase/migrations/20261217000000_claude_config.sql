@@ -24,7 +24,9 @@ alter table public.claude_config enable row level security;
 -- Sin políticas de cliente a propósito: sólo el escritor de abajo y el lector
 -- con service role tocan la llave.
 
-create or replace function public.save_claude_config(p_api_key text, p_model text)
+-- DEFINER en `veta`, envoltorio plano en `public` — el mismo reparto que
+-- save_lr_etiquette_config y por la misma regla de tests/schema.
+create or replace function veta.save_claude_config(p_api_key text, p_model text)
 returns void
 language plpgsql
 security definer
@@ -47,6 +49,14 @@ begin
     set api_key = excluded.api_key, model = excluded.model, updated_at = now();
 end;
 $$;
+revoke all on function veta.save_claude_config(text, text) from public;
+revoke all on function veta.save_claude_config(text, text) from anon;
+grant execute on function veta.save_claude_config(text, text) to authenticated;
+
+create or replace function public.save_claude_config(p_api_key text, p_model text)
+returns void
+language sql
+as $$ select veta.save_claude_config(p_api_key, p_model) $$;
 revoke all on function public.save_claude_config(text, text) from public;
 revoke all on function public.save_claude_config(text, text) from anon;
 grant execute on function public.save_claude_config(text, text) to authenticated;

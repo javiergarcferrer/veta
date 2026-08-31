@@ -92,6 +92,35 @@ comment on column public.products.origin_code is
 comment on column public.products.spec_image_id is
   'El dibujo técnico (Filaires) espejado. Un esquema, no una foto — image_id sigue siendo la fotografía.';
 
+-- ── El archivo de LSG aprende las columnas nuevas ───────────────────────────
+-- 20261207 archivó products con `create table … (like public.products)` y
+-- re-archiva con `select p.*` — un espejo POSICIONAL de la forma que products
+-- tenía AQUEL día. Las columnas de arriba lo desalinearían: la re-ejecución
+-- del conjunto (la idempotencia que pinnea tests/schema) y el camino de
+-- restauración documentado allí («insert into products select * from
+-- archive…») dejarían de casar en cuanto products se ensancha. La regla:
+-- quien ensancha products alinea el archivo — las columnas que falten se
+-- añaden aquí, en el orden de products, y ambos `select *` siguen válidos.
+do $$
+declare r record;
+begin
+  if to_regclass('archive.lsg_products') is null then return; end if;
+  for r in
+    select a.attname, format_type(a.atttypid, a.atttypmod) as coltype
+      from pg_attribute a
+     where a.attrelid = 'public.products'::regclass
+       and a.attnum > 0 and not a.attisdropped
+       and not exists (
+         select 1 from pg_attribute b
+          where b.attrelid = 'archive.lsg_products'::regclass
+            and b.attnum > 0 and not b.attisdropped
+            and b.attname = a.attname)
+     order by a.attnum
+  loop
+    execute format('alter table archive.lsg_products add column %I %s', r.attname, r.coltype);
+  end loop;
+end $$;
+
 -- ── La URL del feed, como credencial de sólo escritura ──────────────────────
 create table if not exists public.lr_etiquette_config (
   profile_id text primary key default 'team',
@@ -104,7 +133,12 @@ alter table public.lr_etiquette_config enable row level security;
 -- Sin políticas de cliente A PROPÓSITO: sólo el RPC de abajo escribe y sólo la
 -- función lr-etiquette (service role) lee.
 
-create or replace function public.save_lr_etiquette_config(p_base_url text)
+-- El DEFINER vive en `veta`, fuera del esquema que PostgREST publica —
+-- la doctrina de helpers_off_the_api, pinneada por tests/schema («no policy
+-- helper is reachable over the REST API»). El cliente llama al envoltorio
+-- plano de `public` de más abajo, que mantiene el nombre que supabase.rpc()
+-- alcanza.
+create or replace function veta.save_lr_etiquette_config(p_base_url text)
 returns void
 language plpgsql
 security definer
@@ -153,6 +187,18 @@ $$;
 -- Supabase concede EXECUTE a `anon` POR DEFECTO al crear una función — ambos
 -- revokes son necesarios o el escritor de la credencial queda abierto a
 -- tráfico anónimo (la lección de la migración config_anon de RosetSoft).
+revoke all on function veta.save_lr_etiquette_config(text) from public;
+revoke all on function veta.save_lr_etiquette_config(text) from anon;
+grant execute on function veta.save_lr_etiquette_config(text) to authenticated;
+
+-- La cara pública: un envoltorio INVOKER plano (sin SECURITY DEFINER — el
+-- barrido de tests/schema lo rechazaría aquí). Corre como quien llama, que ya
+-- tiene USAGE sobre `veta` y EXECUTE sobre el definer (los grants de arriba);
+-- el guard de membresía sigue DENTRO del definer.
+create or replace function public.save_lr_etiquette_config(p_base_url text)
+returns void
+language sql
+as $$ select veta.save_lr_etiquette_config(p_base_url) $$;
 revoke all on function public.save_lr_etiquette_config(text) from public;
 revoke all on function public.save_lr_etiquette_config(text) from anon;
 grant execute on function public.save_lr_etiquette_config(text) to authenticated;

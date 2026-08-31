@@ -19,6 +19,9 @@ import type {
   TogoModel,
   TogoRequest,
   VetaQuote,
+  LrEtiquetteSync,
+  LrEtiquetteConfig,
+  ClaudeConfig,
 } from '../types/domain.ts';
 
 /**
@@ -104,6 +107,18 @@ const TABLES = {
   // ── The price list (partitioned by its own `brand` discriminator) ──────
   products:      { db: 'products',      pk: 'id' },
 
+  // ── Integraciones de catálogo ──────────────────────────────────────────
+  // Estado del import «Étiquette» (una fila; la escribe la Edge Function,
+  // READ-ONLY aquí — como import_runs, nadie puede fingir una corrida verde).
+  lrEtiquetteSync:   { db: 'lr_etiquette_sync',   pk: 'profileId' },
+  // WRITE-ONLY credential stores: sin política de SELECT, así que leerlas
+  // desde aquí devuelve [] a propósito. Se escriben por su RPC
+  // (save_lr_etiquette_config / save_claude_config) y las lee sólo su
+  // función con el service role. Declaradas porque la capa de datos nombra
+  // TODO el esquema (tests/schema) — una tabla sin nombrar es esquema muerto.
+  lrEtiquetteConfig: { db: 'lr_etiquette_config', pk: 'profileId' },
+  claudeConfig:      { db: 'claude_config',       pk: 'profileId' },
+
   // ── The frozen quote documents ─────────────────────────────────────────
   // READ-ONLY from the browser BY DESIGN: RLS grants `authenticated` a select
   // and no write at all, and the freeze trigger refuses everything but a state
@@ -133,6 +148,9 @@ export interface TableRowMap {
   togoRequests: TogoRequest;
   importRuns: ImportRun;
   products: Product;
+  lrEtiquetteSync: LrEtiquetteSync;
+  lrEtiquetteConfig: LrEtiquetteConfig;
+  claudeConfig: ClaudeConfig;
   vetaQuotes: VetaQuote;
 }
 

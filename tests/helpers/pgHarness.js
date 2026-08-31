@@ -56,10 +56,14 @@ export async function withMigratedDatabase(fn) {
   try {
     await client.connect();
 
-    // The two Supabase API roles the policies grant to.
+    // The three Supabase API roles the policies and grants name: the two the
+    // REST surface serves requests as, plus `service_role` — the service key's
+    // role, which functions-only grants (ensure_lr_etiquette_cron,
+    // link_lr_spec_images) are addressed to.
     await client.query(`do $$ begin
       if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
       if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
+      if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role nologin; end if;
     end $$`);
 
     // Supabase's `auth.uid()`: the `sub` claim of the request's JWT. Here the

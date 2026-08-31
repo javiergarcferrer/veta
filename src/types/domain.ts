@@ -151,6 +151,58 @@ export interface DrivePin {
   url?: string;
 }
 
+/**
+ * Estado del import del feed oficial Ligne Roset «Étiquette»
+ * (lr_etiquette_sync) — una fila, con la máquina de fases que hace la
+ * sincronización reanudable. READ-ONLY from the browser: la escribe sólo la
+ * Edge Function lr-etiquette; la app la lee para el letrero de «última
+ * importación» (la tarjeta consulta vía la función, pero la fila queda
+ * legible por si una superficie la quiere en vivo).
+ */
+export interface LrEtiquetteSync {
+  profileId: string;
+  lastRunAt?: number | null;
+  lastOk?: boolean | null;
+  lastError?: string | null;
+  lastWritten?: number;
+  lastDeactivated?: number;
+  lastImages?: number;
+  feedModified?: string | null;
+  diffCursor?: string | null;
+  phase?: 'idle' | 'catalog' | 'book' | 'images';
+  catalogOffset?: number;
+  catalogModified?: string | null;
+  drawingsTotal?: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+/**
+ * La URL del feed «Étiquette» — WRITE-ONLY. La URL incluye el token y ES la
+ * credencial (el feed no tiene login): sin política de lectura, se escribe por
+ * el RPC save_lr_etiquette_config y la lee sólo la función con service role.
+ * Declarada aquí porque toda tabla del esquema se nombra en la capa de datos
+ * (tests/schema) — un `db.lrEtiquetteConfig.toArray()` devuelve [] a
+ * propósito.
+ */
+export interface LrEtiquetteConfig {
+  profileId: string;
+  baseUrl: string;
+  updatedAt?: number;
+}
+
+/**
+ * La llave de Anthropic que lee `togo-match` — WRITE-ONLY, mismo contrato que
+ * LrEtiquetteConfig: RPC save_claude_config escribe, la función lee, la app
+ * jamás la ve.
+ */
+export interface ClaudeConfig {
+  profileId: string;
+  apiKey: string;
+  model?: string;
+  updatedAt?: number;
+}
+
 export interface Settings {
   profileId: string;
   companyName?: string;

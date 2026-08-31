@@ -13,10 +13,21 @@
 -- Aditiva + idempotente: safe de re-correr.
 -- ─────────────────────────────────────────────────────────────────────────────
 
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
+-- En Supabase ambas extensiones existen y esto las instala; en un Postgres
+-- pelado (el harness de tests, un entorno local) no hay .so que cargar, así
+-- que degrada con un aviso en vez de tumbar la cadena entera de migraciones —
+-- la función de abajo se crea igual y el job se registra donde sí se puede.
+do $$ begin
+  create extension if not exists pg_cron;
+  create extension if not exists pg_net;
+exception when others then
+  raise notice 'pg_cron/pg_net no instalables aquí (%) — el job nocturno se registra en Supabase, donde sí existen', sqlerrm;
+end $$;
 
-create or replace function ensure_lr_etiquette_cron(p_url text, p_secret text)
+-- El DEFINER vive en `veta` (la doctrina de helpers_off_the_api); la función
+-- Edge lo alcanza por el envoltorio plano de `public`, que es lo único que
+-- PostgREST expone a supabase.rpc().
+create or replace function veta.ensure_lr_etiquette_cron(p_url text, p_secret text)
 returns void
 language plpgsql security definer set search_path = public, cron, net as $$
 begin
@@ -31,8 +42,19 @@ begin
     || ', ''Content-Type'', ''application/json''), body:=''{"cron":true}''::jsonb, timeout_milliseconds:=600000);');
 end $$;
 
-revoke all on function ensure_lr_etiquette_cron(text, text) from public;
-revoke all on function ensure_lr_etiquette_cron(text, text) from anon;
-grant execute on function ensure_lr_etiquette_cron(text, text) to service_role;
+revoke all on function veta.ensure_lr_etiquette_cron(text, text) from public;
+revoke all on function veta.ensure_lr_etiquette_cron(text, text) from anon;
+grant execute on function veta.ensure_lr_etiquette_cron(text, text) to service_role;
+
+create or replace function public.ensure_lr_etiquette_cron(p_url text, p_secret text)
+returns void
+language sql
+as $$ select veta.ensure_lr_etiquette_cron(p_url, p_secret) $$;
+revoke all on function public.ensure_lr_etiquette_cron(text, text) from public;
+revoke all on function public.ensure_lr_etiquette_cron(text, text) from anon;
+grant execute on function public.ensure_lr_etiquette_cron(text, text) to service_role;
+-- El envoltorio corre como service_role, que necesita USAGE sobre `veta` para
+-- resolver el definer (a `authenticated` se lo dio helpers_off_the_api).
+grant usage on schema veta to service_role;
 
 notify pgrst, 'reload schema';

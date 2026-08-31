@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Settings2, FileText, LayoutDashboard, Layers, Armchair } from 'lucide-react';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Settings2, FileText, LayoutDashboard, Layers, Armchair, BookOpen } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
@@ -22,6 +22,7 @@ const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
 const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
 const KvadratImport = lazyPage(() => import('../pages/admin/KvadratImport.jsx'));
 const FredericiaImport = lazyPage(() => import('../pages/admin/FredericiaImport.jsx'));
+const LigneRosetImport = lazyPage(() => import('../pages/admin/LigneRosetImport.jsx'));
 const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
 const TogoRequests = lazyPage(() => import('../pages/TogoRequests.jsx'));
 const DealerInbox = lazyPage(() => import('../pages/DealerInbox.jsx'));
@@ -60,6 +61,8 @@ const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
  *    not the brand itself, and the two reading as one thing is exactly the
  *    confusion this section exists to end:
  *
+ *      Ligne Roset · Étiquette — the manufacturer's OFFICIAL feed → catálogo,
+ *                            telas, bajas y dibujos (pages/admin/LigneRosetImport)
  *      Kvadrat            — a colourway collection → telas (pages/admin/KvadratImport)
  *      Fredericia · Anthom — Anthom's storefront → catálogo (pages/admin/FredericiaImport)
  *
@@ -79,6 +82,7 @@ const NAV = [
 ];
 
 const IMPORT_NAV = [
+  { to: '/ligne-roset', label: 'Ligne Roset · Étiquette', icon: BookOpen },
   { to: '/kvadrat', label: 'Kvadrat', icon: Layers },
   { to: '/fredericia', label: 'Fredericia · Anthom', icon: Armchair },
 ];
@@ -348,6 +352,7 @@ function AdminApp() {
             <Route path="cotizaciones" element={<Quotes />} />
             <Route path="cotizaciones/:id" element={<QuoteDetail />} />
             <Route path="marcas" element={<Brands />} />
+            <Route path="ligne-roset" element={<LigneRosetImport />} />
             <Route path="kvadrat" element={<KvadratImport />} />
             <Route path="fredericia" element={<FredericiaImport />} />
             <Route path="*" element={<NotFound />} />

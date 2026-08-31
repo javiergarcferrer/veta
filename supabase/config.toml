@@ -75,6 +75,16 @@ verify_jwt = false
 [functions.lr-catalog]
 verify_jwt = false
 
+# lr-etiquette imports the OFFICIAL Ligne Roset catalog from the «Étiquette»
+# dealer feed (articles, grade prices, the fabric book, the change log and the
+# line drawings) — the authority the lr-catalog scrape approximates. Like
+# lr-catalog it verifies the caller's JWT ITSELF, so the gateway check stays off
+# — with it on, the browser's CORS preflight (no Authorization header on
+# OPTIONS) gets a 401 and the POST never leaves. The nightly cron mode is
+# separately gated on the service-role key.
+[functions.lr-etiquette]
+verify_jwt = false
+
 # rnc-lookup resolves a taxpayer's fiscal name from their RNC/cédula against the
 # public DGII-mirror registry (rnc.megaplus.com.do) so the app can auto-fill
 # suppliers/customers for clean 606/607 reporting. Read-only, locked to that one

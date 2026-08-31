@@ -22,6 +22,11 @@ import type {
   LrEtiquetteSync,
   LrEtiquetteConfig,
   ClaudeConfig,
+  ChPage,
+  ChSpec,
+  ChPrice,
+  ChAsset,
+  ChImport,
 } from '../types/domain.ts';
 
 /**
@@ -118,6 +123,15 @@ const TABLES = {
   // TODO el esquema (tests/schema) — una tabla sin nombrar es esquema muerto.
   lrEtiquetteConfig: { db: 'lr_etiquette_config', pk: 'profileId' },
   claudeConfig:      { db: 'claude_config',       pk: 'profileId' },
+  // El importador Carl Hansen: tres tablas de CACHÉ (pages/specs/prices —
+  // truncarlas es seguro, un re-sweep las reconstruye) y dos de ESTADO DE
+  // USUARIO (assets/imports — trabajo humano y auditoría append-only). Sin FKs
+  // entre las mitades A PROPÓSITO: la regla del borrado, por forma.
+  carlHansenPages:   { db: 'carl_hansen_pages',   pk: 'id' },
+  carlHansenSpecs:   { db: 'carl_hansen_specs',   pk: 'id' },
+  carlHansenPrices:  { db: 'carl_hansen_prices',  pk: 'id' },
+  carlHansenAssets:  { db: 'carl_hansen_assets',  pk: 'id' },
+  carlHansenImports: { db: 'carl_hansen_imports', pk: 'id' },
 
   // ── The frozen quote documents ─────────────────────────────────────────
   // READ-ONLY from the browser BY DESIGN: RLS grants `authenticated` a select
@@ -151,6 +165,11 @@ export interface TableRowMap {
   lrEtiquetteSync: LrEtiquetteSync;
   lrEtiquetteConfig: LrEtiquetteConfig;
   claudeConfig: ClaudeConfig;
+  carlHansenPages: ChPage;
+  carlHansenSpecs: ChSpec;
+  carlHansenPrices: ChPrice;
+  carlHansenAssets: ChAsset;
+  carlHansenImports: ChImport;
   vetaQuotes: VetaQuote;
 }
 

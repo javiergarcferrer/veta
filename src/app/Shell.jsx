@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Settings2, FileText, LayoutDashboard, Layers, Armchair, BookOpen } from 'lucide-react';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Settings2, FileText, LayoutDashboard, Layers, Armchair, BookOpen, Sofa } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
@@ -23,6 +23,7 @@ const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
 const KvadratImport = lazyPage(() => import('../pages/admin/KvadratImport.jsx'));
 const FredericiaImport = lazyPage(() => import('../pages/admin/FredericiaImport.jsx'));
 const LigneRosetImport = lazyPage(() => import('../pages/admin/LigneRosetImport.jsx'));
+const CarlHansenImport = lazyPage(() => import('../pages/admin/CarlHansen.jsx'));
 const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
 const TogoRequests = lazyPage(() => import('../pages/TogoRequests.jsx'));
 const DealerInbox = lazyPage(() => import('../pages/DealerInbox.jsx'));
@@ -65,6 +66,8 @@ const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
  *                            telas, bajas y dibujos (pages/admin/LigneRosetImport)
  *      Kvadrat            — a colourway collection → telas (pages/admin/KvadratImport)
  *      Fredericia · Anthom — Anthom's storefront → catálogo (pages/admin/FredericiaImport)
+ *      Carl Hansen · PIM  — the manufacturer's public PIM → sweep, configure,
+ *                            mint products at list price (pages/admin/CarlHansen)
  *
  * Two surfaces skip authentication entirely, because they are the product's
  * public half: the clean `/configurator` URLs (mounted before this file ever
@@ -85,6 +88,7 @@ const IMPORT_NAV = [
   { to: '/ligne-roset', label: 'Ligne Roset · Étiquette', icon: BookOpen },
   { to: '/kvadrat', label: 'Kvadrat', icon: Layers },
   { to: '/fredericia', label: 'Fredericia · Anthom', icon: Armchair },
+  { to: '/carl-hansen', label: 'Carl Hansen · PIM', icon: Sofa },
 ];
 
 function Loading({ label = 'Cargando…' }) {
@@ -353,6 +357,7 @@ function AdminApp() {
             <Route path="cotizaciones/:id" element={<QuoteDetail />} />
             <Route path="marcas" element={<Brands />} />
             <Route path="ligne-roset" element={<LigneRosetImport />} />
+            <Route path="carl-hansen" element={<CarlHansenImport />} />
             <Route path="kvadrat" element={<KvadratImport />} />
             <Route path="fredericia" element={<FredericiaImport />} />
             <Route path="*" element={<NotFound />} />

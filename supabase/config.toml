@@ -391,3 +391,12 @@ verify_jwt = false
 # No cost, no margin and no dealer identity passes through it.
 [functions.carl-hansen]
 verify_jwt = false
+
+# carl-hansen-import is the IMPORTER — a different animal from the transport
+# above: it sweeps carlhansen.com's sitemap + Azure blob into five cache/state
+# tables (incremental, bounded, claim-locked — one sweep at a time against a
+# third party's site) so the admin can browse, configure and MINT products at
+# the published list price. Verifies the caller's JWT ITSELF; gateway check
+# off so the CORS preflight passes — same as the transport.
+[functions.carl-hansen-import]
+verify_jwt = false

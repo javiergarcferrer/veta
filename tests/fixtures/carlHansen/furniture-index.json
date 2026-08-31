@@ -1,0 +1,2773 @@
+[
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/bar-stools/ch56",
+  "name": "CH56 | Bar Stool",
+  "id": "CH56_item",
+  "designer": "Hans J. Wegner",
+  "variants": 5,
+  "assets": [
+   [
+    "CH56.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch56/ch56.zip"
+   ],
+   [
+    "CH56-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch56/ch56-2d.zip"
+   ],
+   [
+    "CH56_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch56/ch56_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/bar-stools/ch58",
+  "name": "CH58 | Bar Stool",
+  "id": "CH58_item",
+  "designer": "Hans J. Wegner",
+  "variants": 4,
+  "assets": [
+   [
+    "CH58.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch58/ch58.zip"
+   ],
+   [
+    "CH58-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch58/ch58-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/bar-stools/e006",
+  "name": "E006 | Embrace Bar Stool",
+  "id": "E006_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E006_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e006/e006_2d.zip"
+   ],
+   [
+    "E006_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e006/e006_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/bar-stools/e007",
+  "name": "E007 | Embrace Bar Stool",
+  "id": "E007_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E007_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e007/e007_2d.zip"
+   ],
+   [
+    "E007_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e007/e007_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/bm1106",
+  "name": "BM1106 | Huntsman Chair",
+  "id": "BM1106_item",
+  "designer": "Børge Mogensen",
+  "variants": 4,
+  "assets": [
+   [
+    "BM1106_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/bm1106/bm1106_2d.zip"
+   ],
+   [
+    "BM1106.revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/bm1106/bm1106.revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch111",
+  "name": "CH111 | Chair",
+  "id": "CH111_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH111-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch111/ch111-2d.zip"
+   ],
+   [
+    "CH111_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch111/ch111_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch20",
+  "name": "CH20 | Elbow Chair",
+  "id": "CH20_item",
+  "designer": "Hans J. Wegner",
+  "variants": 15,
+  "assets": [
+   [
+    "CH20_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch20/ch20_3drevit.zip"
+   ],
+   [
+    "CH20_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch20/ch20_2d.zip"
+   ],
+   [
+    "CH20.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch20/ch20.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch23",
+  "name": "CH23 | Chair",
+  "id": "CH23_1",
+  "designer": "Hans J. Wegner",
+  "variants": 8,
+  "assets": [
+   [
+    "CH23_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch23/ch23_3d.zip"
+   ],
+   [
+    "CH23-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch23/ch23-2d.zip"
+   ],
+   [
+    "CH23.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch23/ch23.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch24",
+  "name": "CH24 | Wishbone Chair",
+  "id": "CH24_item",
+  "designer": "Hans J. Wegner",
+  "variants": 41,
+  "assets": [
+   [
+    "CH24 (3).zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-3.zip"
+   ],
+   [
+    "CH24_3D (2).zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24_3d-2.zip"
+   ],
+   [
+    "CH24-2D (2).zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/ch24-2d-2.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch24-soft-ilse-crawford",
+  "name": "CH24 Soft | Hans J. Wegner & Ilse Crawford",
+  "id": "CH24-Soft-Ilse_1",
+  "designer": "Hans J. Wegner",
+  "variants": 18,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch24p",
+  "name": "Wishbone Chair beech oil FSC®70% loke 7050  | Wishbone Chair",
+  "id": "CH24P_item",
+  "designer": "Hans J. Wegner",
+  "variants": 5,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch26",
+  "name": "CH26 | Chair",
+  "id": "CH26_item",
+  "designer": "Hans J. Wegner",
+  "variants": 7,
+  "assets": [
+   [
+    "CH26.REVIT.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch26/ch26.revit.zip"
+   ],
+   [
+    "CH26-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch26/ch26-2d.zip"
+   ],
+   [
+    "3D_CH26.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch26/3d_ch26.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch29p",
+  "name": "CH29P | Sawbuck Chair",
+  "id": "CH29P_item",
+  "designer": "Hans J. Wegner",
+  "variants": 10,
+  "assets": [
+   [
+    "CH29-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch29p/ch29-2d.zip"
+   ],
+   [
+    "CH29P_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch29p/ch29p_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch30p",
+  "name": "CH30P | Chair",
+  "id": "CH30P_item",
+  "designer": "Hans J. Wegner",
+  "variants": 7,
+  "assets": [
+   [
+    "CH30.revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch30p/ch30.revit.zip"
+   ],
+   [
+    "CH30_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch30p/ch30_2d.zip"
+   ],
+   [
+    "CH30_chair_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch30p/ch30_chair_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch33p",
+  "name": "CH33P  | Chair",
+  "id": "CH33P_item",
+  "designer": "Hans J. Wegner",
+  "variants": 11,
+  "assets": [
+   [
+    "CH33P.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33p/ch33p.zip"
+   ],
+   [
+    "CH33-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33p/ch33-2d.zip"
+   ],
+   [
+    "CH33P_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33p/ch33p_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch33t",
+  "name": "CH33T | Chair",
+  "id": "CH33T_1",
+  "designer": "Hans J. Wegner",
+  "variants": 7,
+  "assets": [
+   [
+    "CH33T_Ecolabel.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33t/ch33t_ecolabel.pdf"
+   ],
+   [
+    "CH33T.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33t/ch33t.zip"
+   ],
+   [
+    "CH33T_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33t/ch33t_3d.zip"
+   ],
+   [
+    "CH33T-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch33t/ch33t-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch36",
+  "name": "CH36 | Chair",
+  "id": "CH36_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH36-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch36/ch36-2d.zip"
+   ],
+   [
+    "CH36_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch36/ch36_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch37",
+  "name": "CH37 | Chair",
+  "id": "CH37_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH37_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch37/ch37_3d.zip"
+   ],
+   [
+    "CH37-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch37/ch37-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch621",
+  "name": "CH621 | Swivel Chair",
+  "id": "CH621_item",
+  "designer": "Hans J. Wegner",
+  "variants": 2,
+  "assets": [
+   [
+    "CH621 product sheet.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch621/chs_product-sheet_ch621-swivel-chair.pdf"
+   ],
+   [
+    "CH621_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch621/ch621_2d.zip"
+   ],
+   [
+    "CH621_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch621/ch621_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch88p",
+  "name": "CH88P | Chair",
+  "id": "CH88P_item",
+  "designer": "Hans J. Wegner",
+  "variants": 16,
+  "assets": [
+   [
+    "CH88-2D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch88p/ch88-2d-1.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ch88t",
+  "name": "CH88T | Chair",
+  "id": "CH88T_item",
+  "designer": "Hans J. Wegner",
+  "variants": 5,
+  "assets": [
+   [
+    "CH88T_Ecolabel_02.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch88t/ch88t_ecolabel_02.pdf"
+   ],
+   [
+    "CH88T.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch88t/ch88t.zip"
+   ],
+   [
+    "CH88T-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch88t/ch88t-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/e004",
+  "name": "E004 | Embrace Chair",
+  "id": "E004_item",
+  "designer": "EOOS",
+  "variants": 3,
+  "assets": [
+   [
+    "E004(1).revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e004/e0041.revit.zip"
+   ],
+   [
+    "E004_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e004/e004_2d.zip"
+   ],
+   [
+    "E004_embrace_chair_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e004/e004_embrace_chair_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/e005",
+  "name": "E005 | Embrace Armchair",
+  "id": "E005_item",
+  "designer": "EOOS",
+  "variants": 2,
+  "assets": [
+   [
+    "E005.REVIT.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e005/e005.revit.zip"
+   ],
+   [
+    "E005-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e005/e005-2d.zip"
+   ],
+   [
+    "3D_E005.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/e005/3d_e005.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/fh38",
+  "name": "FH38 | Windsor Chair",
+  "id": "FH38_item",
+  "designer": "Frits Henningsen",
+  "variants": 2,
+  "assets": [
+   [
+    "FH38 - Drawings.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/fh38/fh38---drawings.zip"
+   ],
+   [
+    "FH38_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/fh38/fh38_2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/kk37580",
+  "name": "KK37580 | Large Red Chair",
+  "id": "KK37580_item",
+  "designer": "Kaare Klint",
+  "variants": 1,
+  "assets": [
+   [
+    "KK37580-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/kk37580/kk37580-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/kk37581",
+  "name": "KK37581 | Large Red Armchair",
+  "id": "KK37581_item",
+  "designer": "Kaare Klint",
+  "variants": 1,
+  "assets": [
+   [
+    "KK37581-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/kk37581/kk37581-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/kk39490",
+  "name": "KK39490 | Small red chair",
+  "id": "KK39490_item",
+  "designer": "Kaare Klint",
+  "variants": 1,
+  "assets": [
+   [
+    "KK39490-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/kk39490/kk39490-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/kk96620",
+  "name": "KK96620 | Faaborg Chair",
+  "id": "KK96620_item",
+  "designer": "Kaare Klint",
+  "variants": 3,
+  "assets": [
+   [
+    "KK96620-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/kk96620/kk96620-2d.zip"
+   ],
+   [
+    "3D_KK96620_Faaborg-Chair.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/kk96620/3d_kk96620_faaborg-chair.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/ow58-t-chair",
+  "name": "OW58 | T-Chair",
+  "id": "OW58_item",
+  "designer": "Ole Wanscher",
+  "variants": 2,
+  "assets": [
+   [
+    "OW58_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ow58/ow58_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/pk1",
+  "name": "PK1 stol RAL 9005 Natural paper cord 2,5 mm Hard glider  | Chair",
+  "id": "PK1_item",
+  "designer": "Poul Kjærholm",
+  "variants": 2,
+  "assets": [
+   [
+    "PK1_revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/pk1/natural-paper-cord/pk1_revit.zip"
+   ],
+   [
+    "PK1_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/pk1/natural-paper-cord/pk1_3d.zip"
+   ],
+   [
+    "PK1_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/pk1/natural-paper-cord/pk1_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/vla26p",
+  "name": "VLA26P | Vega Chair",
+  "id": "VLA26P_item",
+  "designer": "Vilhelm Lauritzen",
+  "variants": 6,
+  "assets": [
+   [
+    "VLA26P_VLA26T Assembling Instruction.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26t/vla26p_vla26t-assembling-instruction.pdf"
+   ],
+   [
+    "VLA26_Productsheet.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26p/vla26_productsheet.pdf"
+   ],
+   [
+    "VLA26_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26p/vla26_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/vla26t",
+  "name": "VLA26T | Vega Chair",
+  "id": "VLA26T_item",
+  "designer": "Vilhelm Lauritzen",
+  "variants": 4,
+  "assets": [
+   [
+    "VLA26P_VLA26T Assembling Instruction.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26t/vla26p_vla26t-assembling-instruction.pdf"
+   ],
+   [
+    "VLA26_Productsheet.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26p/vla26_productsheet.pdf"
+   ],
+   [
+    "VLA26_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26p/vla26_3d.zip"
+   ],
+   [
+    "VLA26T_Ecolabel_02.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla26t/vla26t_ecolabel_02.pdf"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/dining-chairs/vla61",
+  "name": "VLA61 | Monarch Chair",
+  "id": "VLA61_item",
+  "designer": "Vilhelm Lauritzen",
+  "variants": 11,
+  "assets": [
+   [
+    "VLA61_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla61/vla61_2d.zip"
+   ],
+   [
+    "VLA61_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla61/vla61_3d.zip"
+   ],
+   [
+    "VLA61_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/vla61/vla61_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch07",
+  "name": "CH07 | Shell Chair",
+  "id": "CH07_item",
+  "designer": "Hans J. Wegner",
+  "variants": 16,
+  "assets": [
+   [
+    "CH07.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch07/ch07.zip"
+   ],
+   [
+    "CH07-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch07/ch07-2d.zip"
+   ],
+   [
+    "CH07_3D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch07/ch07_3d-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch101",
+  "name": "CH101 | Lounge Chair ",
+  "id": "CH101_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH101_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch101/ch101_3d.zip"
+   ],
+   [
+    "CH101_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch101/ch101_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch22",
+  "name": "CH22 | Lounge Chair",
+  "id": "CH22_item",
+  "designer": "Hans J. Wegner",
+  "variants": 7,
+  "assets": [
+   [
+    "CH22-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch22/ch22-2d.zip"
+   ],
+   [
+    "3D_CH22.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch22/3d_ch22.zip"
+   ],
+   [
+    "CH22.REVIT.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch22/ch22.revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch25",
+  "name": "CH25 | Lounge Chair",
+  "id": "CH25_item",
+  "designer": "Hans J. Wegner",
+  "variants": 7,
+  "assets": [
+   [
+    "CH25 (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch25/ch25-1.zip"
+   ],
+   [
+    "CH25-2D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch25/ch25-2d-1.zip"
+   ],
+   [
+    "CH25_3D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch25/ch25_3d-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch28p",
+  "name": "CH28P | Lounge Chair",
+  "id": "CH28P_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "CH28-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch28p/ch28-2d.zip"
+   ],
+   [
+    "CH28P_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch28p/ch28p_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch290",
+  "name": "CH290  | Lounge Chair",
+  "id": "CH290_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "Product data sheet_CH290.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch290/product-data-sheet_ch290.pdf"
+   ],
+   [
+    "CH290_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch290/ch290_2d.zip"
+   ],
+   [
+    "CH290_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch290/ch290_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch291",
+  "name": "CH291  | Lounge Chair",
+  "id": "CH291_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "Product data sheet_CH291.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch291/product-data-sheet_ch291.pdf"
+   ],
+   [
+    "CH291_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch291/ch291_3d_revit.zip"
+   ],
+   [
+    "CH291_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/ch291/ch291_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch44",
+  "name": "CH44  | Lounge Chair",
+  "id": "CH44_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "CH44-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch44/ch44-2d.zip"
+   ],
+   [
+    "CH44_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch44/ch44_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch445",
+  "name": "CH445 | Wing Chair",
+  "id": "CH445_item",
+  "designer": "Hans J. Wegner",
+  "variants": 13,
+  "assets": [
+   [
+    "CH445 (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch445/ch445-1.zip"
+   ],
+   [
+    "CH445-2D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch445/ch445-2d-1.zip"
+   ],
+   [
+    "CH445_3D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch445/ch445_3d-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch45",
+  "name": "CH45  | Rocking Chair",
+  "id": "CH45_item",
+  "designer": "Hans J. Wegner",
+  "variants": 4,
+  "assets": [
+   [
+    "CH45_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch45/ch45_3d.zip"
+   ],
+   [
+    "CH45_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch45/ch45_2d.zip"
+   ],
+   [
+    "CH45_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch45/ch45_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch468",
+  "name": "CH468 | Oculus Chair",
+  "id": "CH468_item",
+  "designer": "Hans J. Wegner",
+  "variants": 12,
+  "assets": [
+   [
+    "CH468.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch468/ch468.zip"
+   ],
+   [
+    "CH468-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch468/ch468-2d.zip"
+   ],
+   [
+    "CH468_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch468/ch468_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch71",
+  "name": "CH71 | Lounge Chair",
+  "id": "CH71_item",
+  "designer": "Hans J. Wegner",
+  "variants": 2,
+  "assets": [
+   [
+    "CH71.revit (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch71/ch71.revit-1.zip"
+   ],
+   [
+    "CH71-2D (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch71/ch71-2d-1.zip"
+   ],
+   [
+    "CH71_3D (1).ZIP",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch71/ch71_3d-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ch78",
+  "name": "CH78 | Mama Bear Chair",
+  "id": "CH78_item",
+  "designer": "Hans J. Wegner",
+  "variants": 15,
+  "assets": [
+   [
+    "CH78 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch78/ch78-revit.zip"
+   ],
+   [
+    "CH78 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch78/ch78-2d.zip"
+   ],
+   [
+    "CH78 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ch78/ch78-3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/e015",
+  "name": "E015 | Embrace Lounge Chair",
+  "id": "E015_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E015.REVIT.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/e015/e015.revit.zip"
+   ],
+   [
+    "E015-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/e015/e015-2d.zip"
+   ],
+   [
+    "3D_E015.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/e015/3d_e015.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/fh419",
+  "name": "FH419 | Heritage Chair",
+  "id": "FH419_item",
+  "designer": "Frits Henningsen",
+  "variants": 1,
+  "assets": [
+   [
+    "FH419.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fh419/fh419.zip"
+   ],
+   [
+    "FH419-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fh419/fh419-2d.zip"
+   ],
+   [
+    "3D_Heritage Chair.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fh419/3d_heritage-chair.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/fh429",
+  "name": "FH429 | Signature Chair ",
+  "id": "FH429_item",
+  "designer": "Frits Henningsen",
+  "variants": 5,
+  "assets": [
+   [
+    "FH429.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fh429/fh429.zip"
+   ],
+   [
+    "FH429-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fh429/fh429-2d.zip"
+   ],
+   [
+    "3D_FH429.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fh429/3d_fh429.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/fk10",
+  "name": "FK10 | Plico Chair",
+  "id": "FK10_item",
+  "designer": "Fabricius & Kastholm",
+  "variants": 2,
+  "assets": [
+   [
+    "FK10_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fk10/fk10_2d.zip"
+   ],
+   [
+    "FK10_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fk10/fk10_3drevit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/fk11",
+  "name": "FK11 | Plico Chair",
+  "id": "FK11_item",
+  "designer": "Fabricius & Kastholm",
+  "variants": 2,
+  "assets": [
+   [
+    "FK11_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fk11/fk11_2d.zip"
+   ],
+   [
+    "FK11_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/fk11/fk11_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/fk64",
+  "name": "FK64 | Scimitar Chair",
+  "id": "FK64_item",
+  "designer": "Fabricius & Kastholm",
+  "variants": 3,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/kk43960",
+  "name": "KK43960 | Mix Chair",
+  "id": "KK43960_item",
+  "designer": "Kaare Klint",
+  "variants": 2,
+  "assets": [
+   [
+    "KK4396_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk43960/kk4396_3d.zip"
+   ],
+   [
+    "KK43960-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk43960/kk43960-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/kk47000",
+  "name": "KK47000 Safari stol ash white oil , FSC™Mix 70% , canvas nat  | Safari Chair",
+  "id": "KK47000_item",
+  "designer": "Kaare Klint",
+  "variants": 4,
+  "assets": [
+   [
+    "KK47000  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk47000/kk47000--assembling-instruction.zip"
+   ],
+   [
+    "KK47000 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk47000/kk47000-2d.zip"
+   ],
+   [
+    "KK47000 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk47000/3d_safari-chair.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/kk53130",
+  "name": "KK53130 | Easy Chair",
+  "id": "KK53130_item",
+  "designer": "Kaare Klint",
+  "variants": 1,
+  "assets": [
+   [
+    "KK53130 Easy Chair_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk53130/kk53130-easy-chair_3d.zip"
+   ],
+   [
+    "KK53130-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/kk53130/kk53130-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/lm92p",
+  "name": "LM92P oak oil Saddle leather black Black  | Metropolitan Chair",
+  "id": "LM92P_item",
+  "designer": "Larsen & Bender Madsen",
+  "variants": 2,
+  "assets": [
+   [
+    "LM92P_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/lm92p/lm92p_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/lm92t",
+  "name": "LM92T walnut oil sif 98  | Metropolitan Chair",
+  "id": "LM92T_item",
+  "designer": "Larsen & Bender Madsen",
+  "variants": 2,
+  "assets": [
+   [
+    "LM92T_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/lm92t/lm92t_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/lp92c",
+  "name": "Metropolitan Chair oak oil natural cord  | Metropolitan Chair",
+  "id": "LM92C_item",
+  "designer": "Larsen & Bender Madsen",
+  "variants": 1,
+  "assets": [
+   [
+    "LM92C_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/chairs/lm92c/lm92c_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/mg501",
+  "name": "Cuba Chair Teak untreated FSC-100 FlatRope Charcoal Stainles  | Cuba Chair",
+  "id": "MG501_item",
+  "designer": "Morten Gøttler",
+  "variants": 6,
+  "assets": [
+   [
+    "MG501 Cuba 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/mg501/mg501-cuba-3d.zip"
+   ],
+   [
+    "MG 501 Cuba Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/mg501/mg-501-cuba-revit.zip"
+   ],
+   [
+    "MG501-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/mg501/mg501-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/mg501-papercord",
+  "name": "MG501 Paper cord | Cuba Chair",
+  "id": "MG501-Cuba-Chair_2",
+  "designer": "Morten Gøttler",
+  "variants": 2,
+  "assets": [
+   [
+    "MG501 Cuba Chair Outdoor 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/mg501/mg501-cuba-chair-outdoor-3d.zip"
+   ],
+   [
+    "MG501 Cuba Chair Outdoor Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/mg501/mg501-cuba-chair-outdoor-revit.zip"
+   ],
+   [
+    "MG501-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/mg501/mg501-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ow149",
+  "name": "OW149 | Colonial Chair",
+  "id": "OW149_item",
+  "designer": "Ole Wanscher",
+  "variants": 32,
+  "assets": [
+   [
+    "OW149_3DRevit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ow149/ow149_3drevit.zip"
+   ],
+   [
+    "OW149.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ow149/ow149.zip"
+   ],
+   [
+    "OW149-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ow149/ow149-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/rf1904",
+  "name": "RF1904 | Sideways Lounge Chair ",
+  "id": "RF1904_item",
+  "designer": "Rikke Frost",
+  "variants": 1,
+  "assets": [
+   [
+    "RF1904 (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/rf1904/rf1904-1.zip"
+   ],
+   [
+    "BM0057 Assembling instruction (1).pdf",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/rf1904/bm0057-assembling-instruction-1.pdf"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/ta001p",
+  "name": "TA001P  | Dream Chair",
+  "id": "TA001P_item",
+  "designer": "Tadao Ando",
+  "variants": 1,
+  "assets": [
+   [
+    "TA001T-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ta001p/ta001t-2d.zip"
+   ],
+   [
+    "3D_TA001P.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/ta001p/3d_ta001p.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/chairs/lounge-chairs/vla76",
+  "name": "VLA76 | Foyer Chair",
+  "id": "VLA76_item",
+  "designer": "Vilhelm Lauritzen",
+  "variants": 1,
+  "assets": [
+   [
+    "VLA76.zip",
+    "https://admincms.carlhansen.com/globalassets/products/loungechairs/vla76/vla76.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/bm0865",
+  "name": "BM0865  | Daybed",
+  "id": "BM0865_item",
+  "designer": "Børge Mogensen",
+  "variants": 1,
+  "assets": [
+   [
+    "BM0865 Daybed  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/bm0865/bm0865-daybed--assembling-instruction.zip"
+   ],
+   [
+    "BM0865 Daybed 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/bm0865/bm0865-daybed-3d.zip"
+   ],
+   [
+    "BM0865 Daybed Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/bm0865/bm0865-daybed-revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch102",
+  "name": "CH102 | Sofa",
+  "id": "CH102_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH102_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch102/ch102_2d.zip"
+   ],
+   [
+    "CH102_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch102/ch102_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch103",
+  "name": "CH103 | Sofa",
+  "id": "CH103_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH103-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch103/ch103-2d.zip"
+   ],
+   [
+    "CH103_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch103/ch103_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch104",
+  "name": "CH104 | Sofa",
+  "id": "CH104_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH104_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch104/ch104_2d.zip"
+   ],
+   [
+    "CH104_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch104/ch104_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch162",
+  "name": "CH162 oak oil HR FSC™Mix 70% thor 301  | Sofa",
+  "id": "CH162_item",
+  "designer": "Hans J. Wegner",
+  "variants": 2,
+  "assets": [
+   [
+    "CH162-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch162/ch162-2d.zip"
+   ],
+   [
+    "CH162_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch162/ch162_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch163",
+  "name": "CH163 oak oil HR FSC™Mix 70% thor 301  | Sofa",
+  "id": "CH163_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH163-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch163/ch163-2d.zip"
+   ],
+   [
+    "CH163_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch163/ch163_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch280a",
+  "name": "CH280A | Armrest section",
+  "id": "CH280A_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch280m",
+  "name": "CH280M | Middle section ",
+  "id": "CH280M_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch292",
+  "name": "CH292  | Sofa ",
+  "id": "CH292_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "Product data sheet_CH292.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch292/product-data-sheet_ch292.pdf"
+   ],
+   [
+    "CH292_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch292/ch292_2d.zip"
+   ],
+   [
+    "CH292_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch292/ch292_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch293",
+  "name": "CH293  | Sofa",
+  "id": "CH293_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "Product data sheet_CH293.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch293/product-data-sheet_ch293.pdf"
+   ],
+   [
+    "CH293_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch293/ch293_2d.zip"
+   ],
+   [
+    "CH293_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch293/ch293_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ch72",
+  "name": "CH72 | Sofa",
+  "id": "CH72_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "CH72.revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch72/ch72.revit.zip"
+   ],
+   [
+    "CH72-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch72/ch72-2d.zip"
+   ],
+   [
+    "CH72_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ch72/ch72_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/e300",
+  "name": "E300 | Embrace Sofa",
+  "id": "E300 frame_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E300-E350_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/e300/e300-e350_2d.zip"
+   ],
+   [
+    "E300-350_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/e300/e300-350_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/kk41180",
+  "name": "KK41180 | Sofa with high sides",
+  "id": "KK41180_item",
+  "designer": "Kaare Klint",
+  "variants": 2,
+  "assets": [
+   [
+    "KK41180.revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk41180/kk41180.revit.zip"
+   ],
+   [
+    "KK41180-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk41180/kk41180-2d.zip"
+   ],
+   [
+    "KK41180_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk41180/kk41180_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/kk41181",
+  "name": "KK41181 | Sofa with high sides",
+  "id": "KK41181_item",
+  "designer": "Kaare Klint",
+  "variants": 1,
+  "assets": [
+   [
+    "KK41181.revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk41181/kk41181.revit.zip"
+   ],
+   [
+    "KK41181-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk41181/kk41181-2d.zip"
+   ],
+   [
+    "KK41181_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk41181/kk41181_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/kk48650",
+  "name": "KK48650 | Addition Sofa",
+  "id": "KK48650_item",
+  "designer": "Kaare Klint",
+  "variants": 3,
+  "assets": [
+   [
+    "KK48650-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk48650/kk48650-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/kk48651",
+  "name": "KK48651 | Addition Sofa",
+  "id": "KK48651_item",
+  "designer": "Kaare Klint",
+  "variants": 3,
+  "assets": [
+   [
+    "KK48651-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/kk48651/kk48651-2d.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/nd52-2",
+  "name": "ND52-2 | Vita Sofa ",
+  "id": "ND52-2_item",
+  "designer": "Nanna Ditzel & Jørgen Ditzel",
+  "variants": 2,
+  "assets": [
+   [
+    "ND52-2.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/nd52-23/nd52-2.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/nd52-3",
+  "name": "ND52-3 | Vita Sofa ",
+  "id": "ND52-3_item",
+  "designer": "Nanna Ditzel & Jørgen Ditzel",
+  "variants": 2,
+  "assets": [
+   [
+    "ND52-3.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/nd52-23/nd52-3.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ow149-2",
+  "name": "OW149-2 | Colonial Sofa",
+  "id": "OW149-2_item",
+  "designer": "Ole Wanscher",
+  "variants": 17,
+  "assets": [
+   [
+    "OW149-2_3DRevit 2.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ow149-2/ow149-2_3drevit-2.zip"
+   ],
+   [
+    "OW149-2-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ow149-2/ow149-2-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/ow150",
+  "name": "OW150 | Daybed",
+  "id": "OW150_item",
+  "designer": "Ole Wanscher",
+  "variants": 12,
+  "assets": [
+   [
+    "OW150.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ow150/ow150.zip"
+   ],
+   [
+    "OW150_3DRevit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ow150/ow150_3drevit.zip"
+   ],
+   [
+    "OW150-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/ow150/ow150-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/rf1903",
+  "name": "RF1903R | Sideways Sofa",
+  "id": "RF1903R_item",
+  "designer": "Rikke Frost",
+  "variants": 9,
+  "assets": [
+   [
+    "RF1903 Right_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/rf1903_r/rf1903-right_3d_revit.zip"
+   ],
+   [
+    "RF1903 Right_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/rf1903_r/rf1903-right_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/rf1903-l",
+  "name": "RF1903L | Sideways Sofa",
+  "id": "RF1903L_item",
+  "designer": "Rikke Frost",
+  "variants": 9,
+  "assets": [
+   [
+    "RF1903 Left_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/rf1903_l/rf1903-left_2d.zip"
+   ],
+   [
+    "RF1903 Left_3D_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/rf1903_l/rf1903-left_3d_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/tk8",
+  "name": "TK8 | Daybed",
+  "id": "TK8_item",
+  "designer": "Thomas Bo Kastholm",
+  "variants": 3,
+  "assets": [
+   [
+    "TK8  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/tk8/tk8--assembling-instruction.zip"
+   ],
+   [
+    "TK8.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/tk8/tk8.zip"
+   ],
+   [
+    "TK8 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/tk8/tk8_3d.zip"
+   ],
+   [
+    "TK8 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/tk8/tk8-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/sofas-daybeds/vla77",
+  "name": "VLA77 | Foyer Sofa",
+  "id": "VLA77_item",
+  "designer": "Vilhelm Lauritzen",
+  "variants": 1,
+  "assets": [
+   [
+    "VLA77_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/vla77/vla77_3d.zip"
+   ],
+   [
+    "VLA77_revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/daybeds--sofas/vla77/vla77_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/bm0488",
+  "name": "BM0488L | Table Bench | 138x46",
+  "id": "BM0488L_item",
+  "designer": "Børge Mogensen",
+  "variants": 1,
+  "assets": [
+   [
+    "BM0488 Bench 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/bm0488/bm0488-bench-3d.zip"
+   ],
+   [
+    "BM0488 Bench Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/bm0488/bm0488-bench-revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/bm0488s",
+  "name": "BM0488S | Table Bench | 69x46",
+  "id": "BM0488S_item",
+  "designer": "Børge Mogensen",
+  "variants": 1,
+  "assets": [
+   [
+    "BM0488S.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/bm0488/bm0488s/bm0488s.zip"
+   ],
+   [
+    "BM0488S_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/bm0488/bm0488s/bm0488s_2d.zip"
+   ],
+   [
+    "BM0488S_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/bm0488/bm0488s/bm0488s_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/bm0489l",
+  "name": "BM0489L  | Table Bench",
+  "id": "BM0489L_item",
+  "designer": "Børge Mogensen",
+  "variants": 1,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/bm0489s",
+  "name": "BM0489S  | Table Bench",
+  "id": "BM0489S_item",
+  "designer": "Børge Mogensen",
+  "variants": 1,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch004",
+  "name": "CH004 | Nesting Tables",
+  "id": "CH004_item",
+  "designer": "Hans J. Wegner",
+  "variants": 5,
+  "assets": [
+   [
+    "CH004_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch004/oaksoap/ch004_revit.zip"
+   ],
+   [
+    "CH004_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch004/oaksoap/ch004_3d.zip"
+   ],
+   [
+    "CH004_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch004/oaksoap/ch004_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch008",
+  "name": "CH008 | Coffee Table | Ø78",
+  "id": "CH008-78cm_1",
+  "designer": "Hans J. Wegner",
+  "variants": 10,
+  "assets": [
+   [
+    "CH008  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008--assembling-instruction.zip"
+   ],
+   [
+    "CH008 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008-2d.zip"
+   ],
+   [
+    "CH008.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008.zip"
+   ],
+   [
+    "CH008 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch008---o100",
+  "name": "CH008 | Coffee Table | Ø100",
+  "id": "CH008-new_1",
+  "designer": "Hans J. Wegner",
+  "variants": 8,
+  "assets": [
+   [
+    "CH008 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008-2d.zip"
+   ],
+   [
+    "CH008 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008_3d.zip"
+   ],
+   [
+    "CH008.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008.zip"
+   ],
+   [
+    "CH008  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008--assembling-instruction.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch008---o88",
+  "name": "CH008 | Coffee Table | Ø88",
+  "id": "CH008-88cm_1",
+  "designer": "Hans J. Wegner",
+  "variants": 8,
+  "assets": [
+   [
+    "CH008 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008_3d.zip"
+   ],
+   [
+    "CH008  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008--assembling-instruction.zip"
+   ],
+   [
+    "CH008 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008-2d.zip"
+   ],
+   [
+    "CH008.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch008/ch008.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch011",
+  "name": "CH011  | Coffee Table",
+  "id": "CH011_item",
+  "designer": "Hans J. Wegner",
+  "variants": 2,
+  "assets": [
+   [
+    "CH011  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch011/ch011--assembling-instruction.zip"
+   ],
+   [
+    "CH011 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch011/ch011_3d.zip"
+   ],
+   [
+    "CH011 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch011/ch011-2d.zip"
+   ],
+   [
+    "CH011.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch011/ch011.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch086",
+  "name": "CH086 | Coffee Table",
+  "id": "CH086",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [],
+  "has3d": false,
+  "hasZip": false
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch106",
+  "name": "CH106 | Coffee Table",
+  "id": "CH106_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "CH106  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch106/ch106--assembling-instruction.zip"
+   ],
+   [
+    "CH106 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch106/ch106_3d.zip"
+   ],
+   [
+    "CH106 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch106/ch106-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch108",
+  "name": "CH108 | Coffee Table",
+  "id": "CH108_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "CH108  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch108/ch108--assembling-instruction.zip"
+   ],
+   [
+    "CH108 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch108/ch108_3d.zip"
+   ],
+   [
+    "CH108 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch108/ch108-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch415",
+  "name": "CH415 | Coffee Table",
+  "id": "CH415_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH415 Assembling instruction.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch415/ch415-assembling-instruction.pdf"
+   ],
+   [
+    "CH415 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch415/ch415-2d.zip"
+   ],
+   [
+    "CH415 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch415/ch415_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ch417",
+  "name": "CH417 | Tray Table | Ø62",
+  "id": "CH417_item",
+  "designer": "Hans J. Wegner",
+  "variants": 1,
+  "assets": [
+   [
+    "CH417-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch417/ch417-2d.zip"
+   ],
+   [
+    "3D_CH417.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch417/3d_ch417.zip"
+   ],
+   [
+    "CH417.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ch417/ch417.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/e021-48",
+  "name": "E021 | Embrace Lounge Table | Ø48",
+  "id": "E021-480_item",
+  "designer": "EOOS",
+  "variants": 2,
+  "assets": [
+   [
+    "E021  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-480/e021--assembling-instruction.zip"
+   ],
+   [
+    "E021-480.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-480/e021-480.zip"
+   ],
+   [
+    "E021-480 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-480/e021-480mm_2d.zip"
+   ],
+   [
+    "E021 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-480/e021.revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/e021-80",
+  "name": "E021 | Embrace Lounge Table | Ø80",
+  "id": "E021-800_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E021  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-800/e021--assembling-instruction.zip"
+   ],
+   [
+    "E021-800.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-800/e021-800.zip"
+   ],
+   [
+    "E021-800 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-800/e021-800mm_2d.zip"
+   ],
+   [
+    "E021 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/e021-800/e021.revit-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/kk44860",
+  "name": "KK44860 | Sidetable",
+  "id": "KK44860_item",
+  "designer": "Kaare Klint",
+  "variants": 4,
+  "assets": [
+   [
+    "KK44860_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/kk44860/kk44860_2d.zip"
+   ],
+   [
+    "KK44860_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/kk44860/kk44860_3d.zip"
+   ],
+   [
+    "KK44860_revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/kk44860/kk44860_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/kk66870",
+  "name": "KK66870 | Coffee Table",
+  "id": "KK66870_item",
+  "designer": "Kaare Klint",
+  "variants": 4,
+  "assets": [
+   [
+    "KK66870_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/kk66870/kk66870_2d.zip"
+   ],
+   [
+    "KK66870_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/kk66870/kk66870_3d.zip"
+   ],
+   [
+    "KK66870_revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/kk66870/kk66870_revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ml10097",
+  "name": "ML10097 | Egyptian Table | Ø100",
+  "id": "ML10097_item",
+  "designer": "Mogens Lassen",
+  "variants": 2,
+  "assets": [
+   [
+    "ML10097-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ml10097/ml10097-2d.zip"
+   ],
+   [
+    "3D_ML10097_egyptian-table.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ml10097/3d_ml10097_egyptian-table.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ml10097---o85",
+  "name": "ML10097 | Egyptian Table | Ø85",
+  "id": "ML10097-Agypterbord-O85_1",
+  "designer": "Mogens Lassen",
+  "variants": 2,
+  "assets": [
+   [
+    "ML10097-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ml10097/ml10097-2d.zip"
+   ],
+   [
+    "3D_ML10097_egyptian-table.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ml10097/3d_ml10097_egyptian-table.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/nd55",
+  "name": "ND55 | Coffee Table ",
+  "id": "ND55_item",
+  "designer": "Nanna Ditzel & Jørgen Ditzel",
+  "variants": 2,
+  "assets": [
+   [
+    "ND55_Open.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/nd55/nd55_open.zip"
+   ],
+   [
+    "ND55.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/nd55/nd55.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/ow449",
+  "name": "OW449 | Colonial Coffee Table | 60x60",
+  "id": "OW449_item",
+  "designer": "Ole Wanscher",
+  "variants": 4,
+  "assets": [
+   [
+    "OW449-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ow449/ow449-2d.zip"
+   ],
+   [
+    "3D_OW449.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ow449/3d_ow449.zip"
+   ],
+   [
+    "OW449.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/ow449/ow449.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/coffee-tables/rf1905",
+  "name": "RF1905 Ø69 cm  | Sideways Coffee Table",
+  "id": "RF1905-690_item",
+  "designer": "Rikke Frost",
+  "variants": 3,
+  "assets": [
+   [
+    "RF1905.zip",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/rf1905/rf1905.zip"
+   ],
+   [
+    "RF1905 Assembling instruction.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/coffee-tables/rf1905/rf1905-assembling-instruction.pdf"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/desks/ab019",
+  "name": "AB019 | Wall Desk",
+  "id": "AB019-12060_item",
+  "designer": "Anker Bak",
+  "variants": 3,
+  "assets": [
+   [
+    "AB019 Assembly Instruction.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/desk/ab019/ab019-assembly-instruction.pdf"
+   ],
+   [
+    "ab019_wall_desk_product_data_sheet.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/desk/ab019/ab019_wall_desk_product_data_sheet.pdf"
+   ],
+   [
+    "AB019 Wall desk and AB020 Wall desk drawer.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/ab019/ab019-wall-desk-and-ab020-wall-desk-drawer.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/desks/aj52-160x70",
+  "name": "AJ52 | Society Table",
+  "id": "AJ52-16070_item",
+  "designer": "Arne Jacobsen",
+  "variants": 2,
+  "assets": [
+   [
+    "AJ52-16070.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/aj52-16070/aj52-16070.zip"
+   ],
+   [
+    "AJ52_revit (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/aj52-16070/aj52_revit-1.zip"
+   ],
+   [
+    "AJ52-L (1).zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/aj52-16070/aj52-l-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/desks/ch110",
+  "name": "CH110  | Desk",
+  "id": "CH110_item",
+  "designer": "Hans J. Wegner",
+  "variants": 2,
+  "assets": [
+   [
+    "CH110  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/ch110/ch110--assembling-instruction.zip"
+   ],
+   [
+    "CH110 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/ch110/ch110_3d.zip"
+   ],
+   [
+    "CH110 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/ch110/ch110-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/desks/pk52",
+  "name": "PK52 | Professor Desk",
+  "id": "PK52_item",
+  "designer": "Poul Kjærholm",
+  "variants": 1,
+  "assets": [
+   [
+    "3D_PK52.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/pk52/3d_pk52.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/desks/pk52a",
+  "name": "PK52A | Student Desk",
+  "id": "PK52A_item",
+  "designer": "Poul Kjærholm",
+  "variants": 1,
+  "assets": [
+   [
+    "3D_PK52A.zip",
+    "https://admincms.carlhansen.com/globalassets/products/desk/pk52a/3d_pk52a.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ba103",
+  "name": "BA103 | Preludia Dining Table",
+  "id": "BA103-110_item",
+  "designer": "Brad Ascalon",
+  "variants": 1,
+  "assets": [
+   [
+    "BA103  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ba103/ba103--assembling-instruction.zip"
+   ],
+   [
+    "BA103 Round Table revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ba103/ba103_round_table_revit_zip.zip"
+   ],
+   [
+    "BA103-120-2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ba103/ba103-120-2d.zip"
+   ],
+   [
+    "BA103 Round table 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ba103/ba103_round_table_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/bm0121",
+  "name": "BM0121  | Dining Table",
+  "id": "BM0121_item",
+  "designer": "Børge Mogensen",
+  "variants": 2,
+  "assets": [
+   [
+    "BM0121 Assembling instructions.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0121/bm0121-assembling-instructions.pdf"
+   ],
+   [
+    "BM0120 Dining Table, product data sheet.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0121/bm0120-dining-table-product-data-sheet.pdf"
+   ],
+   [
+    "BM0121 Dining Table.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0121/bm0121-dining-table.zip"
+   ]
+  ],
+  "has3d": false,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/bm0698",
+  "name": "Asserbo Table 72x95x190 cm Eucalyptus Grandis Dark oil FSC-1  | Asserbo Table",
+  "id": "BM0698_item",
+  "designer": "Børge Mogensen",
+  "variants": 1,
+  "assets": [
+   [
+    "BM-0698 Assembling instruction.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0698/bm-0698-assembling-instruction.pdf"
+   ],
+   [
+    "BM0698_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0698/bm0698_3d.zip"
+   ],
+   [
+    "BM0698_Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0698/bm0698_revit.zip"
+   ],
+   [
+    "BM0698_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm0698/bm0698_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/bm1160",
+  "name": "BM1160 | Hunting Table | 210x82 cm",
+  "id": "BM1160_item",
+  "designer": "Børge Mogensen",
+  "variants": 4,
+  "assets": [
+   [
+    "BM1160  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160--assembling-instruction.zip"
+   ],
+   [
+    "BM1160 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160_3d.zip"
+   ],
+   [
+    "BM1160 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160-2d.zip"
+   ],
+   [
+    "BM1160 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160.revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/bm1160-210-x-95-cm",
+  "name": "BM1160 | Hunting Table | 210x95 cm ",
+  "id": "BM1160-21095_item",
+  "designer": "Børge Mogensen",
+  "variants": 2,
+  "assets": [
+   [
+    "Product data sheet_BM1160.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/product-data-sheet_bm1160.pdf"
+   ],
+   [
+    "BM1160 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160.revit.zip"
+   ],
+   [
+    "BM1160 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160-2d.zip"
+   ],
+   [
+    "BM1160 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160_3d.zip"
+   ],
+   [
+    "BM1160  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/bm1160/bm1160--assembling-instruction.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch002",
+  "name": "CH002 | Dining Table",
+  "id": "CH002_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH002  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch002/ch002--assembling-instruction.zip"
+   ],
+   [
+    "CH002 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch002/ch002-2d.zip"
+   ],
+   [
+    "CH002 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch002/ch002_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch006",
+  "name": "CH006  | Dining Table",
+  "id": "CH006_item",
+  "designer": "Hans J. Wegner",
+  "variants": 3,
+  "assets": [
+   [
+    "CH006  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch006/ch006--assembling-instruction.zip"
+   ],
+   [
+    "CH006 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch006/ch006-2d.zip"
+   ],
+   [
+    "CH006 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch006/ch006_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch327",
+  "name": "CH327 | Dining Table | 190x95 cm",
+  "id": "CH327_item",
+  "designer": "Hans J. Wegner",
+  "variants": 6,
+  "assets": [
+   [
+    "CH327  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch327/ch327--assembling-instruction.zip"
+   ],
+   [
+    "CH327 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch327/ch327-2d.zip"
+   ],
+   [
+    "CH327 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch327/ch327_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch327---248x95",
+  "name": "CH327 | Dining Table | 248x95 cm",
+  "id": "CH327_1",
+  "designer": "Hans J. Wegner",
+  "variants": 5,
+  "assets": [
+   [
+    "CH327  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch327/ch327--assembling-instruction.zip"
+   ],
+   [
+    "CH327 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch327/ch327_3d.zip"
+   ],
+   [
+    "CH327 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch327/ch327-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch337",
+  "name": "CH337 | Dining Table 115 x 140",
+  "id": "CH337_item",
+  "designer": "Hans J. Wegner",
+  "variants": 5,
+  "assets": [
+   [
+    "CH337 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch337/ch337-2d.zip"
+   ],
+   [
+    "CH337  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch337/ch337--assembling-instruction.zip"
+   ],
+   [
+    "CH337 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch337/ch337_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch338",
+  "name": "CH338 | Dining Table",
+  "id": "CH338_item",
+  "designer": "Hans J. Wegner",
+  "variants": 9,
+  "assets": [
+   [
+    "CH338  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch338/ch338--assembling-instruction.zip"
+   ],
+   [
+    "CH338 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch338/ch338_3d.zip"
+   ],
+   [
+    "CH338 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch338/ch338-2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ch339",
+  "name": "CH339 | Dining Table",
+  "id": "CH339_item",
+  "designer": "Hans J. Wegner",
+  "variants": 8,
+  "assets": [
+   [
+    "CH339  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch339/ch339--assembling-instruction.zip"
+   ],
+   [
+    "CH339 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch339/ch339-2d.zip"
+   ],
+   [
+    "CH339 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ch339/ch339_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/e020-110",
+  "name": "E020 | Embrace Table | Ø110",
+  "id": "E020-1100_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E020  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1100/e020--assembling-instruction.zip"
+   ],
+   [
+    "E020-1100.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1100/e020-1100.zip"
+   ],
+   [
+    "E020-1100 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1100/e020-1100mm-2d.zip"
+   ],
+   [
+    "E020 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1100/e020.revit.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/e020-1395",
+  "name": "E020 | Embrace Table | Ø139,5",
+  "id": "E020-1395_item",
+  "designer": "EOOS",
+  "variants": 1,
+  "assets": [
+   [
+    "E020  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1395/e020--assembling-instruction.zip"
+   ],
+   [
+    "E020-1395.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1395/e020-1395.zip"
+   ],
+   [
+    "E020-1395 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1395/e020-1395mm_2d.zip"
+   ],
+   [
+    "E020 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-1395/e020.revit-1.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/e020-795",
+  "name": "E020 | Embrace Table | Ø79,5",
+  "id": "E020-795_item",
+  "designer": "EOOS",
+  "variants": 5,
+  "assets": [
+   [
+    "E020  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-795/e020--assembling-instruction.zip"
+   ],
+   [
+    "E020-795.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-795/e020-795.zip"
+   ],
+   [
+    "E020-795 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-795/e020-795mm-2d.zip"
+   ],
+   [
+    "E020 Revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/e020-795/e020.revit-2.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/ow224",
+  "name": "OW224  | Rungstedlund Dining Table",
+  "id": "OW224_item",
+  "designer": "Ole Wanscher",
+  "variants": 1,
+  "assets": [
+   [
+    "OW224 Assembling instructions.pdf",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ow224/ow224-assembling-instructions.pdf"
+   ],
+   [
+    "OW224_revit.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ow224/ow224_revit.zip"
+   ],
+   [
+    "OW224_3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ow224/ow224_3d.zip"
+   ],
+   [
+    "OW224_2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/ow224/ow224_2d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ },
+ {
+  "url": "https://www.carlhansen.com/en/en/collection/tables-desks/dining-tables/sh900",
+  "name": "SH900 | Extend Table | 300x100",
+  "id": "SH900_item",
+  "designer": "Strand & Hvass",
+  "variants": 1,
+  "assets": [
+   [
+    "SH900  Assembling instruction.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/sh900/sh900--assembling-instruction.zip"
+   ],
+   [
+    "SH900 2D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/sh900/sh900-2d.zip"
+   ],
+   [
+    "SH900 3D.zip",
+    "https://admincms.carlhansen.com/globalassets/products/dining-tables/sh900/sh900_3d.zip"
+   ]
+  ],
+  "has3d": true,
+  "hasZip": true
+ }
+]

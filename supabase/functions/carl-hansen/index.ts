@@ -4,6 +4,7 @@
 //   { op: 'model',  modelId }          → the MASTER: selection trees + price templates
 //   { op: 'prices', modelId, market? } → one market's price list (default VAT0-USD)
 //   { op: 'page',   modelId }          → the product page's variants + photography
+//   { op: 'asset',  modelId }          → the converted 3D: mesh URL + binding, or null
 //
 // WHY SERVER-SIDE. Not a CORS workaround, though the blob does not send CORS
 // either: it is a HOST LOCK and a shape. The url is REBUILT from a validated
@@ -18,16 +19,24 @@
 // publishes to anyone — a product's options and its LIST price. No cost, no
 // margin and no dealer identity passes through here.
 //
-// NOTHING IS CACHED IN OUR DATABASE, deliberately. The dealer back-office
+// The one thing served from OUR database is `asset`: the GLB the back-office
+// converted (already in a public bucket) and the material→axis binding, which
+// is a description of the mesh, not of money.
+//
+// THE CATALOG ITSELF IS NOT CACHED IN OUR DATABASE, deliberately. The dealer back-office
 // caches this data because it imports a catalog from it; a configurator reads
 // one model at a time and the manufacturer's own CDN is the freshest copy
 // there is. A cache here would be a second place for a price to go stale.
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import {
   SITE_ROOT, SITEMAP_URL, DEFAULT_MARKET, ALLOWED_HOSTS,
   safeModelId, safeMarket, modelUrl, pricesUrl,
   productPagesFromSitemap, parseNextData, slimPage,
 } from './parse.ts';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -154,6 +163,44 @@ async function opPage(raw: unknown): Promise<Response> {
   return json({ ok: true, modelId, path: hit.path, page });
 }
 
+/**
+ * The converted 3D for one model: the GLB's public URL and the material→axis
+ * binding the dealer reviewed — or `asset: null`, which is a real answer (a
+ * model whose archive carries no browser geometry, or one nobody converted
+ * yet). The widget shows photography either way; the stage only mounts when
+ * this returns a mesh.
+ *
+ * A binding still awaiting the dealer's review ships anyway, flagged: a
+ * tier-B proposal paints the right FAMILIES even before a human confirms
+ * which mesh group wears which, and the flag lets the widget say so.
+ */
+async function opAsset(raw: unknown): Promise<Response> {
+  const modelId = safeModelId(raw);
+  if (!modelId) return json({ ok: false, error: 'modelId inválido' }, 400);
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return json({ ok: true, modelId, asset: null });
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await admin
+    .from('carl_hansen_assets')
+    .select('mesh_url, mesh_tier, binding, binding_reviewed_at')
+    .eq('id', modelId)
+    .maybeSingle();
+  if (error) return json({ ok: false, error: 'No se pudo leer el 3D.', modelId }, 502);
+  const meshUrl = String((data as { mesh_url?: unknown } | null)?.mesh_url || '');
+  if (!meshUrl) return json({ ok: true, modelId, asset: null });
+  return json({
+    ok: true,
+    modelId,
+    asset: {
+      meshUrl,
+      tier: String((data as { mesh_tier?: unknown })?.mesh_tier || 'none'),
+      binding: (data as { binding?: unknown })?.binding ?? null,
+      reviewed: Boolean((data as { binding_reviewed_at?: unknown })?.binding_reviewed_at),
+    },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ ok: false, error: 'method not allowed' }, 405);
@@ -168,6 +215,7 @@ Deno.serve(async (req: Request) => {
       case 'model': return await opModel(body?.modelId);
       case 'prices': return await opPrices(body?.modelId, body?.market);
       case 'page': return await opPage(body?.modelId);
+      case 'asset': return await opAsset(body?.modelId);
       default: return json({ ok: false, error: `op desconocida "${op}"` }, 400);
     }
   } catch (e) {

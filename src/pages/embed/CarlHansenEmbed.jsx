@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RotateCw } from 'lucide-react';
 import { fetchChModels, fetchChConfiguration } from '../../brands/carl-hansen/client.js';
 import { resolveCarlHansenConfigurator } from '../../core/catalog/carlHansenConfigurator.js';
+import ChStage from '../../components/carlhansen/ChStage.jsx';
 
 /**
  * EL CONFIGURADOR DE CARL HANSEN — la segunda instancia, y la primera que no
@@ -14,6 +16,10 @@ import { resolveCarlHansenConfigurator } from '../../core/catalog/carlHansenConf
  * is one composed SKU at one list price. So this brand brings its own
  * instrument (`brands/configurators`), and neither had to be generalised into
  * something bad at both.
+ *
+ * What they DO share is the kitchen: the same light rig, the same mesh loader,
+ * the same swatch sampling (`ChStage` → `sceneBuilder`). A new brand needs its
+ * own view and its own projection, never another 3D engine.
  *
  * ── LO QUE MUESTRA, Y LO QUE SE NIEGA A MOSTRAR ─────────────────────────────
  * The whole view is `resolveCarlHansenConfigurator`, a pure projection ported
@@ -137,6 +143,8 @@ export default function CarlHansenEmbed() {
     );
   }
 
+  const asset = data?.asset || null;
+
   return (
     <Frame>
       <button type="button" onClick={() => { setModelId(''); setData(null); }} className="text-sm text-ink-500 hover:text-ink-900 min-h-11">
@@ -157,13 +165,35 @@ export default function CarlHansenEmbed() {
       {vm && (
         <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_20rem]">
           <div>
-            {vm.images?.[0]?.url && (
+            {/* THE 3D WHEN THERE IS ONE, THE PHOTOGRAPH WHEN THERE IS NOT.
+                The material→axis binding a dealer confirmed is exactly what
+                makes picking «Walnut, oiled» repaint the mesh's wood groups
+                and nothing else. Without a converted mesh this is the
+                manufacturer's photography, which is an honest answer rather
+                than a hole. */}
+            {asset?.meshUrl ? (
+              <figure className="rounded-xl border border-ink-100 bg-ink-50/40 overflow-hidden">
+                <div className="h-[320px] sm:h-[440px] w-full">
+                  <ChStage
+                    meshUrl={asset.meshUrl}
+                    axes={vm.axes}
+                    binding={asset.binding}
+                    className="h-full w-full"
+                  />
+                </div>
+                <figcaption className="px-3 py-2 text-micro text-ink-500 border-t border-ink-100 inline-flex items-center gap-1.5">
+                  <RotateCw size={12} aria-hidden />
+                  Arrastra para girar · rueda para acercar
+                  {asset.reviewed ? '' : ' · algunos materiales aún sin confirmar'}
+                </figcaption>
+              </figure>
+            ) : vm.images?.[0]?.url ? (
               <img
                 src={vm.images[0].url}
                 alt={vm.modelName}
                 className="w-full rounded-xl bg-ink-50 object-contain max-h-[26rem]"
               />
-            )}
+            ) : null}
             <h1 className="mt-4 text-2xl font-semibold text-ink-900">{vm.modelName}</h1>
             <p className="text-sm text-ink-500 font-mono">{vm.modelId}</p>
 

@@ -35,6 +35,7 @@ import { useToast } from '../../components/ConfirmProvider.jsx';
 import {
   FREDERICIA_MODULES, planCatalogSourceImport, moduleSetFor,
 } from '../../brands/index.js';
+import FredericiaEnrichBar from '../../components/catalog/FredericiaEnrichBar.jsx';
 
 const SOURCE = FREDERICIA_MODULES.catalog.source;
 
@@ -353,6 +354,13 @@ export default function FredericiaImport() {
           {result.missing > 0 && <> · {result.missing} que ya no están se dejaron intactas</>}
         </div>
       )}
+
+      {/* SEGUNDA FUENTE, SEGUNDO PASO: sobre lo que Anthom ya trajo (y precia),
+          el catálogo del FABRICANTE pone lo que un revendedor no publica —
+          ejes con nombre, medidas, fotos, el SKU de fábrica. Vive debajo del
+          importador porque enriquece SUS filas: sin importar primero, no hay
+          nada que cruzar. */}
+      <FredericiaEnrichBar profileId={profileId} />
 
       <p className="text-[11px] text-ink-400 leading-relaxed">
         Una referencia Fredericia es <span className="font-mono">FRE-modelo-grupo-acabados</span>, y el

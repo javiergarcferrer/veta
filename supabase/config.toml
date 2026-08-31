@@ -364,6 +364,17 @@ verify_jwt = false
 [functions.anthom-catalog]
 verify_jwt = false
 
+# fredericia-catalog walks the MANUFACTURER's own site (fredericia.com sitemap
+# + product pages): named axes, real factory SKUs, dimensions, swatches and
+# photos — everything the Anthom storefront mashes or omits. NO price crosses
+# it (the page prices in DKK/EUR plus unlabelled internal groups; only Anthom
+# quotes in dollars). Read-only, host-locked (no SSRF), and it verifies the
+# caller's JWT ITSELF so anonymous traffic can't drive the supplier sweep;
+# verify_jwt stays false so the browser's CORS preflight isn't rejected — same
+# as anthom-catalog.
+[functions.fredericia-catalog]
+verify_jwt = false
+
 # carl-hansen backs the PUBLIC, no-login Carl Hansen configurator
 # (/configurador/carl-hansen), the same way togo-embed backs the Togo one. It
 # re-serves what carlhansen.com already publishes to anyone — a product's

@@ -1,0 +1,886 @@
+{
+ "externalId": "2226",
+ "name": "The Spanish Chair",
+ "slug": "the-spanish-chair-2226",
+ "designer": {
+  "name": "Børge Mogensen"
+ },
+ "collection": {
+  "externalId": "12300",
+  "name": "The Spanish Collection",
+  "id": "41257679"
+ },
+ "categories": [
+  {
+   "id": "55287680",
+   "name": "Lounge chairs",
+   "slug": "lounge-chairs",
+   "externalId": "19404",
+   "children": [
+    {
+     "id": "55287682",
+     "name": "Swivel lounge chairs",
+     "slug": "swivel-lounge-chairs",
+     "externalId": "19421"
+    },
+    {
+     "id": "55287684",
+     "name": "Ottomans, footstools & poufs",
+     "slug": "ottomans-footstools-and-poufs",
+     "externalId": "19423"
+    }
+   ],
+   "parent": null,
+   "seo": [
+    {
+     "title": " Large selection of classic and modern designer loungechairs | See them here",
+     "shareImage": null,
+     "description": "Decorate your interior with a loungechair. The loungechair can stand alone, but can also complete the lounge interior. Explore our famous designs here.",
+     "schema": []
+    }
+   ]
+  }
+ ],
+ "dimensions": {
+  "width": "82,5",
+  "depth": "60",
+  "height": "67",
+  "seatHeight": "33",
+  "weight": 10.7,
+  "onTrolley": null,
+  "onFloor": null,
+  "year": 1958
+ },
+ "shippingTime": {
+  "shippingCode": "2103",
+  "fastTrack": null,
+  "translation": {
+   "field": "3-4 weeks"
+  },
+  "position": 4
+ },
+ "materials": [
+  {
+   "groupName": "Leather",
+   "materials": [
+    {
+     "groupName": "Leather",
+     "subGroupName": "Saddle leather",
+     "materials": [
+      {
+       "groupName": "Leather",
+       "subgroupName": "Saddle leather",
+       "externalId": "7735",
+       "image": {
+        "id": "materials/leather50500",
+        "externalId": "8ecb6a9d-465c-4b19-8dac-491deed5da10",
+        "name": "Leather50500.png",
+        "modifiedDate": "2024-01-15T18:33:28.29",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Leather, natural"
+      },
+      {
+       "groupName": "Leather",
+       "subgroupName": "Saddle leather",
+       "externalId": "7736",
+       "image": {
+        "id": "materials/leather50501",
+        "externalId": "a9888558-07f6-42a9-ab73-afeeb8274efe",
+        "name": "Leather50501.png",
+        "modifiedDate": "2024-01-15T15:15:10.53",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Leather, black"
+      },
+      {
+       "groupName": "Leather",
+       "subgroupName": "Saddle leather",
+       "externalId": "7737",
+       "image": {
+        "id": "materials/leather50502",
+        "externalId": "d3d0c676-853e-409b-bb92-17a1c0b42c77",
+        "name": "Leather50502.png",
+        "modifiedDate": "2024-01-15T16:02:20.8",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Leather, cognac"
+      },
+      {
+       "groupName": "Leather",
+       "subgroupName": "Saddle leather",
+       "externalId": "35822",
+       "image": {
+        "id": "materials/leather-dark-brown-saddle-leather",
+        "externalId": "c5f01f04-bdff-446b-a104-245adfe094fd",
+        "name": "Leather Dark Brown Saddle Leather.jpg",
+        "modifiedDate": "2024-02-27T10:46:58",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Leather, dark brown"
+      }
+     ]
+    }
+   ],
+   "totalMaterials": 4
+  },
+  {
+   "groupName": "Wood ",
+   "materials": [
+    {
+     "groupName": "Wood ",
+     "subGroupName": "",
+     "materials": [
+      {
+       "groupName": "Wood ",
+       "subgroupName": "",
+       "externalId": "15893",
+       "image": {
+        "id": "materials/walnut_(220x220)",
+        "externalId": "d03d7a08-292d-4617-915f-53fcf3cfd060",
+        "name": "walnut_(220x220).jpg",
+        "modifiedDate": "2024-01-15T14:23:02.717",
+        "width": 220,
+        "height": 220,
+        "type": "image"
+       },
+       "name": "Walnut oiled"
+      },
+      {
+       "groupName": "Wood ",
+       "subgroupName": "",
+       "externalId": "16395",
+       "image": {
+        "id": "materials/materialoptions_soaptreatedoak_500x500px",
+        "externalId": "796696c8-5859-42d6-ae31-fc94a8eafa2b",
+        "name": "MaterialOptions_soaptreatedoak_500x500px.png",
+        "modifiedDate": "2024-01-15T15:40:19.253",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Oak soap, FSC Mix 70%"
+      },
+      {
+       "groupName": "Wood ",
+       "subgroupName": "",
+       "externalId": "16396",
+       "image": {
+        "id": "materials/materialoptions_oiledoak_500x500px",
+        "externalId": "f0d3cb67-c7b3-4d7c-83ee-ee7f4e329525",
+        "name": "MaterialOptions_oiledoak_500x500px.png",
+        "modifiedDate": "2024-01-15T15:20:13.88",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Oak oil, FSC Mix 70%"
+      },
+      {
+       "groupName": "Wood ",
+       "subgroupName": "",
+       "externalId": "18499",
+       "image": {
+        "id": "materials/oak-light-oil_ny",
+        "externalId": "055749a2-d77a-447f-951e-63fbd09f5260",
+        "name": "Oak Light Oil_ny.jpg",
+        "modifiedDate": "2024-01-26T09:32:49.88",
+        "width": 1000,
+        "height": 1000,
+        "type": "image"
+       },
+       "name": "Oak light oil, FSC Mix 70%"
+      },
+      {
+       "groupName": "Wood ",
+       "subgroupName": "",
+       "externalId": "18497",
+       "image": {
+        "id": "materials/materialoptions_smokedoiledoak_500x500px",
+        "externalId": "af8a96fb-537a-4019-b69b-60074a6b60fb",
+        "name": "MaterialOptions_smokedoiledoak_500x500px.png",
+        "modifiedDate": "2024-01-15T18:31:33.243",
+        "width": 500,
+        "height": 500,
+        "type": "image"
+       },
+       "name": "Smoked oak, olied, FSC Mix 70%"
+      }
+     ]
+    }
+   ],
+   "totalMaterials": 5
+  }
+ ],
+ "variants": [
+  {
+   "id": "Mc8PPl6iT8Ka1vepfYqFqg",
+   "externalId": "222616450510",
+   "slug": "the-spanish-chair-2226-222616450510",
+   "properties": [
+    {
+     "key": "Upholstery",
+     "name": "Upholstery",
+     "value": "Leather, dark brown"
+    },
+    {
+     "key": "Wood",
+     "name": "Wood",
+     "value": "Walnut oiled"
+    }
+   ],
+   "price": [
+    {
+     "currency": "DKK",
+     "value": 37735
+    },
+    {
+     "currency": "EUR",
+     "value": 5250
+    }
+   ],
+   "b2b": true,
+   "brandsite": true,
+   "images": [
+    {
+     "id": "variants/the-spanish-chair-222616450510/packshots/222616450510_bm_2226_darkbrown_saddleleather_walnut_v1"
+    },
+    {
+     "id": "variants/the-spanish-chair-222616450510/packshots/222616450510_bm_2226_darkbrown_saddleleather_walnut_v2"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/Spanish_DarkbrownWalnut_MonoVidarDarkbrown_DelphiVidar146_Hydroglass"
+    },
+    {
+     "id": "variants/the-spanish-chair-222616450510/packshots/222616450510_bm_2226_darkbrown_saddleleather_walnut_v3"
+    },
+    {
+     "id": "variants/the-spanish-chair-222616450510/packshots/222616450510_bm_2226_darkbrown_saddleleather_walnut_v4"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishDarkbrownWalnut_DelphiVidar146"
+    },
+    {
+     "id": "variants/the-spanish-chair-222616450510/packshots/222616450510_bm_2226_darkbrown_saddleleather_walnut_v5"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/Spanish_DarkbrownWalnut_isletscoffeetableLightoil_Hydroglass"
+    }
+   ]
+  },
+  {
+   "id": "O1OlDwJTQ0KazVuGFqsgWQ",
+   "externalId": "222620350500",
+   "slug": "the-spanish-chair-2226-222620350500",
+   "properties": [
+    {
+     "key": "Upholstery",
+     "name": "Upholstery",
+     "value": "Leather, natural"
+    },
+    {
+     "key": "Wood",
+     "name": "Wood",
+     "value": "Oak soap, FSC Mix 70%"
+    }
+   ],
+   "price": [
+    {
+     "currency": "DKK",
+     "value": 35695
+    },
+    {
+     "currency": "EUR",
+     "value": 4962
+    }
+   ],
+   "b2b": true,
+   "brandsite": true,
+   "images": [
+    {
+     "id": "variants/the-spanish-chair-222620350500/packshots/bm_2226_oak_v1"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620350500/packshots/bm_2226_oak_v2"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/BMhus_SpanishChair2226_6_1"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620350500/packshots/bm_2226_oak_v3"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620350500/packshots/bm_2226_oak_v4"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/Complements_Spanish_Chair2226"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620350500/packshots/bm_2226_oak_v5"
+    }
+   ]
+  },
+  {
+   "id": "HwE_XiukSDCcljIczk9DSQ",
+   "externalId": "222620650502",
+   "slug": "the-spanish-chair-2226-222620650502",
+   "properties": [
+    {
+     "key": "Upholstery",
+     "name": "Upholstery",
+     "value": "Leather, cognac"
+    },
+    {
+     "key": "Wood",
+     "name": "Wood",
+     "value": "Oak light oil, FSC Mix 70%"
+    }
+   ],
+   "price": [
+    {
+     "currency": "DKK",
+     "value": 33345
+    },
+    {
+     "currency": "EUR",
+     "value": 4638
+    }
+   ],
+   "b2b": true,
+   "brandsite": true,
+   "images": [
+    {
+     "id": "variants/the-spanish-chair-222620650502/packshots/bm_2226_oak_light_oil_cognac_v1"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620650502/packshots/bm_2226_oak_light_oil_cognac_v2"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChairOakoilCognac"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620650502/packshots/bm_2226_oak_light_oil_cognac_v3"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620650502/packshots/bm_2226_oak_light_oil_cognac_v4"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChairOalOilCognac_J39OakOil_GalleryWalnut_CanvasChairOakSoap_JGFolding_TrinidadBeechLacqueredChrome_BM62OakOil"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620650502/packshots/bm_2226_oak_light_oil_cognac_v5"
+    }
+   ]
+  },
+  {
+   "id": "ardhPHLyTiitmI1hXED_zA",
+   "externalId": "222620750501",
+   "slug": "the-spanish-chair-2226-222620750501",
+   "properties": [
+    {
+     "key": "Upholstery",
+     "name": "Upholstery",
+     "value": "Leather, black"
+    },
+    {
+     "key": "Wood",
+     "name": "Wood",
+     "value": "Smoked oak, olied, FSC Mix 70%"
+    }
+   ],
+   "price": [
+    {
+     "currency": "DKK",
+     "value": 37735
+    },
+    {
+     "currency": "EUR",
+     "value": 5250
+    }
+   ],
+   "b2b": true,
+   "brandsite": true,
+   "images": [
+    {
+     "id": "variants/the-spanish-chair-222620750501/packshots/bm_2226_smokedoak_black_v1"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620750501/packshots/bm_2226_smokedoak_black_v2"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/Complements_SpanishChair2226"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620750501/packshots/bm_2226_smokedoak_black_v3"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620750501/packshots/bm_2226_smokedoak_black_v4"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/Delphi_Spanish_Smoaked_Oak_Pon_Meadow"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620750501/packshots/bm_2226_smokedoak_black_v5"
+    },
+    {
+     "id": "products/the-spanish-chair-2226/Lifestyle images/Complements_SpanishChair2226_2"
+    }
+   ]
+  },
+  {
+   "id": "adE-R_u5T3SKndZPFEwSnw",
+   "externalId": "222620550500",
+   "slug": "the-spanish-chair-2226-222620550500",
+   "properties": [
+    {
+     "key": "Upholstery",
+     "name": "Upholstery",
+     "value": "Leather, natural"
+    },
+    {
+     "key": "Wood",
+     "name": "Wood",
+     "value": "Oak oil, FSC Mix 70%"
+    }
+   ],
+   "price": [
+    {
+     "currency": "DKK",
+     "value": 35695
+    },
+    {
+     "currency": "EUR",
+     "value": 4962
+    }
+   ],
+   "b2b": true,
+   "brandsite": true,
+   "images": [
+    {
+     "id": "variants/the-spanish-chair-222620550500/packshots/bm_2226_oak_clear_oil_natural_leather_v1"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620550500/packshots/bm_2226_oak_clear_oil_natural_leather_v2"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620550500/packshots/bm_2226_oak_clear_oil_natural_leather_v3"
+    },
+    {
+     "id": "variants/the-spanish-chair-222620550500/packshots/bm_2226_oak_clear_oil_natural_leather_v4"
+    }
+   ]
+  }
+ ],
+ "images": [
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/FF_DELPHI-SHOOT_SPANSK_R02_4x5",
+   "data": {
+    "alt": {
+     "en": null
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChairOakoilCognac",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_v3",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "Video/Produktvideo/The Spanish Chair/FF_FOCUS_SPANISH_R02_5x4_H.264",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_v4",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/Spanish_DarkbrownWalnut_MonoVidarDarkbrown_DelphiVidar146_Hydroglass",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_darkbrown_saddleleather_walnut_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_darkbrown_saddleleather_walnut_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/Spanish_DarkbrownWalnut_isletscoffeetableLightoil_Hydroglass",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_darkbrown_saddleleather_walnut_v3",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_darkbrown_saddleleather_walnut_v4",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishDarkbrownWalnut_DelphiVidar146",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Dark Brown Leather / Smoked Oak"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_blackleather_walnut_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Walnut / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_blackleather_walnut_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Walnut / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/FF_2021_Spanish_Chair_Pal_Calmo",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Walnut / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_blackleather_walnut_v3",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Walnut / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_blackleather_walnut_v4",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Walnut / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/Complements",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Smoked oak / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_smokedoak_black_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Smoked oak / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_smokedoak_black_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Smoked oak / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_smokedoak_black_v3",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Smoked oak / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_smokedoak_black_v4",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Smoked oak / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_smokedoak_black_v5",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Smoked oak / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/BMhus_SpanishChair2226",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak soap / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChairLightOilNatural_J39OakOil_GalleryWalnut_CanvasChairOakSoap_JGFolding_TrinidadBeechLacqueredChrome_BM62OakOil",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_soapedoak_cognac_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak soap / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChairCognacOakLightOil_GalleryStoolAshBlackLacquer_01",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_soapedoak_cognac_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak soap / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChairCognacOakLightOil_GalleryStoolAshBlackLacquer",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_soapedoak_cognac_v3",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak soap / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/Complements_Spanish_Chair2226",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak light oil / Natural leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_soapedoak_cognac_v4",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak soap / Cognac leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_oil_black_leather_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChair_DarkBrown_Oakoil",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Dark Brown leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_oil_black_leather_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_oil_black_leather_v3",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/Lifestyle images/SpanishChair_Darkbrown_J39Oaklightoil_C18Oaklightoil_PioneerOaklacqueredHallingdal200",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Dark Brown leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_oil_black_leather_v4",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_oil_black_leather_v5",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Black leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_oak_v5",
+   "data": {
+    "alt": {
+     "en": null
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_darkbrown_saddleleather_oakoil_v1",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Brown leather"
+    }
+   }
+  },
+  {
+   "id": "products/the-spanish-chair-2226/packshots/bm_2226_darkbrown_saddleleather_oakoil_v2",
+   "data": {
+    "alt": {
+     "en": "The Spanish Chair - Oak oil / Brown leather"
+    }
+   }
+  }
+ ],
+ "files": [
+  {
+   "id": "products/the-spanish-chair-2226/files/104848-26-the-spanish-chair-en-16139.pdf",
+   "externalId": "d7fa0b70-6286-4ce4-abd5-10644f7f010f",
+   "name": "104848-26 The Spanish Chair EN 16139.pdf",
+   "modifiedDate": "2023-04-12T10:56:00",
+   "type": "other",
+   "format": "Test"
+  },
+  {
+   "id": "products/the-spanish-chair-2226/files/2226_environmental-product-sheet_en.pdf",
+   "externalId": "98cea1e6-01c5-4b82-b3a7-5cdcd2cf5803",
+   "name": "2226_Environmental Product Sheet_EN.pdf",
+   "modifiedDate": "2026-08-23T04:00:52.153",
+   "type": "other",
+   "format": "EPD"
+  },
+  {
+   "id": "products/the-spanish-chair-2226/files/2226-the-spanish-chair-2d.dwg",
+   "externalId": "96314fed-29f5-4df3-b5ca-42b2d42a7368",
+   "name": "2226 The Spanish Chair 2D.dwg",
+   "modifiedDate": "2018-04-08T13:48:46",
+   "type": "other",
+   "format": "Dwg2D"
+  },
+  {
+   "id": "products/the-spanish-chair-2226/files/2226-the-spanish-chair-3d.dwg",
+   "externalId": "e6b49c0a-61ec-4eb3-96a0-1a938c596440",
+   "name": "2226 The Spanish Chair 3D.dwg",
+   "modifiedDate": "2018-04-08T13:14:01",
+   "type": "other",
+   "format": "Dwg3D"
+  },
+  {
+   "id": "products/the-spanish-chair-2226/files/2226-the-spanish-chair.obj",
+   "externalId": "9304c82c-7493-46b6-89bc-3e73f477cceb",
+   "name": "2226 The Spanish Chair.obj",
+   "modifiedDate": "2018-04-08T13:18:43",
+   "type": "other",
+   "format": "Object"
+  },
+  {
+   "id": "products/the-spanish-chair-2226/files/2226-the-spanish-chair.rfa",
+   "externalId": "415c2d9a-b00d-492e-b697-a6a144f116ea",
+   "name": "2226 The Spanish Chair.rfa",
+   "modifiedDate": "2019-10-30T14:52:26",
+   "type": "other",
+   "format": "Revit"
+  }
+ ]
+}

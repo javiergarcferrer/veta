@@ -1030,6 +1030,9 @@ export interface Product {
    *  refreshed on each catalog sync. Null = not tracked / pre-stock sync.
    *  Gates the quote builder (out-of-stock can't be quoted) and the client
    *  catalog PDF. */
+  /** El SKU del FABRICANTE para esta variante (ficha de Fredericia) — el
+   *  código del pedido a fábrica, no la referencia del distribuidor. */
+  supplierSku?: string | null;
   stockQty?: number | null;
   /** Cover photo (→ images.id) — LSG rows, a CDN POINTER row written by the
    *  sync's pointer pass (external_url, no stored bytes); quote lines

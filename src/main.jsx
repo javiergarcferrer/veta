@@ -62,6 +62,7 @@ try {
 const CONFIGURATOR_VIEWS = {
   togo: React.lazy(() => safeDynamicImport(() => import('./pages/embed/TogoEmbed.jsx'))),
   'carl-hansen': React.lazy(() => safeDynamicImport(() => import('./pages/embed/CarlHansenEmbed.jsx'))),
+  fredericia: React.lazy(() => safeDynamicImport(() => import('./pages/embed/FredericiaEmbed.jsx'))),
 };
 
 // The admin SHELL is lazy for the same reason the widget is: the public

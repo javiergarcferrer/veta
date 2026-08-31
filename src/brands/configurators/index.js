@@ -73,6 +73,16 @@ export const CONFIGURATORS = Object.freeze([
     brandName: 'Carl Hansen & Søn',
     composes: 'Una pieza por sus ejes',
   }),
+  Object.freeze({
+    id: 'fredericia',
+    slug: 'fredericia',
+    brandSlug: 'fredericia',
+    label: 'Configurador Fredericia',
+    brandName: 'Fredericia',
+    // Ejes también — pero su verdad es NUESTRO catálogo (el import de Anthom,
+    // enriquecido por fredericia-catalog), no el sitio del fabricante al vuelo.
+    composes: 'Una pieza por sus ejes',
+  }),
 ]);
 
 /** The one that owns the bare paths. */

@@ -375,6 +375,15 @@ verify_jwt = false
 [functions.fredericia-catalog]
 verify_jwt = false
 
+# fredericia-embed backs the public, no-login Fredericia configurator
+# (/configurador/fredericia). Logged-out reads of OUR products rows sit behind
+# RLS, so this runs with the service role and re-serves a WHITELISTED
+# projection: what Anthom's storefront and Fredericia's site already publish
+# to anyone — list price included, never cost, stock or margin. GET-only,
+# ETag-cacheable; no token, it's public — same posture as togo-embed's catalog.
+[functions.fredericia-embed]
+verify_jwt = false
+
 # carl-hansen backs the PUBLIC, no-login Carl Hansen configurator
 # (/configurador/carl-hansen), the same way togo-embed backs the Togo one. It
 # re-serves what carlhansen.com already publishes to anyone — a product's

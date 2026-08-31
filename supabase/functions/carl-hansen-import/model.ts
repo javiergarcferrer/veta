@@ -774,6 +774,20 @@ export function priceFileKeys(
  * they share a head — and then they are the same price. First file wins, so the
  * result is deterministic whatever order the reads finished in.
  *
+ * ── SUPERSEDED GENERATIONS ARE DROPPED FIRST ────────────────────────────────
+ * The blob keeps LAST SEASON'S files beside this season's: AB019's own file
+ * says 2024-01-01 → 2024-12-31 while its config files (AB020D, AB019-12060)
+ * say 2026-07-01 → 2026-12-31 — measured 2026-08 on ten models the importer
+ * refused whole. A file whose window ENDS before another file's window BEGINS
+ * is a previous generation of the same list: its keys are last season's money
+ * and its window poisons the fold (latest start × earliest end = a window that
+ * ends before it starts, which reads as expired forever). So it is dropped —
+ * keys and window alike. Clock-free and deterministic: only the files' own
+ * stamps are compared, never "now". A model whose files are ALL old keeps them
+ * all and correctly reads as expired; files with no dates can neither drop nor
+ * be dropped. The kept files then pairwise overlap, so the conservative fold
+ * below is guaranteed coherent.
+ *
  * The window is folded CONSERVATIVELY, because staleness is a money rule: the
  * merged list is fully valid only from the LATEST start until the EARLIEST end,
  * and `taxIncluded` is true if it is true anywhere. Erring the other way would
@@ -782,7 +796,14 @@ export function priceFileKeys(
 export function mergePriceFiles(
   files: ReadonlyArray<Record<string, unknown>>,
 ): Record<string, unknown> | null {
-  const list = files.filter(isObj);
+  const all = files.filter(isObj);
+  const starts = all
+    .map((f) => parseChDate(f.validFromDate))
+    .filter((ms): ms is number => ms != null);
+  const list = all.filter((f) => {
+    const to = parseChDate(f.validToDate);
+    return to == null || !starts.some((from) => to < from);
+  });
   if (!list.length) return null;
   if (list.length === 1) return list[0];
 

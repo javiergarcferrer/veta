@@ -28,7 +28,7 @@ import {
 import { isConfiguratorPathname } from '../src/lib/togoEmbed.js';
 import { isPublicRoute } from '../src/lib/theme.js';
 import { resolveCarlHansenConfigurator } from '../src/core/catalog/carlHansenConfigurator.js';
-import { canonicalLabel } from '../src/brands/carl-hansen/variants.ts';
+import { canonicalLabel } from '../src/brands/carl-hansen/variantMatch.js';
 import {
   safeModelId, safeMarket, sitePathOf, productPagesFromSitemap, parseNextData, slimPage,
   looksLikeProductCode,

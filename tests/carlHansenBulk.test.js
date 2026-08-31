@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { parseSelectionTree, enumerateSelections, configurationIds } from '../src/brands/carl-hansen/selectionTree.js';
-import { resolveCarlHansenBulkPlan, resolveCarlHansenModelPlan, diagnoseCarlHansenBulk } from '../src/core/catalog/index.js';
+import { resolveCarlHansenBulkPlan, resolveCarlHansenModelPlan, resolveCarlHansenMeshQueue, diagnoseCarlHansenBulk } from '../src/core/catalog/index.js';
 
 const FIX = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'carlHansen');
 const load = (name) => JSON.parse(readFileSync(join(FIX, name), 'utf8'));
@@ -238,4 +238,91 @@ test('cuando todo llegó, nombra el motivo que rechazó a MÁS modelos', () => {
 test('sobrevive a un censo ausente', () => {
   assert.match(diagnoseCarlHansenBulk(null), /no recibió ninguna ficha/);
   assert.match(diagnoseCarlHansenBulk({}, null), /no recibió ninguna ficha/);
+});
+
+/* ------------------------- AJ52: the configuration claim ------------------------- */
+
+/**
+ * The Society table is the measured worst case for config identity: four desk
+ * configurations share ONE tree shape and differ only in `nameInUrl` size
+ * words, a fifth (the lamp module) is satisfied by the desk's own words, and
+ * the leather-top axis is priced flat and never printed. Before the claim gate
+ * and the waiver, this model minted its two desks under the LAMP's price key.
+ */
+test('AJ52 — each desk under its own configuration, the lamp claims nothing', () => {
+  const spec = load('AJ52_en.model.json');
+  const page = load('aj52.pageData.json');
+  const priceRow = {
+    modelId: 'AJ52',
+    currency: 'USD',
+    taxIncluded: false,
+    validFromDate: '2026-07-01T00:00:00',
+    validToDate: '2026-12-31T00:00:00',
+    // The three keys the walk can compose here, at the published prices.
+    modelPrices: {
+      'AJ52-14070_060102_LeatherF': { price: 13460 },
+      'AJ52-16070_060102_LeatherF': { price: 14195 },
+      'AJ52-L_060102': { price: 5045 },
+    },
+  };
+
+  const one = resolveCarlHansenModelPlan(
+    { modelId: 'AJ52', spec, priceRow, page },
+    { profileId: 'team', now: Date.parse('2026-08-20') },
+  );
+
+  // Two desks, two configurations, two prices — and NOT the lamp's $5,045.
+  const byEan = new Map();
+  for (const row of one.rows) if (!byEan.has(row.reference)) byEan.set(row.reference, row);
+  assert.equal(byEan.size, 2);
+  assert.equal(byEan.get('5713018703935').priceUsd, 13460); // 140×70
+  assert.equal(byEan.get('5713018704178').priceUsd, 14195); // 160×70
+
+  // The audit trail names the desk configurations, never AJ52-L.
+  assert.ok(one.audits.length >= 2);
+  for (const a of one.audits) {
+    assert.notEqual(a.configId, 'AJ52-L', `the lamp module claimed ${JSON.stringify(a)}`);
+    assert.match(a.priceKey, /^AJ52-1[46]070_/);
+  }
+});
+
+/* ------------------------------- the 3D queue ------------------------------- */
+
+test('mesh queue — pending converts, human work is never redone, gaps are named', () => {
+  const page = (modelId, links) => ({
+    modelId,
+    variants: [{ Sku: '1' }],
+    assetLinks: links,
+  });
+  const zip = (modelId) => [{ description: `${modelId} 3D`, url: `https://cdn/x/${modelId}_3d.zip` }];
+  const pages = [
+    page('NEW1', zip('NEW1')),                       // convertible → queued
+    page('DONE', zip('DONE')),                       // converted + reviewed → untouched
+    page('REVW', zip('REVW')),                       // converted, awaiting review → untouched
+    page('OLDV', zip('OLDV')),                       // converted on an old pipeline → re-queued
+    page('RVIT', [{ description: 'Revit', url: 'https://cdn/x/RVIT.rfa.zip' }]),
+    page('NADA', []),                                // publishes nothing
+    { modelId: 'CURSOR', variants: [], assetLinks: zip('CURSOR') }, // cursor row, never a model
+  ];
+  const asset = (id, extra) => ({
+    id, meshTier: 'a', meshUrl: `https://bucket/${id}.glb`, meshV: 3,
+    binding: { groups: [{ name: 'x', axisId: 'a1', confidence: 0.9, source: 'mtl' }], needsReview: false },
+    bindingReviewedAt: 1, ...extra,
+  });
+  const assets = [
+    asset('DONE'),
+    asset('REVW', { bindingReviewedAt: null, binding: { groups: [], needsReview: true } }),
+    asset('OLDV', { meshV: 2 }),
+  ];
+
+  const plan = resolveCarlHansenMeshQueue(pages, assets, { meshV: 3 });
+  assert.deepEqual(plan.queue.map((q) => `${q.modelId}:${q.why}`).sort(), ['NEW1:nuevo', 'OLDV:version']);
+  assert.equal(plan.models, 6, 'the cursor row is not a model');
+  assert.equal(plan.counts.ready, 1);
+  assert.equal(plan.counts.needsReview, 1, 'a pending review is a human turn, not a machine one');
+  assert.equal(plan.counts.stale, 1);
+  assert.equal(plan.counts.revitOnly, 1);
+  assert.equal(plan.counts.noAsset, 1);
+  // Every queued entry carries the archive to read — the driver never re-derives it.
+  for (const q of plan.queue) assert.ok(q.zipUrl.startsWith('https://'), q.modelId);
 });

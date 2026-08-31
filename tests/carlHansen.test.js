@@ -36,6 +36,7 @@ import {
   priceListState,
   priceListStateOf,
   priceListValidity,
+  priceWindowIncoherent,
   parseChDate,
   PRICE_LIST_EXPIRING_DAYS,
 } from '../src/brands/carl-hansen/price.js';
@@ -45,11 +46,15 @@ import {
   buildCarlHansenLeadTimes,
   maxProductionDays,
   rowPriceUsd,
-  requiredLabels,
-  variantMatchesSelection,
-  canonicalLabel,
   CARL_HANSEN_BRAND,
 } from '../src/brands/carl-hansen/productRows.js';
+import {
+  requiredLabels,
+  variantMatchesSelection,
+  variantMatchContext,
+  resolveVariantSelection,
+  canonicalLabel,
+} from '../src/brands/carl-hansen/variantMatch.js';
 // The REAL quote-builder stock gate — imported, not restated, so this test
 // fails if the gate's own semantics ever change under us.
 import { isOutOfStock, productStock } from '../src/lib/catalog.js';
@@ -1147,4 +1152,227 @@ test('merging nothing is null, not an empty price list', () => {
   // as «combination not published» — a wrong diagnosis for a missing file.
   assert.equal(mergePriceFiles([]), null);
   assert.equal(mergePriceFiles([null, undefined]), null);
+});
+
+/* -------------------- the 2026-08 reach: fused chains & claims -------------------- */
+
+/**
+ * MEASURED over the whole cached range (115 models, 590 published EANs): the
+ * per-node matcher left 78 models minting nothing. Three published facts closed
+ * most of the gap, and each is pinned below with the real payloads that
+ * motivated it:
+ *   1. the page prints a chain FUSED ("Leather Thor 301") — matched only under
+ *      a model-wide price-ambiguity proof;
+ *   2. AJ52's leather-top axis is priced flat and never printed — waivable,
+ *      but only with the sibling proof;
+ *   3. what tells AJ52's two desk sizes apart lives in the CONFIGURATION
+ *      (`nameInUrl`), not in any axis — the claim gate.
+ */
+
+const AJ52_PAGE = load('aj52.pageData.json');
+const AJ52_ALL_AXES = parseSelectionTree(AJ52_MODEL);
+const aj52Axes = (configId) => AJ52_ALL_AXES.filter((a) => a.configId === configId);
+const aj52Ctx = (configId) => variantMatchContext(AJ52_PAGE, aj52Axes(configId), AJ52_ALL_AXES, {
+  configurations: AJ52_MODEL.configurations,
+  configId,
+});
+const AJ52_DESK_140 = AJ52_PAGE.Variants.find((v) => v.Sku === '5713018703935');
+const AJ52_DESK_160 = AJ52_PAGE.Variants.find((v) => v.Sku === '5713018704178');
+
+test('canonicalLabel — the 2026-08 documented spellings', () => {
+  // The E-serie edge band: tree `Edgeband: Black`, page `Edging: Black`.
+  assert.equal(canonicalLabel('Edgeband: Black'), canonicalLabel('Edging: Black'));
+  // Colourway zero-padding: BM0865's tree says `Canvas 0244`, the page `Canvas 244`.
+  assert.equal(canonicalLabel('Canvas 0244'), canonicalLabel('Canvas 244'));
+  assert.equal(canonicalLabel('Mood 03103'), canonicalLabel('Mood 3103'));
+  // …and stripping zeros must never fold two DIFFERENT colourways together.
+  assert.notEqual(canonicalLabel('Canvas 244'), canonicalLabel('Canvas 245'));
+  assert.notEqual(canonicalLabel('Mood 3103'), canonicalLabel('Mood 31030'));
+});
+
+test('fused chain — "Leather Thor 301" is one printed token, and only its own leaf', () => {
+  // CH101's real shape, minimal: the tree says Leather → Thor → Thor 301, the
+  // page prints the chain as ONE phrase. Codes differ per leaf, so the phrase
+  // is unambiguous and may match; the per-node rule alone could not.
+  const model = {
+    selectionTrees: {
+      X_Seat: {
+        name: 'Seat',
+        label: 'Seat',
+        choices: {
+          Leather: {
+            label: 'Leather',
+            isSelectable: false,
+            choices: {
+              Thor: {
+                label: 'Thor',
+                isSelectable: false,
+                choices: {
+                  T301: { label: 'Thor 301', isPriceDefinator: true, priceCode: 'Le3' },
+                  T306: { label: 'Thor 306', isPriceDefinator: true, priceCode: 'Le4' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  const axes = parseSelectionTree(model);
+  const page = { Variants: [{ Sku: '1', ConfigurationDictionary: { Upholstery: 'Leather Thor 301' } }] };
+  const ctx = variantMatchContext(page, axes, axes);
+  const v = page.Variants[0];
+  assert.equal(variantMatchesSelection(v, axes, { X_Seat: 'T301' }, ctx), true);
+  assert.equal(variantMatchesSelection(v, axes, { X_Seat: 'T306' }, ctx), false);
+  // WITHOUT the model-wide context the fused rule stays off — per-node only.
+  assert.equal(variantMatchesSelection(v, axes, { X_Seat: 'T301' }), false);
+});
+
+test('fused chain — an ambiguous suffix ("oil") never carries a match alone', () => {
+  // Oak→Oil and Walnut→Oil price apart; a bare "oil" token names both, so it
+  // must match neither. The safe spelling is the full chain, which the page
+  // did not print here.
+  const model = {
+    selectionTrees: {
+      X_Frame: {
+        name: 'Frame',
+        label: 'Frame',
+        choices: {
+          Oak: { label: 'Oak', isSelectable: false, choices: { OakOil: { label: 'Oil', isPriceDefinator: true, priceCode: 'A' } } },
+          Wal: { label: 'Walnut', isSelectable: false, choices: { WalOil: { label: 'Oil', isPriceDefinator: true, priceCode: 'B' } } },
+        },
+      },
+    },
+  };
+  const axes = parseSelectionTree(model);
+  const page = { Variants: [{ Sku: '1', Configuration: ['oil'] }] };
+  const ctx = variantMatchContext(page, axes, axes);
+  assert.equal(variantMatchesSelection(page.Variants[0], axes, { X_Frame: 'OakOil' }, ctx), false);
+  assert.equal(variantMatchesSelection(page.Variants[0], axes, { X_Frame: 'WalOil' }, ctx), false);
+});
+
+test('the teak restatement stays impossible under the FULL model context', () => {
+  // CH24-Teak's frame is a single leaf whose "oil" suffix a walnut variant also
+  // prints. With every configuration's axes in evidence the phrase maps to
+  // three different price codes and the match is refused — the $1,355-teak
+  // claim on the $2,190 walnut chair that the sweep pin caught.
+  const all = parseSelectionTree(CH24_MODEL);
+  const teak = all.filter((a) => a.configId === 'CH24-Teak');
+  const ctx = variantMatchContext(CH24_PAGE, teak, all, {
+    configurations: CH24_MODEL.configurations, configId: 'CH24-Teak',
+  });
+  const walnut = CH24_PAGE.Variants.find((v) => /walnut, oil, natural/.test(v.FormattedConfiguration));
+  assert.ok(walnut, 'fixture must carry the walnut/oil/natural-cord variant');
+  const frame = teak.find((a) => a.name === 'Frame');
+  const seat = teak.find((a) => a.name === 'Seat');
+  for (const leaf of seat.leaves) {
+    assert.equal(
+      variantMatchesSelection(walnut, teak, { [frame.id]: 'TeakOil', [seat.id]: leaf.key }, ctx),
+      false,
+      `teak claimed the walnut chair via seat ${leaf.key}`,
+    );
+  }
+});
+
+test('the unspoken price-invariant axis is waived — AJ52\'s leather top', () => {
+  // Both Freja leathers carry the same code and the page never prints either;
+  // requiring them made every desk combination unmatchable. Either leather
+  // resolves to the same money, so both selections claim the same desk.
+  const axes = aj52Axes('AJ52-14070-L');
+  const ctx = aj52Ctx('AJ52-14070-L');
+  const byName = Object.fromEntries(axes.map((a) => [a.name, a]));
+  const base = {
+    [byName.Frame.id]: 'StainlessSteel2',
+    [byName.DrawerModule.id]: 'WalnutOil',
+  };
+  for (const top of ['Fre2002', 'Fre2068']) {
+    assert.equal(
+      variantMatchesSelection(AJ52_DESK_140, axes, { ...base, [byName.Tabletop.id]: top }, ctx),
+      true,
+      `the ${top} top must be waived`,
+    );
+  }
+  // The waiver needs the sibling proof: without modelAxes, no match.
+  assert.equal(variantMatchesSelection(AJ52_DESK_140, axes, { ...base, [byName.Tabletop.id]: 'Fre2002' }), false);
+});
+
+test('the claim gate — a variant naming a sibling size is not ours to price', () => {
+  // AJ52-14070 and AJ52-16070 share their trees; only `nameInUrl` tells them
+  // apart, and the page prints the size. Without the gate the 140 config
+  // claimed the 160 desk at $13,460 — $735 under its published price.
+  const axes = aj52Axes('AJ52-14070-L');
+  const ctx = aj52Ctx('AJ52-14070-L');
+  const byName = Object.fromEntries(axes.map((a) => [a.name, a]));
+  const sel = {
+    [byName.Tabletop.id]: 'Fre2002',
+    [byName.Frame.id]: 'StainlessSteel2',
+    [byName.DrawerModule.id]: 'WalnutOil',
+  };
+  assert.equal(variantMatchesSelection(AJ52_DESK_140, axes, sel, ctx), true);
+  assert.equal(variantMatchesSelection(AJ52_DESK_160, axes, sel, ctx), false, '140 config claimed the 160 desk');
+
+  // The lamp module speaks no size at all, so it can claim NEITHER desk.
+  const lampAxes = aj52Axes('AJ52-L');
+  const lampCtx = aj52Ctx('AJ52-L');
+  const lampByName = Object.fromEntries(lampAxes.map((a) => [a.name, a]));
+  const lampSel = { [lampByName.Lampmodule.id]: 'WalnutOil', [lampByName.Lamp.id]: 'StainlessSteel' };
+  assert.equal(variantMatchesSelection(AJ52_DESK_140, lampAxes, lampSel, lampCtx), false);
+  assert.equal(variantMatchesSelection(AJ52_DESK_160, lampAxes, lampSel, lampCtx), false);
+});
+
+test('resolveVariantSelection — the published variant solves without enumerating', () => {
+  // The inverse walk: for the 140 desk, the matcher finds walnut-oil on the
+  // drawer module and the steel frame, takes the model's own default for the
+  // waived top, and never builds a cartesian product at all. (ND52's three
+  // 630-leaf fabric axes — 1.75 billion combinations — are why.)
+  const axes = aj52Axes('AJ52-14070-L');
+  const ctx = aj52Ctx('AJ52-14070-L');
+  const byName = Object.fromEntries(axes.map((a) => [a.name, a]));
+  const sel = resolveVariantSelection(axes, AJ52_DESK_140, ctx, defaultSelection(axes));
+  assert.ok(sel, 'the 140 desk must resolve');
+  assert.equal(sel[byName.DrawerModule.id], 'WalnutOil');
+  assert.equal(sel[byName.Frame.id], 'StainlessSteel2');
+  assert.equal(sel[byName.Tabletop.id], 'Fre2002'); // the model's own default
+  // The 160 desk is a sibling's: null, not a guess.
+  assert.equal(resolveVariantSelection(axes, AJ52_DESK_160, ctx, defaultSelection(axes)), null);
+});
+
+test('mergePriceFiles — a superseded generation is dropped, keys and window alike', () => {
+  // AB019's own file still says 2024 while its config files say 2026 — the old
+  // fold made a window that ends before it starts and blocked the model whole.
+  const stale = {
+    validFromDate: '2024-01-01T00:00:00',
+    validToDate: '2024-12-31T00:00:00',
+    modelPrices: { 'AB019_10': { price: 999 } },
+  };
+  const current = {
+    validFromDate: '2026-07-01T00:00:00',
+    validToDate: '2026-12-31T00:00:00',
+    modelPrices: { 'AB020D_10': { price: 1500 } },
+  };
+  const merged = mergePriceFiles([stale, current]);
+  assert.equal(merged.modelPrices['AB019_10'], undefined, 'last season\'s key survived the merge');
+  assert.equal(merged.modelPrices['AB020D_10'].price, 1500);
+  assert.equal(merged.validFromDate, '2026-07-01T00:00:00');
+  assert.equal(merged.validToDate, '2026-12-31T00:00:00');
+
+  // ALL files old ⇒ nothing is dropped and the model honestly reads expired.
+  const twin = { ...stale, modelPrices: { 'AB019X_10': { price: 5 } } };
+  const old = mergePriceFiles([stale, twin]);
+  assert.ok(old.modelPrices['AB019_10']);
+  assert.ok(old.modelPrices['AB019X_10']);
+  assert.equal(old.validToDate, '2024-12-31T00:00:00');
+
+  // An undated file can neither drop nor be dropped.
+  const undated = { modelPrices: { 'FREE_1': { price: 7 } } };
+  const mixed = mergePriceFiles([undated, current]);
+  assert.ok(mixed.modelPrices['FREE_1']);
+  assert.ok(mixed.modelPrices['AB020D_10']);
+});
+
+test('priceWindowIncoherent — the merge scar reads as a refetch, never as data', () => {
+  assert.equal(priceWindowIncoherent({ validFrom: '2026-07-01T00:00:00', validTo: '2024-12-31T00:00:00' }), true);
+  assert.equal(priceWindowIncoherent({ validFromDate: '2026-07-01T00:00:00', validToDate: '2026-12-31T00:00:00' }), false);
+  assert.equal(priceWindowIncoherent({ validFrom: null, validTo: '2024-12-31T00:00:00' }), false);
+  assert.equal(priceWindowIncoherent(null), false);
 });

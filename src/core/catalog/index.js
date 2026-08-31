@@ -21,7 +21,12 @@ export {
   resolveCarlHansenImportPlan,
   resolveCarlHansenAssets,
 } from './carlHansen.js';
-export { resolveCarlHansenBulkPlan, resolveCarlHansenModelPlan, diagnose as diagnoseCarlHansenBulk } from './carlHansenBulk.js';
+export {
+  resolveCarlHansenBulkPlan,
+  resolveCarlHansenModelPlan,
+  resolveCarlHansenMeshQueue,
+  diagnose as diagnoseCarlHansenBulk,
+} from './carlHansenBulk.js';
 // Fredericia's public configurator projection — same folder, own instrument.
 export {
   resolveFredericiaFamilies, resolveFredericiaFamilyRows, resolveFredericiaConfigurator,

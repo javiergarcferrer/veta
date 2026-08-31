@@ -468,6 +468,21 @@ export function priceListValidity(priceRow: ChPriceList | null | undefined): {
   };
 }
 
+/**
+ * True when a cached price row's window is SELF-CONTRADICTORY — it ends before
+ * it begins. No published file says that about itself; the shape is the scar
+ * of the old cross-generation merge (latest start × earliest end over files
+ * from different seasons), which read as expired forever and blocked ten
+ * models whole. The server merge now drops superseded generations, so the fix
+ * for a row like this is a REFETCH — the bulk importer treats it as missing.
+ */
+export function priceWindowIncoherent(priceRow: ChPriceList | null | undefined): boolean {
+  const { validFrom, validTo } = priceListValidity(priceRow);
+  const from = parseChDate(validFrom);
+  const to = parseChDate(validTo);
+  return from != null && to != null && to < from;
+}
+
 /** `priceListState` for a whole price list — the call a ViewModel should make. */
 export function priceListStateOf(
   priceRow: ChPriceList | null | undefined,

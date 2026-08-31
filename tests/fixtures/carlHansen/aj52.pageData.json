@@ -1,0 +1,27 @@
+{
+  "ProductName": "AJ52 | Society Table",
+  "ProductId": "AJ52_item",
+  "Breadcrumb": [{ "Title": "Products" }, { "Title": "Tables & Desks" }, { "Title": "Desks" }],
+  "Variants": [
+    {
+      "Sku": "5713018704178",
+      "Configuration": ["walnut", "oil", "stainless steel", "160x70 cm", "H72 cm"],
+      "ConfigurationDictionary": { "Wood": "walnut, oil", "Frame": "stainless steel", "HeightText": "H72 cm", "MaterialProp": "160x70 cm" },
+      "FormattedConfiguration": "walnut, oil, stainless steel, 160x70 cm, H72 cm",
+      "PageUrl": "/en/en/collection/tables-desks/desks/aj52-160x70/aj52-society-table-160-x-70-cm-walnut-oil-stainless-steel-6/variant/6558",
+      "Images": [],
+      "Stock": 0,
+      "ProductionDays": 3
+    },
+    {
+      "Sku": "5713018703935",
+      "Configuration": ["walnut", "oil", "stainless steel", "140x70 cm", "H72 cm"],
+      "ConfigurationDictionary": { "Wood": "walnut, oil", "Frame": "stainless steel", "HeightText": "H72 cm", "MaterialProp": "140x70 cm" },
+      "FormattedConfiguration": "walnut, oil, stainless steel, 140x70 cm, H72 cm",
+      "PageUrl": "/en/en/collection/tables-desks/desks/aj52-160x70/aj52-table-140-x-70-cm-walnut-oil-stainless-steel-6-drawers/variant/6556",
+      "Images": [],
+      "Stock": 0,
+      "ProductionDays": 3
+    }
+  ]
+}

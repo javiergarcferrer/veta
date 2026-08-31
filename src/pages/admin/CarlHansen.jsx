@@ -27,6 +27,7 @@ import ChModelGrid from '../../components/carlhansen/ChModelGrid.jsx';
 import ChConfigurator from '../../components/carlhansen/ChConfigurator.jsx';
 import ChImportBar from '../../components/carlhansen/ChImportBar.jsx';
 import ChBulkImportBar from '../../components/carlhansen/ChBulkImportBar.jsx';
+import ChBulkMeshBar from '../../components/carlhansen/ChBulkMeshBar.jsx';
 import { BRAND_CARL_HANSEN } from '../../lib/constants.js';
 import VariantBrowser from '../../components/catalog/VariantBrowser.jsx';
 
@@ -99,6 +100,16 @@ export default function CarlHansen() {
   const pricesQ = useLiveQueryStatus(
     () => (profileId
       ? db.carlHansenPrices.where('profileId').equals(profileId).columns(['id', 'modelId', 'marketCode']).cached(60_000).toArray()
+      : Promise.resolve([])),
+    [profileId],
+    [],
+  );
+  // The 3D state of the WHOLE range, for the bulk mesh bar's queue and census.
+  // Full rows (≤ one per model): the queue resolver reads tier, binding and
+  // version, not just presence.
+  const assetsQ = useLiveQueryStatus(
+    () => (profileId
+      ? db.carlHansenAssets.where('profileId').equals(profileId).cached(60_000).toArray()
       : Promise.resolve([])),
     [profileId],
     [],
@@ -284,6 +295,17 @@ export default function CarlHansen() {
             pages={pagesQ.data}
             onDone={() => invalidate(['products'])}
           />
+          {/* THE 3D HALF OF «have the catalog»: same one-press idiom, driving
+              the per-model conversion pipeline over everything still pending.
+              Only rendered once the asset rows have answered — a queue computed
+              against an unloaded table would offer to re-convert the world. */}
+          {assetsQ.loaded && (
+            <ChBulkMeshBar
+              pages={pagesQ.data}
+              assets={assetsQ.data}
+              onDone={() => invalidate(['carlHansenAssets'])}
+            />
+          )}
           {/* EL CATÁLOGO IMPORTADO, a la vista. It was folded inside a
               `<details>`, so the thing a dealer actually quotes from was the
               one thing you had to go looking for — while the un-imported PIM

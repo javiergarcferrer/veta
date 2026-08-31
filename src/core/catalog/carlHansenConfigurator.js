@@ -53,8 +53,8 @@ import {
   buildCarlHansenLeadTimes,
   maxProductionDays,
   rowPriceUsd,
-  variantMatchesSelection,
-} from '../../brands/carl-hansen/variants.js';
+} from '../../brands/carl-hansen/productRows.js';
+import { variantMatchContext, variantMatchesSelection } from '../../brands/carl-hansen/variantMatch.js';
 
 const DAY_MS = 86_400_000;
 
@@ -238,6 +238,20 @@ function normalizeSelection(axes, selection) {
   return out;
 }
 
+/** EVERY configuration's axes for a model — the sibling proof the matcher's
+ *  unspoken-axis waiver needs (`variantMatchContext`). Cached per spec row:
+ *  a master carries up to 29 trees and the configurator re-runs per click. */
+const allAxesCache = new WeakMap();
+function allModelAxes(spec, master) {
+  if (!master) return [];
+  const key = isObj(spec) ? spec : null;
+  const hit = key ? allAxesCache.get(key) : null;
+  if (hit) return hit;
+  const all = parseSelectionTree(master);
+  if (key) allAxesCache.set(key, all);
+  return all;
+}
+
 /** The configuration whose axes we render: the caller's, else the one named
  *  like the model (`CH24`, not the `CUCH24` cushion that shares the file). */
 function pickConfigId(spec, axes, wanted) {
@@ -266,6 +280,19 @@ export function resolveCarlHansenConfigurator(spec, priceRow, page, {
   now = Date.now(),
   configId = null,
   collectionSlugs = null,
+  // PERF SEAMS FOR THE BULK WALK, defaults keep every existing caller intact.
+  // `rawAxes` skips re-parsing the master (the bulk pass already parsed this
+  // configuration's axes and calls this once PER COMBINATION — re-parsing a
+  // ~200 KB master thousands of times was most of why «Importar todo» crawled);
+  // `probeAddOns: false` skips the per-OPTION surcharge probes, which exist
+  // only so the configurator UI can print "+$145" next to unselected options —
+  // the plan itself prices the SELECTION through `resolveListPrice` regardless.
+  rawAxes: prebuiltAxes = null,
+  probeAddOns = true,
+  // EVERY configuration's axes, for the matcher's sibling-aware waiver. The
+  // bulk pass hands its own (it parsed each configuration once anyway);
+  // otherwise they're derived here, cached per spec row.
+  modelAxes: prebuiltModelAxes = null,
 } = {}) {
   const master = isObj(spec)
     ? { selectionTrees: spec.selectionTrees ?? spec.selection_trees, configurations: spec.configurations }
@@ -273,7 +300,12 @@ export function resolveCarlHansenConfigurator(spec, priceRow, page, {
   const modelId = str(spec?.id || spec?.modelId);
   // A named configuration is parsed directly (a master carries up to 29 trees
   // and this re-runs on every click); otherwise parse all, then pick.
-  const allAxes = master ? parseSelectionTree(master, configId || undefined) : [];
+  const allAxes = Array.isArray(prebuiltAxes)
+    ? prebuiltAxes
+    : master ? parseSelectionTree(master, configId || undefined) : [];
+  const modelAxes = Array.isArray(prebuiltModelAxes)
+    ? prebuiltModelAxes
+    : (!configId && !Array.isArray(prebuiltAxes)) ? allAxes : allModelAxes(spec, master);
   const cfg = pickConfigId(spec, allAxes, configId);
   const rawAxes = cfg ? allAxes.filter((a) => a.configId === cfg) : allAxes;
 
@@ -319,7 +351,7 @@ export function resolveCarlHansenConfigurator(spec, priceRow, page, {
     // own surcharge. It is read back out of `resolveListPrice` — the same code
     // path that prices the SELECTED one — rather than re-implemented here,
     // which is the only way the label and the money can't drift apart.
-    if (!axis.isPriceAxis && priceList) {
+    if (!axis.isPriceAxis && priceList && probeAddOns) {
       for (const option of options) {
         const probe = resolveListPrice(priceList, '', [], { ...sel, [axis.id]: option.key }, rawAxes);
         const hit = probe.addOns.find((a) => a.axisId === axis.id) || null;
@@ -342,13 +374,18 @@ export function resolveCarlHansenConfigurator(spec, priceRow, page, {
 
   // The variant (EAN, lead time, renders) this configuration IS.
   const pageData = toPageData(page);
-  const matches = matchingVariants(pageData, rawAxes, sel);
+  const configurations = Array.isArray(spec?.configurations) ? spec.configurations : null;
+  const matches = matchingVariants(pageData, rawAxes, sel, modelAxes, { configurations, configId: cfg });
   const variant = matches[0] ? toVariant(matches[0]) : null;
   const images = variant?.images?.length ? variant.images : toImages(page?.media);
   // Lead time is the made-to-order answer to "when do I get it" — built by the
   // Model over the SAME (spec, page, selection) that builds the rows, so a
   // promised date can never belong to a piece the import doesn't cover.
-  const leadTimes = buildCarlHansenLeadTimes({ modelId, axes: rawAxes }, pageData, sel);
+  const leadTimes = buildCarlHansenLeadTimes(
+    { modelId, axes: rawAxes, modelAxes, configurations, configId: cfg },
+    pageData,
+    sel,
+  );
 
   const unresolved = configuratorIssues({
     spec, page, pageData, priceList, priceKey, priced, listPriceUsd, state, matches, modelId, axes: rawAxes,
@@ -359,6 +396,9 @@ export function resolveCarlHansenConfigurator(spec, priceRow, page, {
     configId: cfg || null,
     modelName: squish(spec?.friendlyName) || chModelName(page?.name).name,
     axes,
+    /** Every configuration's axes — input for the matcher's sibling-aware
+     *  waiver; the import plan hands it on to the row builder. */
+    modelAxes,
     selection: sel,
     priceKey,
     /** What the product row carries: base + every MANDATORY surcharge. */
@@ -391,10 +431,14 @@ export function resolveCarlHansenConfigurator(spec, priceRow, page, {
 
 /** Variants of the page that ARE this selection — the Model's own gate
  *  (`variantMatchesSelection`: the visible LABEL CHAIN, never a fuzzy string),
- *  so what the configurator shows and what the import mints can't disagree. */
-function matchingVariants(pageData, axes, selection) {
+ *  so what the configurator shows and what the import mints can't disagree.
+ *  The page context rides along so the unspoken-axis waiver and the
+ *  configuration claim gate apply HERE exactly as they do in the row builder
+ *  — one gate, two callers. */
+function matchingVariants(pageData, axes, selection, modelAxes = null, config = null) {
+  const context = variantMatchContext(pageData, axes, modelAxes, config);
   return arr(pageData?.Variants)
-    .filter((v) => squish(v?.Sku) && variantMatchesSelection(v, axes, selection));
+    .filter((v) => squish(v?.Sku) && variantMatchesSelection(v, axes, selection, context));
 }
 
 /**

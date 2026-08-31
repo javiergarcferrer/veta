@@ -38,40 +38,16 @@
  * column for it and this package does not get to add one.
  *
  * ── WHICH VARIANTS BELONG TO A SELECTION ─────────────────────────────────────
- * One product page serves several CONFIGURATIONS (CH24 also hosts
- * CH24-CHSColors' painted frames), and each configuration prices differently.
- * A variant is matched to a selection by the LABEL CHAIN of the selected
- * choices: "Oil" alone is oak, walnut and beech, so the visible ancestors
- * ("FSC™-certified Oak") must match too. Measured over the 41 CH24 variants ×
- * 24 CH24 combos × 22 CH24-CHSColors combos: never once ambiguous — a variant
- * matches at most one combination. That non-ambiguity is the safety property;
- * coverage is deliberately partial, because a variant whose configuration we
- * cannot place must NOT inherit somebody else's price.
+ * That whole question — the canonical label form, the qualifier rule, the
+ * fused-chain rule, the unspoken-axis waiver, the configuration claim gate,
+ * and the inverse resolver — lives in `variantMatch.ts`, one module over. This
+ * file consumes ONE gate (`matchingVariants` below) and never re-derives any
+ * of it: matching decides WHAT a variant is; the builders here decide what a
+ * ROW says. The shared safety property is pinned in tests/carlHansen.test.js —
+ * a variant whose configuration we cannot place must NOT inherit somebody
+ * else's price — and its coverage is raised only by measuring again.
  *
- * ── …AND THE CHAIN IS COMPARED CANONICALLY, NOT LITERALLY ────────────────────
- * The first cut compared the label chain to the variant's configuration text
- * with plain lowercase equality, and MEASURED that way only 25 of CH24's 41
- * published EANs were reachable from ANY of the model's nine configurations.
- * The whole 16-EAN gap was one systematic spelling difference: under the hidden
- * group `CHS Soft Colors` the tree names the leaf `Blue`, and the page prints
- * `Soft Blue`. Every painted-beech Wishbone on the flagship page — a third of
- * the range — was therefore unimportable.
- *
- * The repair is `canonicalLabel` + a QUALIFIER rule, and both are deliberately
- * EXACT: fold case/diacritics/punctuation, canonicalise an explicit alias table
- * of observed abbreviations, drop a collection's version digit, and let a label
- * be prefixed by ONE word that the node's own HIDDEN ancestors publish. There
- * is no edit distance, no similarity score and no "closest match" anywhere —
- * a fuzzy matcher does not import the missing chair, it imports the WRONG one,
- * and at Carl Hansen's prices two adjacent finishes are $500 apart. Every
- * accepted spelling is generated from the model master's own published text,
- * so an alias can only ever unify two spellings of the SAME node.
- *
- * Residual gap and non-ambiguity are both pinned as numbers in
- * `tests/carlHansen.test.js`; raise the matcher's reach only by measuring again.
- *
- * So: rows are built per selection. Sweeping a model = calling this once per
- * combination and merging on `id`. An empty selection matches everything and
+ * Rows are built per selection; an empty selection matches everything and
  * yields unpriced rows — the no-vanish sweep, for getting every EAN into the
  * catalog before the prices are worked out.
  *
@@ -79,33 +55,13 @@
  */
 import type { Product } from '../../types/domain';
 import type { ChAxis } from './selectionTree.js';
-import { selectedChoice, chainFor } from './selectionTree.js';
+import type { ChPageVariant, ChPageData } from './variantMatch.js';
+import { variantMatchContext, variantMatchesSelection } from './variantMatch.js';
 import type { ChResolvedPrice } from './price.js';
 
 /** Brand id for Carl Hansen rows. Mirrors the registry in `lib/constants`
  *  (`BRAND_*`); kept literal here so this Model stays dependency-free. */
 export const CARL_HANSEN_BRAND = 'carl-hansen';
-
-/** One `pageData.Variants[]` entry, narrowed to what a catalog row needs. */
-export interface ChPageVariant {
-  /** EAN/GTIN-13 — the catalog reference. */
-  Sku?: string;
-  Configuration?: string[];
-  ConfigurationDictionary?: Record<string, string>;
-  FormattedConfiguration?: string;
-  Images?: Array<{ Url?: string }>;
-  Stock?: number;
-  ProductionDays?: number;
-  PageUrl?: string;
-}
-
-/** `props.pageProps.pageData` of a product page. */
-export interface ChPageData {
-  ProductName?: string;
-  ProductId?: string;
-  Breadcrumb?: Array<{ Title?: string }>;
-  Variants?: ChPageVariant[];
-}
 
 /** The model master side of the join. */
 export interface ChModelSpec {
@@ -116,6 +72,12 @@ export interface ChModelSpec {
   /** `friendlyName` from the model master, e.g. `Wishbone Chair`. */
   friendlyName?: string | null;
   axes: ChAxis[];
+  /** EVERY configuration's axes — the sibling proof the unspoken-axis waiver
+   *  needs (see `variantMatchContext`). Absent ⇒ no axis is ever waived. */
+  modelAxes?: ChAxis[] | null;
+  /** The master's `configurations` array, verbatim — the claim gate reads
+   *  each configuration's `nameInUrl`. Absent ⇒ no claim gate. */
+  configurations?: unknown[] | null;
 }
 
 export interface ChRowContext {
@@ -141,201 +103,6 @@ function intOrNull(v: unknown): number | null {
   return null;
 }
 
-/* --------------------------- canonical label form -------------------------- */
-
-/**
- * Observed spelling differences between the configurator tree and the product
- * page, as an EXPLICIT table: a folded word run → its canonical word run.
- * Rewriting BOTH sides means either spelling lands on the same string, so the
- * table never has to know which source it is reading.
- *
- * This list is short on purpose. It is not a place to make a stubborn match
- * work — an entry belongs here only when the two spellings are documented
- * names of the SAME thing, and each one carries a case in
- * `tests/carlHansen.test.js` so it cannot rot unnoticed.
- */
-const LABEL_ALIASES: ReadonlyArray<readonly [readonly string[], string]> = [
-  // Kvadrat collections the tree abbreviates and the page spells out.
-  [['dm'], 'divina melange'],
-  [['hall', 'dal'], 'hallingdal'],   // the page prints "Hall.dal" → folded "hall dal"
-  [['re', 'wool'], 'rewool'],        // the tree hyphenates "Re-wool", the page doesn't
-  // THE CERTIFICATION GOT RE-WORDED ON ONE SIDE ONLY, and it is live right now:
-  // the blob master still says "FSC™-certified Oak" while the product page now
-  // prints "FSC™ Mix-certified oak". With the two sides disagreeing, EVERY CH24
-  // configuration matches zero variants — so the importer mints no rows for the
-  // Wishbone Chair at all, and the configurator shows no EAN and no lead time
-  // on a chair that is in stock.
-  //
-  // The fix is an alias and NOT a strip of the whole marker, which was the
-  // first idea and is wrong: `FSC™-certified Oak` and `Oak FSC-70` are two
-  // DIFFERENT leaves of the same axis (two certification chains, two prices),
-  // and deleting "FSC…certified" would fold them into one and attach the wrong
-  // EAN. Collapsing the one word that moved keeps them apart.
-  [['fsc', 'mix'], 'fsc'],
-];
-
-/** Nordic letters NFD does NOT decompose — they are letters in their own right,
- *  not a base plus a mark. `å` decomposes and `ø` does not, so on a Danish
- *  manufacturer's catalogue the fold silently ATE the letter: "Søn" became
- *  "s n". Mapped explicitly instead. */
-const LETTER_FOLD: Record<string, string> = {
-  ø: 'o', æ: 'ae', œ: 'oe', ð: 'd', þ: 'th', ß: 'ss', ł: 'l', đ: 'd', ħ: 'h',
-};
-
-/**
- * Fold a published label to the form both sides are compared in: diacritics
- * decomposed away, trademark glyphs and punctuation reduced to spaces, case
- * dropped, runs collapsed ("FSC™-certified Oak" → "fsc certified oak").
- *
- * Same discipline as `foldSearchText` in `lib/productSearch`: fold both sides
- * with the SAME function or the comparison silently stops matching.
- */
-function fold(v: unknown): string {
-  return String(v ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}+/gu, '')
-    .toLowerCase()
-    .replace(/[øæœðþßłđħ]/g, (c) => LETTER_FOLD[c] || c)
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-/** Folded words of a label, empties dropped. */
-function foldWords(v: unknown): string[] {
-  const s = fold(v);
-  return s ? s.split(' ') : [];
-}
-
-/** Rewrite every alias run in place. Longest table entries are few and short,
- *  so a linear scan is the whole algorithm. */
-function applyAliases(words: string[]): string[] {
-  let out = words;
-  for (const [from, to] of LABEL_ALIASES) {
-    if (!out.some((w) => w === from[0])) continue;
-    const next: string[] = [];
-    for (let i = 0; i < out.length; i += 1) {
-      const hit = from.every((w, k) => out[i + k] === w);
-      if (hit) { next.push(...to.split(' ')); i += from.length - 1; } else next.push(out[i]);
-    }
-    out = next;
-  }
-  return out;
-}
-
-/**
- * The comparable form of one label.
- *
- * Three normalisations on top of the fold, each justified by published data:
- *
- *  - a trailing `designed by …` credit is dropped. The tree names an Ilse
- *    Crawford colour `Soft Slate designed by Ilse Crawford`; the page prints
- *    the colour alone.
- *  - the alias table above.
- *  - a collection's VERSION digit is dropped ("Canvas" vs "Canvas 2", "Remix"
- *    vs "Remix 3", "Fiord" vs "Fiord 2"). Only a standalone single digit, and
- *    only when it is not the last word: a colourway code is never one digit
- *    (0224, 310, 20368) so two colourways can never fold together, and a
- *    genuinely numbered leaf ("Model 1" vs "Model 2") keeps its digit because
- *    there the digit IS the last word.
- */
-export function canonicalLabel(v: unknown): string {
-  const stripped = fold(v).replace(/\bdesigned by\b.*$/, '').trim();
-  const words = applyAliases(stripped ? stripped.split(' ') : []);
-  const kept = words.filter((w, i) => !(i < words.length - 1 && /^[1-9]$/.test(w)));
-  return kept.join(' ');
-}
-
-/** The configuration phrases a variant advertises, canonicalised — both the
- *  flat array and the typed dictionary (whose values pack several axes:
- *  "FSC™-certified oak, oil"). */
-function variantTokens(variant: ChPageVariant): Set<string> {
-  const out = new Set<string>();
-  const add = (v: unknown) => { const t = canonicalLabel(v); if (t) out.add(t); };
-  for (const c of variant.Configuration || []) add(c);
-  for (const value of Object.values(variant.ConfigurationDictionary || {})) {
-    for (const part of String(value ?? '').split(',')) add(part);
-  }
-  return out;
-}
-
-/* ------------------------------ label matching ----------------------------- */
-
-/** One label a variant has to advertise, with the spellings the model master
- *  itself says the page may use for it. */
-interface ChLabelMatcher {
-  /** Canonical label of a VISIBLE node on the selected chain. */
-  label: string;
-  /** Single words the page may prefix the label with, taken from the HIDDEN
-   *  ancestors ABOVE this node — nothing else is ever accepted. */
-  qualifiers: string[];
-}
-
-/**
- * What a variant must advertise to count as this selection: every VISIBLE node
- * on the chain down to each selected choice, for the price axes only. Hidden
- * structural nodes (`Wood`, `Oak FSC-70`) never appear in a variant's
- * configuration text, and add-on axes (gliders, height) aren't part of a
- * variant at all.
- *
- * ── THE QUALIFIER RULE ───────────────────────────────────────────────────────
- * A hidden ancestor is invisible in the CONFIGURATOR, not necessarily in the
- * page's prose: under `CHS Soft Colors` the leaf is `Blue` and the page prints
- * `Soft Blue`. So a label also matches when the page spells it with ONE extra
- * leading word that one of its own hidden ancestors publishes — `soft` here
- * comes from the group's own name, never from a hardcoded vocabulary.
- *
- * It stays exactly one word, and only from ancestors ABOVE the node, because
- * that is the narrowest rule that closes the measured gap. Widening it is how
- * `Green` starts claiming `Soft Olive Green` — a different chair at a
- * different price. (With the rule as written, `Green` needs the qualifier
- * `olive`, which no ancestor publishes, so it correctly matches nothing.)
- */
-function requiredMatchers(axes: ChAxis[], selection: Record<string, string>): ChLabelMatcher[] {
-  const out: ChLabelMatcher[] = [];
-  for (const axis of axes || []) {
-    if (!axis.isPriceAxis) continue;
-    const choice = selectedChoice(axis, selection);
-    if (!choice) continue;
-    const chain = chainFor(axis, choice.key) || [];
-    const qualifiers: string[] = [];
-    for (const node of chain) {
-      if (node.hidden) {
-        // Accumulated BEFORE the visible nodes below it are emitted, so a
-        // qualifier can only ever come from an ancestor.
-        for (const w of foldWords(node.label)) if (!qualifiers.includes(w)) qualifiers.push(w);
-        continue;
-      }
-      const label = canonicalLabel(node.label);
-      if (label) out.push({ label, qualifiers: [...qualifiers] });
-    }
-  }
-  return out;
-}
-
-/**
- * The canonical labels of `selection` — the debugging/diagnostic view of
- * `requiredMatchers`, kept because the audit surfaces quote it when they
- * explain why a variant was not claimed.
- */
-export function requiredLabels(axes: ChAxis[], selection: Record<string, string>): string[] {
-  return requiredMatchers(axes, selection).map((m) => m.label);
-}
-
-/** True when the variant advertises every required label. An EMPTY
- *  requirement set matches everything (the unpriced sweep). */
-export function variantMatchesSelection(
-  variant: ChPageVariant,
-  axes: ChAxis[],
-  selection: Record<string, string>,
-): boolean {
-  const required = requiredMatchers(axes, selection);
-  if (!required.length) return true;
-  const tokens = variantTokens(variant);
-  return required.every(
-    (m) => tokens.has(m.label) || m.qualifiers.some((q) => tokens.has(`${q} ${m.label}`)),
-  );
-}
-
 /**
  * The variants of `page` that belong to `selection`, deduped by EAN.
  *
@@ -347,13 +114,16 @@ function matchingVariants(
   page: ChPageData | null | undefined,
   axes: ChAxis[],
   selection: Record<string, string>,
+  modelAxes: ChAxis[] | null = null,
+  config: { configurations?: unknown[] | null; configId?: string | null } | null = null,
 ): Array<{ reference: string; variant: ChPageVariant }> {
   const out: Array<{ reference: string; variant: ChPageVariant }> = [];
   const seen = new Set<string>();
+  const context = variantMatchContext(page, axes, modelAxes, config);
   for (const variant of page?.Variants || []) {
     const reference = squish(variant?.Sku);
     if (!reference || seen.has(reference)) continue;
-    if (!variantMatchesSelection(variant, axes, selection)) continue;
+    if (!variantMatchesSelection(variant, axes, selection, context)) continue;
     seen.add(reference);
     out.push({ reference, variant });
   }
@@ -430,7 +200,10 @@ export function buildCarlHansenProductRows(
 
   const rows: Product[] = [];
 
-  for (const { reference, variant } of matchingVariants(page, axes, sel)) {
+  for (const { reference, variant } of matchingVariants(page, axes, sel, spec?.modelAxes ?? null, {
+    configurations: spec?.configurations ?? null,
+    configId: spec?.configId ?? null,
+  })) {
     const config = squish(variant.FormattedConfiguration);
     const gallery = (variant.Images || [])
       .map((img) => squish(img?.Url))
@@ -492,7 +265,10 @@ export function buildCarlHansenLeadTimes(
   selection: Record<string, string>,
 ): ChLeadTime[] {
   const axes = spec?.axes || [];
-  return matchingVariants(page, axes, selection || {}).map(({ reference, variant }) => {
+  return matchingVariants(page, axes, selection || {}, spec?.modelAxes ?? null, {
+    configurations: spec?.configurations ?? null,
+    configId: spec?.configId ?? null,
+  }).map(({ reference, variant }) => {
     const days = intOrNull(variant.ProductionDays);
     return {
       reference,

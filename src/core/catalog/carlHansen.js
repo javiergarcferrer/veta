@@ -52,13 +52,7 @@ import {
   parseChDate,
 } from '../../brands/carl-hansen/price.js';
 import { swatchUrlFor, slugifyMaterial } from '../../brands/carl-hansen/swatches.js';
-import {
-  buildCarlHansenProductRows,
-  buildCarlHansenLeadTimes,
-  maxProductionDays,
-  rowPriceUsd,
-  variantMatchesSelection,
-} from '../../brands/carl-hansen/productRows.js';
+import { buildCarlHansenProductRows } from '../../brands/carl-hansen/productRows.js';
 import { classifyZip } from '../../brands/carl-hansen/assetTier.js';
 import { buildBindingPlan, materialKindOf } from '../../brands/carl-hansen/materialBind.js';
 
@@ -426,14 +420,6 @@ function pickConfigId(spec, axes, wanted) {
 }
 
 
-/** Variants of the page that ARE this selection — the Model's own gate
- *  (`variantMatchesSelection`: the visible LABEL CHAIN, never a fuzzy string),
- *  so what the configurator shows and what the import mints can't disagree. */
-function matchingVariants(pageData, axes, selection) {
-  return arr(pageData?.Variants)
-    .filter((v) => squish(v?.Sku) && variantMatchesSelection(v, axes, selection));
-}
-
 /**
  * The variant, as the configurator shows it.
  *
@@ -569,8 +555,12 @@ function configuratorIssues({ spec, page, pageData, priceList, priceKey, priced,
  * rows: a plan that mints half a catalog at a price we can't stand behind is
  * worse than one that mints nothing and says why.
  */
-export function resolveCarlHansenImportPlan(spec, page, priceRow, selection, { now = Date.now(), profileId = '', configId = null } = {}) {
-  const view = resolveCarlHansenConfigurator(spec, priceRow, page, { selection, now, configId });
+export function resolveCarlHansenImportPlan(spec, page, priceRow, selection, {
+  now = Date.now(), profileId = '', configId = null, rawAxes = null, probeAddOns = true, modelAxes = null,
+} = {}) {
+  const view = resolveCarlHansenConfigurator(spec, priceRow, page, {
+    selection, now, configId, rawAxes, probeAddOns, modelAxes,
+  });
   const issues = [...view.unresolved];
 
   if (!str(profileId)) {
@@ -586,7 +576,13 @@ export function resolveCarlHansenImportPlan(spec, page, priceRow, selection, { n
       modelId: view.modelId || '',
       configId: view.configId,
       friendlyName: squish(spec?.friendlyName),
-      axes: view.axes,
+      // The caller's raw axes when it lent them (the bulk pass — stable
+      // objects keep the matcher's per-axis caches warm across thousands of
+      // combinations); the enriched view axes otherwise. Same match inputs
+      // either way: enrichment only adds display fields.
+      axes: Array.isArray(rawAxes) ? rawAxes : view.axes,
+      modelAxes: view.modelAxes,
+      configurations: Array.isArray(spec?.configurations) ? spec.configurations : null,
     },
     toPageData(page),
     view.priced,

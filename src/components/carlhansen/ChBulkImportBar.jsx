@@ -3,6 +3,7 @@ import { Loader2, UploadCloud, AlertTriangle, Boxes } from 'lucide-react';
 import { db, invalidate } from '../../db/database.js';
 import { chPriceRowId, fetchCarlHansenModel, fetchCarlHansenPrices } from '../../lib/carlHansenClient.js';
 import { resolveCarlHansenModelPlan, diagnoseCarlHansenBulk as diagnose } from '../../core/catalog/index.js';
+import { priceWindowIncoherent } from '../../brands/carl-hansen/price.js';
 import { userMessageFor } from '../../lib/errorMessages.js';
 
 /**
@@ -106,7 +107,12 @@ export default function ChBulkImportBar({ profileId, pages, onDone }) {
         .map((modelId) => ({
           modelId,
           needSpec: !specById.has(modelId),
-          needPrice: !priceById.has(chPriceRowId(modelId)),
+          // A cached list whose window ends before it starts is the scar of
+          // the old cross-generation merge (AB019 and nine friends read as
+          // "expired" forever). The server now merges correctly, so the heal
+          // is to re-ask — treated exactly like a missing row.
+          needPrice: !priceById.has(chPriceRowId(modelId))
+            || priceWindowIncoherent(priceById.get(chPriceRowId(modelId))),
         }))
         .filter((j) => j.needSpec || j.needPrice);
 

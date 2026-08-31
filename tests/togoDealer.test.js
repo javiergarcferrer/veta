@@ -1226,19 +1226,34 @@ test('the dealer’s scope reaches the catalog AND the products sweep behind it'
 });
 
 test('a scoped-out model is refused at captureLead too — through the SAME known-model filter', () => {
+  // The known-model rule lives ONCE, in knownModelIds — shared by the lead
+  // door and the composed-quote door (createFromBuild), so "which pieces this
+  // dealer's build may reference" cannot mean two things.
+  const iKnown = EMBED_SRC.indexOf('async function knownModelIds(');
+  assert.ok(iKnown > 0, 'the shared known-model helper must exist');
+  const known = EMBED_SRC.slice(iKnown, iKnown + 800);
+  assert.match(
+    known, /readAll\(admin, 'togo_models', 'id, active, svg, collection'/,
+    'the helper reads the colección it has to scope by',
+  );
+  assert.match(
+    known, /filterModelsForDealer\(modelRows, dealer\)/,
+    'the scope rides the shared pure filter — never a second refusal path',
+  );
   const iLead = EMBED_SRC.indexOf('async function captureLead(');
   const iInbox = EMBED_SRC.indexOf('async function loadInbox(');
   assert.ok(iLead > 0 && iInbox > iLead);
   const lead = EMBED_SRC.slice(iLead, iInbox);
   assert.match(
-    lead, /readAll\(admin, 'togo_models', 'id, active, svg, collection'/,
-    'the lead path reads the colección it has to scope by',
-  );
-  assert.match(
-    lead, /const known = new Set\(\s*filterModelsForDealer\(modelRows, dealer\)/,
-    'the scope rides the EXISTING known-model set — never a second refusal path',
+    lead, /const known = await knownModelIds\(admin, dealer\)/,
+    'the lead path consumes the SAME known-model set',
   );
   assert.match(lead, /'no known models'/, 'a plan made only of scoped-out pieces is refused outright');
+  assert.match(
+    EMBED_SRC.match(/async function createQuoteFromBuild[\s\S]*?\n\}/)[0],
+    /await knownModelIds\(admin, dealer\)/,
+    'the composed-quote door consumes the SAME known-model set',
+  );
 });
 
 test('the token-gated INBOX is deliberately NOT scoped — an existing lead never vanishes', () => {

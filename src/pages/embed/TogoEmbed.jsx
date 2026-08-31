@@ -14,6 +14,7 @@ import { FINE_POINTER, useToolbarFit, HudIcon, HudMenu } from '../../components/
 import { loadTogoModels } from '../../components/togo/togoModelLoader.js';
 import { configuratorForPathname } from '../../brands/configurators/index.js';
 import { fetchTogoCatalogCached, fetchTogoPlanSvgs, submitTogoRequest, togoEmbedModalUrl, togoHandoffUrl, reportTogoView } from '../../lib/togoEmbed.js';
+import { isTeamBrowser } from '../../lib/metaAttribution.js';
 import { encodeBuild, decodeBuild, decodeRoomFromBuild } from '../../lib/togo/buildShare.js';
 import { makeRectRoom, roomSize, roomCenter, roomFit, clampRoomDim } from '../../lib/togo/room.js';
 import { t, resolveTogoLocale, piecesLabel } from '../../lib/togo/i18n.js';
@@ -5211,6 +5212,42 @@ function RequestForm({ storeName, items, estimateUsd, total, onBack, onDone, loc
     }
   };
 
+  // THE TEAM DOOR — a signed-in member turns this exact build into a FROZEN
+  // quote in one tap, instead of posing as their own customer (submit a
+  // "lead" to yourself, walk to Solicitudes, freeze it). Detection is the same
+  // isTeamBrowser() the Meta guard already uses; the transport (the app's
+  // supabase client) is imported ON TAP, so the public visitor's bundle never
+  // carries it. Name-only validity: the server's compose door asks who the
+  // document is FOR, not how to reach them — the composer is standing next to
+  // the customer. Spanish on purpose: this control belongs to the back-office,
+  // not to the visitor's i18n surface.
+  const team = useMemo(() => isTeamBrowser(), []);
+  const composeQuote = async () => {
+    if (!form.name.trim() || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const payload = {
+        contact: { name: form.name, phone: form.phone, email: form.email },
+        items,
+        note: noteWithDropped(form.note, droppedItems),
+      };
+      if (dealerSlug) payload.dealerSlug = dealerSlug;
+      try {
+        const snapshot = await renderTogoSceneThumb(scene3d, { width: 960, height: 600, encode: 'dataUrl' });
+        const field = snapshotFieldFor(snapshot);
+        if (field) payload.snapshot = field;
+      } catch { /* sin foto — la cotización viaja igual */ }
+      const { createQuoteFromBuild } = await import('../quoting/api.js');
+      const { quote } = await createQuoteFromBuild(payload);
+      buzz([12, 40, 16, 40, 22]);
+      // The document IS the destination: leave the widget for its detail page.
+      location.assign(`/#/cotizaciones/${quote.id}`);
+    } catch (err) {
+      setError(err?.message || t(locale, 'form.errorSend'));
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-full bg-white text-ink-900 p-6 grid place-items-center">
       {/* No card — the inbox never uses one. The form is a plain white column
@@ -5264,6 +5301,22 @@ function RequestForm({ storeName, items, estimateUsd, total, onBack, onDone, loc
         <button type="submit" disabled={!valid || busy} className="btn-primary w-full justify-center disabled:opacity-50">
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} {t(locale, 'form.submit')}
         </button>
+        {team && (
+          <div className="pt-4 border-t border-ink-200 space-y-2">
+            <button
+              type="button"
+              onClick={composeQuote}
+              disabled={!form.name.trim() || busy}
+              className="btn-secondary w-full justify-center disabled:opacity-50"
+            >
+              {busy ? <Loader2 size={15} className="animate-spin" /> : <Receipt size={15} />} Crear cotización
+            </button>
+            <p className={`${EYEBROW} normal-case tracking-normal leading-relaxed`}>
+              Sesión del equipo: congela este diseño como cotización con sus precios de hoy y su
+              enlace para el cliente — sin pasar por solicitudes. Basta el nombre.
+            </p>
+          </div>
+        )}
       </form>
     </div>
   );

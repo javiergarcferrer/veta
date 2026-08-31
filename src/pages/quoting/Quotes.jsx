@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Loader2, Search, Eye, Link2, AlertTriangle } from 'lucide-react';
+import { FileText, Loader2, Search, Eye, Link2, AlertTriangle, Plus } from 'lucide-react';
 import { resolveQuotesBoard } from '../../core/quote/index.js';
 import { formatDate } from '../../lib/format.js';
+import { togoShareUrl } from '../../lib/togoEmbed.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import { fetchQuotes } from './api.js';
 
@@ -23,6 +24,23 @@ const TONE = {
   good: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   bad: 'border-rose-200 bg-rose-50 text-rose-700',
 };
+
+/** The composer IS the configurator: this opens it in a new tab, where the
+ *  signed-in session shows «Crear cotización» on the summary form (the team
+ *  door — pages/embed/TogoEmbed). The document then lands on this list. */
+function NewQuoteButton() {
+  return (
+    <a
+      href={togoShareUrl()}
+      target="_blank"
+      rel="noreferrer"
+      className="btn-primary text-sm"
+      title="Abre el configurador: diseña y toca «Crear cotización»"
+    >
+      <Plus size={14} aria-hidden /> Nueva cotización
+    </a>
+  );
+}
 
 export default function Quotes() {
   const [quotes, setQuotes] = useState([]);
@@ -68,7 +86,8 @@ export default function Quotes() {
       <EmptyState
         icon={FileText}
         title="Todavía no hay cotizaciones"
-        description="Abre una solicitud del configurador y pásala a cotización: se crea aquí con sus precios congelados y su enlace para el cliente."
+        description="Diseña en el configurador y toca «Crear cotización» — el documento nace aquí con sus precios congelados y su enlace para el cliente. Las solicitudes que llegan de visitantes también se pasan a cotización desde su detalle."
+        action={<NewQuoteButton />}
       />
     );
   }
@@ -91,16 +110,19 @@ export default function Quotes() {
             </button>
           ))}
         </div>
-        <label className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" aria-hidden />
-          <input
-            className="input pl-8 h-9 text-sm w-56"
-            placeholder="Buscar cliente o número…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Buscar cotizaciones"
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" aria-hidden />
+            <input
+              className="input pl-8 h-9 text-sm w-56"
+              placeholder="Buscar cliente o número…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Buscar cotizaciones"
+            />
+          </label>
+          <NewQuoteButton />
+        </div>
       </div>
 
       {board.noMatches ? (

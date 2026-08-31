@@ -53,12 +53,11 @@ import {
   INBOX_SETTABLE_STATUSES,
   injectCollectionStructure,
   priceInboxItems,
-  sanitizePartFinishes,
-  sanitizePartMaterials,
   shapeInboxRequest,
   snapshotBytesFromDataUrl,
 } from './dealer.ts';
 import { isMissingColumn, leadDedupeDecision, leadDedupeKey } from './leadDedupe.ts';
+import { composeContact, sanitizeBuildItems } from './compose.ts';
 import {
   freezeQuoteLines,
   freezeQuoteTotals,
@@ -476,6 +475,57 @@ async function captureView(body: Row, net: { ip: string; ua: string }): Promise<
   return { ok: true };
 }
 
+/**
+ * The composition RENDER (a PNG data URL captured from the 3D scene at
+ * submit, every piece in its chosen fabric), stored once as a SHARED images
+ * row (`togosnap-<requestId>` — the prefix deleteImage refuses) so the
+ * Solicitudes card AND the quote the request becomes show the exact picture
+ * that was built. Best-effort BY CONTRACT: a storage hiccup or an
+ * oversized/mislabeled payload answers null and must never lose the request.
+ */
+async function storeSnapshot(admin: Admin, requestId: string, snapshotField: unknown): Promise<string | null> {
+  const snapBytes = snapshotBytesFromDataUrl(snapshotField);
+  if (!snapBytes) return null;
+  try {
+    const imgId = `togosnap-${requestId}`;
+    const path = `${imgId}.png`;
+    const up = await admin.storage.from('images')
+      .upload(path, snapBytes, { contentType: 'image/png', cacheControl: '31536000', upsert: true });
+    if (up.error) throw new Error(up.error.message);
+    const { error: imgErr } = await admin.from('images').upsert({
+      id: imgId, kind: 'togo-snapshot', owner_id: requestId, label: '',
+      content_type: 'image/png', size: snapBytes.byteLength, storage_path: path,
+    });
+    if (imgErr) throw new Error(imgErr.message);
+    return imgId;
+  } catch (e) {
+    console.error('[togo-embed] snapshot no guardado:', (e as Error).message);
+    return null;
+  }
+}
+
+/**
+ * The set of model ids a build may reference: ACTIVE, renderable, and IN the
+ * dealer's colección scope. Just the ids — not the full catalog context
+ * (settings + materials + fabrics + the products sweep). Mirrors loadContext's
+ * model filter, PAGED for the same reason: a model past the cap is not
+ * "known", so a placement of it is dropped from the build.
+ *
+ * The dealer's scope rides the SAME filter rather than a second path: a piece
+ * this dealer doesn't carry was never in its catalog, so a hand-posted
+ * placement of it is simply not a known model. `collection` is read for
+ * exactly that. Shared by the lead door and the staff-composed door — what
+ * "a known model" means must not depend on who is asking.
+ */
+async function knownModelIds(admin: Admin, dealer: Row | null): Promise<Set<string>> {
+  const modelRows = await readAll(admin, 'togo_models', 'id, active, svg, collection', { orderBy: 'id' });
+  return new Set(
+    filterModelsForDealer(modelRows, dealer)
+      .filter((m) => m.active !== false && m.svg)
+      .map((m) => String(m.id)),
+  );
+}
+
 async function captureLead(
   admin: Admin,
   body: Row,
@@ -499,51 +549,13 @@ async function captureLead(
   if (!rawItems.length) return Promise.reject(Object.assign(new Error('empty configuration'), { status: 400 }));
 
   // Keep only placements of CURRENTLY-known models, normalized to the exact shape
-  // the dealer pane replays through the configurator VM. (camelCase keys survive
-  // the JSONB round-trip — the app's rowMapping only converts top-level columns.)
-  // The lead path only needs the set of valid (active, renderable, IN SCOPE)
-  // model ids — fetch just those, not the full catalog context (settings +
-  // materials + fabrics + the products sweep). Mirrors loadContext's model
-  // filter, PAGED for the same reason: a model past the cap is not "known", so
-  // the visitor's placement of it is dropped from the lead — and a plan made
-  // only of such pieces is refused outright as 'no known models'.
-  //
-  // The dealer's colección scope rides the SAME filter rather than a second
-  // path: a piece this dealer doesn't carry was never in its catalog, so a
-  // hand-posted placement of it is simply not a known model. `collection` is
-  // read here for exactly that.
-  const modelRows = await readAll(admin, 'togo_models', 'id, active, svg, collection', { orderBy: 'id' });
-  const known = new Set(
-    filterModelsForDealer(modelRows, dealer)
-      .filter((m) => m.active !== false && m.svg)
-      .map((m) => String(m.id)),
-  );
-  const items = rawItems
-    .map((it) => {
-      const base: Row = { modelId: String(it.modelId || ''), x: num(it.x), y: num(it.y), rot: num(it.rot) };
-      // WHICH MODE the visitor built in (pieza vs componentes). Whitelisted
-      // explicitly — this sanitizer drops unknown keys, and dropping this one
-      // made the worker replay a by-componentes build as modo pieza and quote
-      // the other price. Only a literal true survives.
-      if (it.partsMode === true) base.partsMode = true;
-      const mat = it.material && typeof it.material === 'object' ? it.material as Row : null;
-      // Per-part fabric picks (cushion/bolster/arm) ride alongside the base
-      // material, sanitized to the same {grade, fabric, code} shape per role.
-      const partMaterials = sanitizePartMaterials(it.partMaterials);
-      const withParts = partMaterials ? { ...base, partMaterials } : base;
-      // Per-part FINISH picks ({ groupKey: optionId }) ride the same way —
-      // price-neutral in v1, absent when nothing survives the sanitizer.
-      const partFinishes = sanitizePartFinishes(it.partFinishes);
-      const withFinishes = partFinishes ? { ...withParts, partFinishes } : withParts;
-      if (mat && (mat.grade || mat.fabric)) {
-        return {
-          ...withFinishes,
-          material: { grade: str(mat.grade, 8), fabric: str(mat.fabric, 200), code: str(mat.code, 32) },
-        };
-      }
-      return withFinishes;
-    })
-    .filter((it) => known.has(it.modelId));
+  // the dealer pane replays through the configurator VM (sanitizeBuildItems —
+  // compose.ts, SHARED with the staff-composed door so the two cannot drift;
+  // camelCase keys survive the JSONB round-trip, the app's rowMapping only
+  // converts top-level columns). A plan made only of unknown pieces is refused
+  // outright as 'no known models'.
+  const known = await knownModelIds(admin, dealer);
+  const items = sanitizeBuildItems(rawItems, MAX_ITEMS).filter((it) => known.has(String(it.modelId)));
   if (!items.length) return Promise.reject(Object.assign(new Error('no known models'), { status: 400 }));
 
   const est = num(body.estimateUsd);
@@ -571,32 +583,7 @@ async function captureLead(
     return { ok: true, deduped: true };
   }
 
-  // The visitor's composition RENDER (a PNG data URL captured from the 3D
-  // scene at submit, every piece in its chosen fabric). Stored once as a
-  // SHARED images row (`togosnap-<requestId>` — the prefix deleteImage
-  // refuses) so the Solicitudes card AND the quote line this request becomes
-  // show the exact picture the customer built. Best-effort: a storage hiccup
-  // or an oversized/mislabeled payload must never lose the lead.
-  let snapshotImageId: string | null = null;
-  const snapBytes = snapshotBytesFromDataUrl(body.snapshot);
-  if (snapBytes) {
-    try {
-      const imgId = `togosnap-${requestId}`;
-      const path = `${imgId}.png`;
-      const up = await admin.storage.from('images')
-        .upload(path, snapBytes, { contentType: 'image/png', cacheControl: '31536000', upsert: true });
-      if (up.error) throw new Error(up.error.message);
-      const { error: imgErr } = await admin.from('images').upsert({
-        id: imgId, kind: 'togo-snapshot', owner_id: requestId, label: '',
-        content_type: 'image/png', size: snapBytes.byteLength, storage_path: path,
-      });
-      if (imgErr) throw new Error(imgErr.message);
-      snapshotImageId = imgId;
-    } catch (e) {
-      console.error('[togo-embed] snapshot no guardado:', (e as Error).message);
-      snapshotImageId = null;
-    }
-  }
+  const snapshotImageId = await storeSnapshot(admin, requestId, body.snapshot);
 
   const row: Row = {
     id: requestId, profile_id: TEAM_PROFILE_ID, status: 'pending',
@@ -861,6 +848,9 @@ async function inboxSetStatus(admin: Admin, dealer: Row, body: Row): Promise<Row
  *
  *   POST { quoteOp:'requestDetail', id }  the lead, priced (the detail screen)
  *   POST { quoteOp:'create', requestId }  FREEZE it into a veta_quotes row
+ *   POST { quoteOp:'createFromBuild', contact, items, … }
+ *                                         compose → price → freeze, one op
+ *                                         (the signed-in configurator's door)
  *   POST { quoteOp:'list' }               the quote list
  *   POST { quoteOp:'get', id }            one quote, whole
  *   POST { quoteOp:'setStatus', id, status }
@@ -1093,6 +1083,120 @@ async function createQuoteFromRequest(admin: Admin, requestId: string, scope: Qu
   return { quote: await quoteWithSnapshot(admin, inserted) };
 }
 
+/**
+ * THE COMPOSED QUOTE — someone trusted builds, the server prices and freezes,
+ * one op. Ends the charade where the manufacturer posed as their own customer
+ * (build in the widget → submit a "lead" to yourself → Solicitudes → freeze)
+ * to make the document this product exists to make.
+ *
+ * The build still lands as a togo_requests row FIRST (`auto_state: 'staff'`),
+ * deliberately: the document keeps the same provenance chain as every other
+ * quote — a request_id to replay in the configurator, the decline-and-requote
+ * path, the snapshot — and the freeze is the SAME createQuoteFromRequest. One
+ * pricer, one freeze, two doors in.
+ *
+ * WHO composes under WHOM:
+ *   • a DEALER (inbox token) composes under itself — payload routing ignored;
+ *   • a member may name a dealer (`dealerId` or `dealerSlug`) to compose at
+ *     that dealer's pricing, currency and brand — a brand-ASSIGNED member only
+ *     within their own brands (out of scope reads as unknown, per the 404
+ *     rule);
+ *   • a whole-install member with no dealer composes the house build (USD,
+ *     unstamped — the same class as the manufacturer's own embed);
+ *   • a brand-assigned member with NO dealer is refused: the unstamped
+ *     document their compose would mint is one THEY couldn't see.
+ *
+ * PRICED BEFORE ANYTHING IS WRITTEN. The lead path stores an unpriceable
+ * build because the visitor is gone and the lead is worth keeping; the
+ * composer is right here and can fix the fabric — so a build with no priced
+ * piece is refused with nothing inserted, and a phantom solicitud never
+ * appears.
+ *
+ * IDEMPOTENT like the lead door: the same composed build inside the dedupe
+ * window reuses its request row, and the freeze reuses the request's live
+ * quote — a flaky-network retry or a double tap is ONE document, not two
+ * numbers for one customer.
+ */
+async function createQuoteFromBuild(admin: Admin, body: Row, scope: QuoteOpScope = {}): Promise<Row> {
+  let dealer: Row | null = null;
+  if (scope.dealerId != null) {
+    dealer = await dealerById(admin, String(scope.dealerId));
+    if (!dealer) return fail('unknown dealer', 404);
+  } else if (body.dealerId || body.dealerSlug) {
+    dealer = body.dealerId
+      ? await dealerById(admin, str(body.dealerId, 80))
+      : await dealerBySlug(admin, str(body.dealerSlug, 200));
+    if (!dealer) return fail('unknown dealer', 400);
+    if (!scopeAllowsRow(scope, { brand_id: dealer.brand_id })) return fail('unknown dealer', 404);
+  } else if (scope.brandIds != null) {
+    return fail('elige un distribuidor de tu marca para esta cotización', 400);
+  }
+
+  const contact = composeContact(body.contact);
+  if (!contact) return fail('la cotización necesita el nombre del cliente', 400);
+
+  const known = await knownModelIds(admin, dealer);
+  const items = sanitizeBuildItems(body.items, MAX_ITEMS).filter((it) => known.has(String(it.modelId)));
+  if (!items.length) return fail('el diseño no tiene piezas del catálogo', 400);
+  const note = str(body.note, 1000).trim();
+
+  // The same content key as the lead door, so a retry of THIS compose finds
+  // its own request and rides the freeze's idempotency instead of minting a
+  // second document. A read failure just means no dedupe this time.
+  const leadKey = leadDedupeKey({
+    dealerId: dealer ? String(dealer.id) : '',
+    name: contact.name, phone: contact.phone, email: contact.email, note, items,
+  });
+  const { data: sameKey } = await admin
+    .from('togo_requests').select('id, created_at')
+    .eq('profile_id', TEAM_PROFILE_ID).eq('lead_key', leadKey)
+    .order('created_at', { ascending: false }).limit(5);
+  const dedupe = leadDedupeDecision((sameKey || []) as Row[], Date.now());
+  if ('reuse' in dedupe) {
+    console.log('[togo-embed] compose repetido, reuso', dedupe.reuse);
+    return createQuoteFromRequest(admin, String(dedupe.reuse), scope);
+  }
+
+  // Price the build BEFORE writing, through the very pricer the freeze will
+  // read — an in-memory row down the same path, so the refusal and the
+  // eventual document can never disagree about what prices.
+  const { requests } = await priceRequestRows(admin, [{ contact, items } as Row], dealer);
+  const priced = requests[0] as Row;
+  if (priced.totalUsd == null) {
+    return fail('ninguna pieza de este diseño tiene precio — revisa las telas elegidas', 409);
+  }
+
+  const nowISO = new Date().toISOString();
+  const requestId = newId();
+  const snapshotImageId = await storeSnapshot(admin, requestId, body.snapshot);
+  const est = num(priced.totalUsd);
+  const row: Row = {
+    id: requestId, profile_id: TEAM_PROFILE_ID, status: 'pending',
+    dealer_id: dealer ? String(dealer.id) : null,
+    // 'staff' = composed at a desk, not captured from a visitor: keeps any
+    // auto-quote worker off it, and the row itself says where it came from.
+    auto_state: 'staff',
+    brand_id: dealer && dealer.brand_id ? String(dealer.brand_id) : null,
+    contact, items, note: note || null,
+    // The SERVER'S number, not a client claim — the same figure the freeze is
+    // about to write, in the dealer's own currency like every routed lead.
+    estimate_usd: est > 0 ? est : null,
+    snapshot_image_id: snapshotImageId,
+    meta_fbc: null,
+    created_at: nowISO, updated_at: nowISO,
+  };
+  let { error } = await admin.from('togo_requests').insert({ ...row, lead_key: leadKey });
+  if (isMissingColumn(error, 'lead_key')) {
+    console.error('[togo-embed] lead_key todavía no existe — inserto sin clave de dedupe');
+    ({ error } = await admin.from('togo_requests').insert(row));
+  }
+  if (error) throw error;
+
+  // The shared freeze does the rest: prices again server-side, numbers the
+  // document, mints the customer link, stamps the request converted.
+  return createQuoteFromRequest(admin, requestId, scope);
+}
+
 /** The quote list (newest first, capped) — list shapes only, cut to the
  *  caller's scope: a dealer gets its own documents, a brand-assigned member its
  *  brands', a whole-install member everything (as before). The dealer filter is
@@ -1262,6 +1366,7 @@ async function runQuoteOp(admin: Admin, body: Row, scope: QuoteOpScope = {}): Pr
   const dealerCaller = scope.dealerId != null;
   if (op === 'requestDetail' && !dealerCaller) return loadRequestDetail(admin, str(body.id, 80), scope);
   if (op === 'create') return createQuoteFromRequest(admin, str(body.requestId, 80), scope);
+  if (op === 'createFromBuild') return createQuoteFromBuild(admin, body, scope);
   if (op === 'list') return listQuotes(admin, scope);
   if (op === 'get') return loadQuote(admin, str(body.id, 80), scope);
   if (op === 'setStatus') return setQuoteStatus(admin, str(body.id, 80), str(body.status, 20), scope);

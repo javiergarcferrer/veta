@@ -73,6 +73,15 @@ export function createQuoteFromRequest(requestId) {
   return quoteOp('create', { requestId }, 'No se pudo crear la cotización.');
 }
 
+/** COMPOSE a quote directly — the signed-in configurator's door, no lead
+ *  charade. `payload` = { contact:{name, phone?, email?}, items, note?,
+ *  snapshot?, dealerSlug? }; the server sanitizes the build, prices it through
+ *  the same pricer every other surface reads, and freezes → `{ quote, reused? }`.
+ *  Refused (409) when nothing prices — nothing is written in that case. */
+export function createQuoteFromBuild(payload) {
+  return quoteOp('createFromBuild', payload, 'No se pudo crear la cotización.');
+}
+
 /* -------------------------------- cotizaciones ------------------------------ */
 
 /** The manufacturer's quote list → `{ quotes: [...] }` (list shapes, no lines). */

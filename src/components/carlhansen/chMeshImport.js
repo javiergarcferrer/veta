@@ -142,7 +142,7 @@ async function chZipOp(op, body, stage) {
   let data;
   let fnError;
   try {
-    ({ data, error: fnError } = await supabase.functions.invoke('carl-hansen', { body: { op, ...body } }));
+    ({ data, error: fnError } = await supabase.functions.invoke('carl-hansen-import', { body: { op, ...body } }));
   } catch (e) {
     throw chStageError(stage, e?.message || '');
   }

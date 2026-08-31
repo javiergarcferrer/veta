@@ -108,6 +108,48 @@ export function parseNextData(html: unknown): Record<string, unknown> | null {
  * to draw a 40-pixel swatch is how a catalogue page ships 200 MB. `f_auto`
  * lets Cloudinary pick WebP where the browser takes it.
  */
+/** Los archivos CRUDOS (el .obj, los .dwg, el .rvt) viven bajo `raw/upload`,
+ *  no bajo `image/upload`: pedirlos al root de imágenes devuelve 404. El id ya
+ *  trae su extensión. Verificado 2026-08-31 contra el 3361 (BM61): 200, CORS
+ *  `access-control-allow-origin: *` y Content-Length expuesto — el navegador
+ *  puede leerlos directo y saber el peso ANTES de bajar un byte. */
+export const CLOUDINARY_RAW_ROOT = 'https://res.cloudinary.com/ff-cloudinary/raw/upload';
+
+export function fredericiaRawFileUrl(id: unknown): string {
+  const path = str(id).replace(/^\/+/, '');
+  if (!path) return '';
+  return `${CLOUDINARY_RAW_ROOT}/${encodeURI(path)}`;
+}
+
+/**
+ * EL 3D QUE UN NAVEGADOR PUEDE ABRIR, o null.
+ *
+ * No está en presscloud — presscloud es la fototeca. Cada página de producto de
+ * fredericia.com publica `files[]`, y de sus formatos exactamente UNO es
+ * geometría que un navegador abre:
+ *
+ *   Object   el .obj — MEDIDO sobre 30 productos del sitemap: 29 lo publican
+ *   Dwg2D / Dwg3D / Revit / Test / EPD   CAD y PDFs — ninguno abre en web
+ *
+ * Lo que el .obj NO trae, medido también: nombres de material con sentido
+ * (`usemtl 191,191,191`, `default`) ni .mtl publicado — así que la geometría
+ * llega gris y el binding malla→eje es trabajo humano, igual que un tier B de
+ * Carl Hansen. Y los pesos varían 4.7 MB → 165 MB (Calmo Elements), por eso el
+ * lector pregunta el peso con un HEAD antes de decidir bajar.
+ */
+export function fredericia3dFile(
+  files: unknown,
+): { name: string; url: string } | null {
+  for (const f of arr(files) as Record<string, unknown>[]) {
+    const format = str(f?.format) || str(f?.type);
+    const id = str(f?.id);
+    if (format === 'Object' && id) {
+      return { name: str(f?.name) || id.split('/').pop() || id, url: fredericiaRawFileUrl(id) };
+    }
+  }
+  return null;
+}
+
 export function cloudinaryUrl(id: unknown, width = 800): string {
   const path = str(id).replace(/^\/+/, '');
   if (!path) return '';
@@ -165,6 +207,9 @@ export interface FredericiaProduct {
   images: Array<{ url: string; alt: string | null; kind: 'packshot' | 'lifestyle' | 'other' }>;
   /** DWG / OBJ / Revit / PDF, by name. */
   files: Array<{ name: string; id: string; type: string | null }>;
+  /** La única geometría que un navegador abre (el .obj), ya con su URL cruda —
+   *  o null: casi todo el rango lo publica (29/30 medidos), no todo. */
+  file3d: { name: string; url: string } | null;
 }
 
 /**
@@ -279,6 +324,9 @@ export function shapeFredericiaProduct(pageProps: unknown): FredericiaProduct | 
     files: (arr(pp?.files) as Record<string, any>[])
       .filter((f) => f?.id)
       .map((f) => ({ name: str(f?.name), id: str(f?.id), type: orNull(f?.format) || orNull(f?.type) })),
+    // El 3D resuelto aquí y no en cada lector: la receta de la URL cruda es
+    // conocimiento del HOST, y pertenece al mismo archivo que la bloquea.
+    file3d: fredericia3dFile(pp?.files),
   };
 }
 

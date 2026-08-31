@@ -27,6 +27,7 @@ import type {
   ChPrice,
   ChAsset,
   ChImport,
+  FredericiaAsset,
 } from '../types/domain.ts';
 
 /**
@@ -131,6 +132,10 @@ const TABLES = {
   // truncarlas es seguro, un re-sweep las reconstruye) y dos de ESTADO DE
   // USUARIO (assets/imports — trabajo humano y auditoría append-only). Sin FKs
   // entre las mitades A PROPÓSITO: la regla del borrado, por forma.
+  // EL 3D DE FREDERICIA extraído de las páginas del fabricante (la fuente,
+  // su peso, y con el tiempo el GLB + binding — calcado de carlHansenAssets).
+  // Clave = el código del fabricante (familyCode).
+  fredericiaAssets:  { db: 'fredericia_assets',   pk: 'id' },
   carlHansenPages:   { db: 'carl_hansen_pages',   pk: 'id' },
   carlHansenSpecs:   { db: 'carl_hansen_specs',   pk: 'id' },
   carlHansenPrices:  { db: 'carl_hansen_prices',  pk: 'id' },
@@ -170,6 +175,7 @@ export interface TableRowMap {
   lrEtiquetteSync: LrEtiquetteSync;
   lrEtiquetteConfig: LrEtiquetteConfig;
   claudeConfig: ClaudeConfig;
+  fredericiaAssets: FredericiaAsset;
   carlHansenPages: ChPage;
   carlHansenSpecs: ChSpec;
   carlHansenPrices: ChPrice;

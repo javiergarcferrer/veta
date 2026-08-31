@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Settings2, FileText, LayoutDashboard, Layers, Armchair, BookOpen, Sofa } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
@@ -199,6 +199,7 @@ function BrandRow({ b, active, onSelect }) {
  */
 function BrandRail() {
   const { brands, brand, selectBrand } = useApp();
+  const navigate = useNavigate();
   const options = (brands || []).filter((b) => b.active !== false || b.id === brand?.id);
   if (!brand || !options.length) return null;
   const rail = [...options].sort(
@@ -227,7 +228,19 @@ function BrandRail() {
         </NavLink>
       </div>
       {rail.map((b) => (
-        <BrandRow key={b.id} b={b} active={b.id === brand.id} onSelect={() => selectBrand(b.id)} />
+        <BrandRow
+          key={b.id}
+          b={b}
+          active={b.id === brand.id}
+          // CAMBIAR DE MARCA TE LLEVA A ESA MARCA. Antes sólo re-escopaba las
+          // queries: en una pantalla sin datos de marca el clic era INVISIBLE
+          // («estos botones no hacen nada», 2026-08-31) — el trabajo ocurría,
+          // pero nada en pantalla lo decía. Aterrizar en el inicio hace el
+          // cambio inconfundible; re-clicar la marca ya abierta no navega.
+          onSelect={() => {
+            if (b.id !== brand.id) { selectBrand(b.id); navigate('/'); }
+          }}
+        />
       ))}
     </div>
   );

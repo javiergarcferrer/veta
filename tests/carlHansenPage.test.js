@@ -1156,7 +1156,12 @@ test('chMeshImport.js: the 3D read goes through the function — NEVER a direct 
     'chMeshImport.js must not fetch an archive itself: admincms blocks a browser Range read at the preflight. '
     + 'Route it through the carl-hansen function (zipIndex / zipFetch).',
   );
-  assert.match(code, /functions\.invoke\(\s*'carl-hansen'/, 'the reads ride the edge function');
+  // El IMPORTADOR, específicamente: `carl-hansen` es la función pública del
+  // configurador (sin sesión, sin ops de ZIP) y `carl-hansen-import` es la que
+  // barre y hace proxy de archivos para un dealer autenticado. Apuntar a la
+  // pública es el fallo real del 2026-08-31: 90 modelos con «op desconocida
+  // "zipIndex"» en plena conversión masiva.
+  assert.match(code, /functions\.invoke\(\s*'carl-hansen-import'/, 'the reads ride the importer edge function');
   for (const op of ['zipIndex', 'zipFetch']) {
     assert.ok(code.includes(op), `${op} must be the transport`);
   }

@@ -1629,3 +1629,4 @@ export interface Totals {
 // Carl Hansen importer shapes (cache + user state) — their own module, the
 // upstream layout: database.ts keeps importing everything from domain.
 export type * from './carlHansen.js';
+export type * from './fredericia.js';

@@ -1,5 +1,9 @@
 -- EL 3D DE FREDERICIA, POR FIN CON DIRECCIÓN — `fredericia_assets`.
 --
+-- RE-ESTAMPADA 20260831210000 → 20261221000000: nació detrás de la cadena de
+-- secuencia futura (20261219000000) y el deploy la saltó en silencio — misma
+-- lección que 20261220000000_dealer_brands, pinada en tests/migrationOrder.
+--
 -- La pregunta que motivó esto: «en su presscloud no encuentro cómo extraer las
 -- URLs de sus 3D». Medido: NO ESTÁN en presscloud — presscloud es la fototeca.
 -- Cada página de producto de fredericia.com publica `files[]`, y de ahí sale

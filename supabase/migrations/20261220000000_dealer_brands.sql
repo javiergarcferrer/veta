@@ -1,5 +1,13 @@
 -- UN DISTRIBUIDOR, LAS MARCAS QUE REALMENTE REPRESENTA
 --
+-- RE-ESTAMPADA 20260831190000 → 20261220000000 el día que nació. La cadena de
+-- veta usa timestamps FUTUROS como secuencia (la última aplicada era
+-- 20261219000000), así que la fecha real del calendario quedó DETRÁS de la
+-- cadena y el deploy la saltó en silencio: la tabla nunca existió en prod
+-- (medido 2026-08-31, con la UI de asignaciones ya publicada encima). La regla
+-- vive ahora en tests/migrationOrder.test.js: una migración se nombra después
+-- de toda la CADENA, no después del reloj.
+--
 -- `dealers` nació cuando había UNA marca, así que un distribuidor era
 -- implícitamente «un distribuidor de Ligne Roset» y nada en la fila lo decía.
 -- Eso deja de ser cierto en cuanto veta sirve a varias: un distribuidor trabaja

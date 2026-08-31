@@ -84,6 +84,13 @@ export {
   dealerSlugify, dealerMoneyLabel, dealerLocaleLabel, dealerPricingLabel,
   DEALER_LOCALES, DEALER_PRICING_MODES, DEALER_LIST_TABS, DEALER_SORT_OPTIONS,
 } from './views/dealerWorkspace.js';
+// QUÉ MARCAS REPRESENTA CADA DISTRIBUIDOR (1..N). La arista, no la ficha: vive
+// en `dealer_brands` porque la cardinalidad es 1..N y la asignación lleva sus
+// propios datos. Recorta un piso ARRIBA de `collections` — decide qué
+// catálogos existen para ese distribuidor, no qué parte de uno ve.
+export {
+  dealerBrandIds, dealerCarriesBrand, resolveDealerBrands, dealerBrandsLabel,
+} from './views/dealerBrands.js';
 // The QUOTING surface — a configurator lead becomes a document the manufacturer
 // sends. `resolveQuoteDoc` is the SHARED content tree for the internal quote
 // detail AND the customer's login-less `#/q/<token>` page (the same

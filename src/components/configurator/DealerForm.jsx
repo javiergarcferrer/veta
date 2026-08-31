@@ -69,6 +69,66 @@ function Field({ label, hint, children, className = '' }) {
 }
 
 /**
+ * LAS MARCAS QUE ESTE DISTRIBUIDOR REPRESENTA.
+ *
+ * Deliberadamente NO copia el idioma de `CollectionPicker`, que tiene un estado
+ * «todas» porque ahí el vacío significa la AUSENCIA de un filtro. Aquí el vacío
+ * significa lo contrario —ninguna marca, y por tanto un widget que no sirve
+ * nada— así que no hay atajo «todas» que invite a dejarlo en blanco: se marcan
+ * una a una, y el vacío se dice en voz alta.
+ *
+ * Un `<label>` real envuelve cada casilla, así que la palabra también es zona
+ * de toque y la casilla tiene nombre (tests/formLabels).
+ */
+function BrandPicker({ brands, value, onChange }) {
+  const list = Array.isArray(brands) ? brands : [];
+  const selected = new Set(Array.isArray(value) ? value : []);
+
+  const toggle = (id) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    onChange([...next]);
+  };
+
+  if (!list.length) {
+    return (
+      <p className="text-micro text-ink-500 leading-relaxed">
+        Todavía no hay marcas activas que asignar.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {list.map((b) => {
+          const on = selected.has(b.id);
+          return (
+            <label
+              key={b.id}
+              className={`chip-action cursor-pointer ${on ? 'border-ink-900 bg-ink-900 text-ink-50 hover:bg-ink-800 hover:text-ink-50' : ''}`}
+            >
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={on}
+                onChange={() => toggle(b.id)}
+              />
+              {on && <Check size={12} aria-hidden />} {b.name}
+            </label>
+          );
+        })}
+      </div>
+      {!selected.size && (
+        <p role="status" className="notice notice-sm notice-warning">
+          <span>Sin ninguna marca asignada, su configurador no sirve ninguna pieza.</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * The CATÁLOGO picker — the headline new option. Two states, because they mean
  * genuinely different things: «todas» is the ABSENCE of a filter (it keeps
  * following the catalog), a picked list is a frozen set the admin owns.
@@ -251,9 +311,20 @@ export default function DealerForm({ form, setForm, draft, dealer = null }) {
 
       <Section
         icon={Boxes} step="2." title="Catálogo"
-        blurb="Qué colecciones vende este distribuidor. Es lo único que decide qué piezas puede colocar su visitante."
+        blurb="Primero QUÉ MARCAS representa, después qué colecciones de ellas vende. Los dos filtros se aplican en ese orden."
         issues={stepIssues('catalogo')}
       >
+        {/* LAS MARCAS PRIMERO. Recortan un piso más arriba que las
+            colecciones: deciden qué catálogos existen para este distribuidor,
+            no qué parte de uno ve. Sin ninguna marca su widget no sirve NADA
+            — la regla falla cerrado a propósito, y por eso el vacío se dice
+            en voz alta en vez de leerse como «todavía no lo he tocado». */}
+        <BrandPicker
+          brands={draft.brands}
+          value={form.brandIds}
+          onChange={(v) => setField('brandIds', v)}
+        />
+
         <CollectionPicker
           catalog={draft.catalog}
           value={form.collections}

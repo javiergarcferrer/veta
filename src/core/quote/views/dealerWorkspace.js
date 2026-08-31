@@ -29,6 +29,7 @@
 // admin a number their visitors never see.
 
 import { canonicalCollection, collectionKey } from '../../../lib/configurator/collections.js';
+import { resolveDealerBrands, dealerBrandsLabel } from './dealerBrands.js';
 
 /** Configurator + inbox languages, in the order the picker offers them. */
 export const DEALER_LOCALES = [
@@ -340,12 +341,26 @@ export function resolveDealerPricePreview({
  * catalog.
  */
 export function resolveDealerDraft({
-  form, dealers, resolvedById, marginPct = 0, editingId = null,
+  form, dealers, resolvedById, marginPct = 0, editingId = null, brands = null,
 } = {}) {
   const f = form || {};
   const name = String(f.name || '').trim();
   const slug = String(f.slug || '').trim();
   const contactEmail = String(f.contactEmail || '').trim();
+
+  // LAS MARCAS, UN PISO ARRIBA DE LAS COLECCIONES. La asignación decide qué
+  // catálogos EXISTEN para este distribuidor; `collections` recorta dentro de
+  // ellos. Sólo se ofrecen las marcas activas: asignar una apagada prometería
+  // un catálogo que su widget no puede servir.
+  const activeBrands = (Array.isArray(brands) ? brands : [])
+    .filter((b) => b?.id && b.active !== false)
+    .map((b) => ({ id: String(b.id), name: String(b.name || b.id) }));
+  const known = new Set(activeBrands.map((b) => b.id));
+  // Una asignación a una marca borrada o desactivada no se arrastra al
+  // borrador: se vería como una casilla marcada que no existe en la lista.
+  const brandIds = [...new Set((Array.isArray(f.brandIds) ? f.brandIds : [])
+    .map((v) => String(v || '').trim())
+    .filter((v) => v && known.has(v)))].sort();
 
   const catalog = resolveDealerCollections({ resolvedById, selected: f.collections });
   const pricing = resolveDealerPricePreview({
@@ -370,6 +385,11 @@ export function resolveDealerDraft({
   if (!slug) issues.push({ key: 'slug', step: 'identidad', text: 'Falta el slug: es la clave «?dealer=» de su enlace.' });
   if (slugTaken) issues.push({ key: 'slug-taken', step: 'identidad', text: `El slug «${slug}» ya lo usa otro distribuidor.` });
   if (!emailOk) issues.push({ key: 'email', step: 'identidad', text: 'El correo de contacto no parece válido.' });
+  // Se dice ANTES que lo de las colecciones porque es el filtro de arriba: sin
+  // marca no hay catálogo dentro del que elegir colecciones.
+  if (!brandIds.length && activeBrands.length) {
+    issues.push({ key: 'brands', step: 'catalogo', text: 'No le asignaste ninguna marca: su configurador no serviría ninguna pieza.' });
+  }
   if (catalog.empty) issues.push({ key: 'catalog', step: 'catalogo', text: 'No elegiste ninguna colección: su configurador saldría vacío.' });
   if (!currencyOk) issues.push({ key: 'currency', step: 'precios', text: 'La moneda va en código ISO de 3 letras (USD, EUR, DOP…).' });
 
@@ -386,8 +406,10 @@ export function resolveDealerDraft({
     {
       key: 'catalogo',
       label: 'Catálogo',
-      summary: catalog.summary,
-      done: !catalog.empty,
+      summary: activeBrands.length
+        ? `${brandIds.length ? brandIds.map((id) => activeBrands.find((b) => b.id === id)?.name || id).join(' · ') : 'Sin marcas'} — ${catalog.summary}`
+        : catalog.summary,
+      done: !catalog.empty && (!activeBrands.length || brandIds.length > 0),
       issues: issuesFor('catalogo'),
     },
     {
@@ -409,6 +431,10 @@ export function resolveDealerDraft({
   return {
     catalog,
     pricing,
+    // Lo que el selector pinta (las marcas ACTIVAS) y lo que hay marcado,
+    // saneado: nunca una casilla para una marca que ya no existe.
+    brands: activeBrands,
+    brandIds,
     steps,
     issues,
     slugTaken,
@@ -444,7 +470,18 @@ function leadsFor(dealerId, requests) {
  */
 export function resolveDealersList({
   dealers, requests, resolvedById, search = '', status = 'all', sort,
+  brands = null, assignments = null,
 } = {}) {
+  // Las aristas indexadas por distribuidor, una vez para toda la lista: hacerlo
+  // por fila sería recorrer la tabla entera N veces.
+  const byDealer = new Map();
+  for (const a of Array.isArray(assignments) ? assignments : []) {
+    const id = a?.dealerId ?? a?.dealer_id;
+    if (!id) continue;
+    const key = String(id);
+    if (!byDealer.has(key)) byDealer.set(key, []);
+    byDealer.get(key).push(a);
+  }
   const list = Array.isArray(dealers) ? dealers : [];
   const q = String(search || '').trim().toLowerCase();
   const sortKey = sort?.key || 'name';
@@ -456,8 +493,12 @@ export function resolveDealersList({
     const multiplier = safeFactor(d.priceMultiplier);
     const rate = safeFactor(d.usdRate);
     const currency = String(d.currency || 'USD').toUpperCase();
+    const myBrands = resolveDealerBrands({ assignments: byDealer.get(String(d.id)) || [], brands });
     return {
       id: d.id,
+      // Las marcas que representa — el filtro que está ARRIBA de `collections`.
+      brands: myBrands,
+      brandsLabel: dealerBrandsLabel(myBrands),
       dealer: d,
       name: d.name || 'Distribuidor',
       slug: d.slug || '',

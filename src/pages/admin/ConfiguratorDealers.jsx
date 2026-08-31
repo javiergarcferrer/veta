@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useLiveQuery, useLiveQueryStatus } from '../../db/hooks.js';
-import { db, newId } from '../../db/database.js';
+import { db, newId, setDealerBrands } from '../../db/database.js';
 import { useConfirm, useToast } from '../../components/ConfirmProvider.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import ListLoading from '../../components/ListLoading.jsx';
@@ -17,6 +17,7 @@ import { PRODUCT_LIST_COLUMNS } from '../../lib/constants.js';
 import {
   resolveConfiguratorModels, resolveDealersList, resolveDealerDraft, resolveDealerDetail,
   dealerSlugify, dealerStoredCollections, DEALER_SORT_OPTIONS,
+  dealerBrandIds, resolveDealerBrands, dealerBrandsLabel,
 } from '../../core/quote/index.js';
 import DealerForm from '../../components/configurator/DealerForm.jsx';
 import DealerPanel from '../../components/configurator/DealerPanel.jsx';
@@ -53,8 +54,11 @@ function genToken() {
 /** Form model ↔ a Dealer row (numbers kept as strings for controlled inputs).
  *  `collections` reads through the Model's own rule: null ⇒ the whole catalog,
  *  an array ⇒ exactly those. */
-function formFromDealer(d) {
+function formFromDealer(d, assignments = null) {
   return {
+    // Las marcas asignadas viven en su propia tabla (`dealer_brands`), no en la
+    // fila del distribuidor: la arista es 1..N y tiene sus propios datos.
+    brandIds: dealerBrandIds(assignments),
     name: d?.name || '',
     slug: d?.slug || '',
     contactEmail: d?.contactEmail || '',
@@ -107,6 +111,21 @@ const DEALER_COLUMNS = [
           {!r.active && <span className="status-pill status-pill-inactive shrink-0">Inactivo</span>}
         </div>
         <div className="text-micro text-ink-500 font-mono truncate">/{r.slug}</div>
+      </div>
+    ),
+  },
+  {
+    // LAS MARCAS, ANTES QUE EL CATÁLOGO, porque es el filtro de arriba: sin
+    // marca asignada no hay catálogo dentro del que contar colecciones, y un
+    // distribuidor así no sirve NADA. Tiene que verse desde la lista en vez de
+    // descubrirse cuando alguien reporta un embed vacío.
+    key: 'brands', label: 'Marcas',
+    tdClass: 'text-ink-600',
+    cell: ({ r }) => (
+      <div className="min-w-0 truncate">
+        {r.brands?.length
+          ? r.brandsLabel
+          : <span className="text-status-warning-ink">Sin marcas</span>}
       </div>
     ),
   },
@@ -177,6 +196,12 @@ export default function ConfiguratorDealers() {
     () => (profileId ? db.configuratorRequests.where('profileId').equals(profileId).toArray() : Promise.resolve([])),
     [profileId], [],
   );
+  // LAS MARCAS Y QUIÉN LAS REPRESENTA. Dos lecturas pequeñas y ACOTADAS por su
+  // propia naturaleza: hay tantas marcas como fabricantes y tantas aristas como
+  // (distribuidor × marca) — decenas, no miles. No necesitan paginarse ni
+  // proyectarse; crecer aquí sería crecer el negocio entero.
+  const brands = useLiveQuery(() => db.brands.toArray(), [], []);
+  const assignments = useLiveQuery(() => db.dealerBrands.toArray(), [], []);
   // The SAME two reads the Solicitudes tab makes (identical call shapes, so the
   // query cache serves one copy for both): the models are the collections and
   // the products are what prices the example in the live preview.
@@ -212,8 +237,8 @@ export default function ConfiguratorDealers() {
   } = useColumns(DEALER_COLUMNS, DEALER_DEFAULT_COLS, 'rs.dealers.cols.v1');
 
   const list = useMemo(
-    () => resolveDealersList({ dealers, requests, resolvedById, search, status, sort }),
-    [dealers, requests, resolvedById, search, status, sort],
+    () => resolveDealersList({ dealers, requests, resolvedById, search, status, sort, brands, assignments }),
+    [dealers, requests, resolvedById, search, status, sort, brands, assignments],
   );
 
   // Surfaces: 'alta' (guided create), a dealer id (ficha), 'edit:<id>'.
@@ -388,6 +413,8 @@ export default function ConfiguratorDealers() {
           resolvedById={resolvedById}
           marginPct={marginPct}
           profileId={profileId}
+          brands={brands}
+          assignments={assignments}
           onClose={() => setSurface(null)}
           onSaved={(id) => { setSurface(id); toast('Distribuidor creado — cópiale el kit de instalación'); }}
         />
@@ -403,6 +430,8 @@ export default function ConfiguratorDealers() {
           resolvedById={resolvedById}
           marginPct={marginPct}
           profileId={profileId}
+          brands={brands}
+          assignments={assignments}
           onClose={() => setSurface(openId)}
           onSaved={(id) => { setSurface(id); toast('Cambios guardados'); }}
         />
@@ -444,16 +473,19 @@ export default function ConfiguratorDealers() {
  * than reaching the widget).
  */
 function DealerEditor({
-  title, dealer, dealers, resolvedById, marginPct, profileId, onClose, onSaved,
+  title, dealer, dealers, resolvedById, marginPct, profileId, brands, assignments, onClose, onSaved,
 }) {
   // The caller mounts this only while open and keys it on the target, so the
   // initializer runs once per open — always off the row on screen.
-  const [form, setForm] = useState(() => formFromDealer(dealer));
+  const [form, setForm] = useState(() => formFromDealer(
+    dealer,
+    (assignments || []).filter((a) => a.dealerId === dealer?.id),
+  ));
   const [saving, setSaving] = useState(false);
 
   const draft = useMemo(
-    () => resolveDealerDraft({ form, dealers, resolvedById, marginPct, editingId: dealer?.id || null }),
-    [form, dealers, resolvedById, marginPct, dealer],
+    () => resolveDealerDraft({ form, dealers, resolvedById, marginPct, editingId: dealer?.id || null, brands }),
+    [form, dealers, resolvedById, marginPct, dealer, brands],
   );
 
   const save = async () => {
@@ -461,11 +493,12 @@ function DealerEditor({
     setSaving(true);
     try {
       const patch = dealerPatchFromForm(form, draft.catalog);
+      let id;
       if (dealer) {
         await db.dealers.update(dealer.id, { ...patch, updatedAt: Date.now() });
-        onSaved(dealer.id);
+        id = dealer.id;
       } else {
-        const id = newId();
+        id = newId();
         await db.dealers.put({
           id,
           profileId,
@@ -474,8 +507,15 @@ function DealerEditor({
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
-        onSaved(id);
       }
+      // LA ASIGNACIÓN, DESPUÉS DE LA FILA. En una alta el distribuidor tiene
+      // que existir antes que su arista (la FK), y en una edición se escribe la
+      // diferencia en vez de borrar y volver a insertar: un borrado total
+      // perdería el `created_at` de las marcas que no cambiaron y dejaría al
+      // distribuidor sin ninguna marca durante el instante entre las dos
+      // escrituras — que es justo cuando su widget deja de servir nada.
+      await setDealerBrands(id, draft.brandIds, assignments);
+      onSaved(id);
     } finally { setSaving(false); }
   };
 

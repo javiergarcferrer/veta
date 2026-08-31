@@ -7,7 +7,7 @@ import { cacheKey, getCached, setCached, purgeTable, purgeAll } from './queryCac
 import {
   tableScopeFor, brandStampFor, catalogBrandScope, getBrandScope, type TableScope,
 } from './brandScope.js';
-import type { Brand, BrandMember, BrandMaterialSource, BrandMaterialOverride, ImportRun } from './brands.js';
+import type { Brand, BrandMember, DealerBrand, BrandMaterialSource, BrandMaterialOverride, ImportRun } from './brands.js';
 import type {
   Profile,
   Settings,
@@ -101,6 +101,10 @@ const TABLES = {
   materials:     { db: 'materials',     pk: 'id' },
   modelFabrics:  { db: 'model_fabrics', pk: 'id' },
   dealers:       { db: 'dealers',       pk: 'id' },
+  // QUÉ MARCAS REPRESENTA CADA DISTRIBUIDOR (1..N). Clave compuesta
+  // (dealer_id, brand_id) — la fila no tiene id propio porque no es una
+  // entidad, es la arista. Ver core/quote/views/dealerBrands.js.
+  dealerBrands:  { db: 'dealer_brands',  pk: 'dealerId' },
   configuratorRequests:  { db: 'togo_requests', pk: 'id' },
   // EL LIBRO MAYOR DE IMPORTACIONES. Cada corrida de un módulo de marca deja
   // una fila (supabase/functions/_shared/importRun.ts) — un cron que falla
@@ -159,6 +163,7 @@ export interface TableRowMap {
   materials: Material;
   modelFabrics: ModelFabrics;
   dealers: Dealer;
+  dealerBrands: DealerBrand;
   configuratorRequests: ConfiguratorRequest;
   importRuns: ImportRun;
   products: Product;
@@ -1653,4 +1658,64 @@ export async function getSettings(profileId: string): Promise<Settings | null> {
 export async function updateSettings(profileId: string, patch: Partial<Settings>): Promise<void> {
   const cur = (await db.settings.get(profileId)) || { profileId } as Settings;
   await db.settings.put({ ...cur, ...patch, profileId });
+}
+
+/**
+ * FIJAR LAS MARCAS DE UN DISTRIBUIDOR — la diferencia, no un borrado y alta.
+ *
+ * Vive aquí y no en la página porque necesita una clave COMPUESTA
+ * (dealer_id, brand_id), que el `Table.delete` genérico no sabe expresar: borra
+ * por la única columna declarada como pk, así que llamarlo se llevaría por
+ * delante TODAS las marcas del distribuidor.
+ *
+ * Y se escribe la diferencia por dos razones, las dos visibles desde fuera:
+ * un borrado total perdería el `created_at` de las marcas que no cambiaron
+ * (desde cuándo representa a cada una es un dato del negocio), y dejaría al
+ * distribuidor sin ninguna marca durante el instante entre las dos escrituras
+ * — que es exactamente cuando su widget deja de servir nada, en el sitio de
+ * otra empresa.
+ *
+ * Idempotente: llamarla con lo mismo que ya está guardado no escribe nada.
+ */
+export async function setDealerBrands(
+  dealerId: string | null | undefined,
+  brandIds: readonly string[] | null | undefined,
+  current: readonly { dealerId?: string; brandId?: string }[] | null | undefined = null,
+): Promise<void> {
+  const id = String(dealerId || '').trim();
+  if (!id) return;
+  const want = new Set((brandIds || []).map((b) => String(b || '').trim()).filter(Boolean));
+
+  // El estado actual: el que nos pasaron (ya cargado en pantalla) o una lectura
+  // fresca. Nunca se deduce de `want`, que es justamente lo que va a cambiar.
+  let have: string[];
+  if (current) {
+    have = current.filter((r) => r?.dealerId === id).map((r) => String(r.brandId || '')).filter(Boolean);
+  } else {
+    const { data, error } = await supabase
+      .from('dealer_brands').select('brand_id').eq('dealer_id', id);
+    if (error) throw error;
+    have = ((data as Row[]) || []).map((r) => String(r.brand_id || '')).filter(Boolean);
+  }
+  const haveSet = new Set(have);
+
+  const toAdd = [...want].filter((b) => !haveSet.has(b));
+  const toDrop = have.filter((b) => !want.has(b));
+  if (!toAdd.length && !toDrop.length) return;
+
+  // Se AÑADE antes de quitar: si la segunda escritura falla, el distribuidor
+  // queda sirviendo de más (recuperable, y visible en su ficha) en vez de
+  // quedarse sin ninguna marca, que apaga su sitio.
+  if (toAdd.length) {
+    const { error } = await supabase
+      .from('dealer_brands')
+      .upsert(toAdd.map((brand_id) => ({ dealer_id: id, brand_id })), { onConflict: 'dealer_id,brand_id' });
+    if (error) throw error;
+  }
+  if (toDrop.length) {
+    const { error } = await supabase
+      .from('dealer_brands').delete().eq('dealer_id', id).in('brand_id', toDrop);
+    if (error) throw error;
+  }
+  invalidate(['dealerBrands']);
 }

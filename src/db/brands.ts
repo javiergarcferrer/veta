@@ -134,6 +134,23 @@ export interface MaterialColorLike {
   imageId?: string | null;
 }
 
+/**
+ * QUÉ MARCA REPRESENTA UN DISTRIBUIDOR. La arista, no una entidad: su clave es
+ * el par, y por eso no tiene id propio.
+ *
+ * No confundir con `BrandMember`, que es lo mismo para un USUARIO de la casa.
+ * Aquí el sujeto es un negocio de fuera que embebe nuestro configurador en su
+ * propio sitio, y la asignación decide qué catálogo puede servir bajo su
+ * margen y su bandeja.
+ */
+export interface DealerBrand {
+  dealerId: string;
+  brandId: string;
+  /** Suspender UNA marca sin borrar la relación ni tocar las otras. */
+  active?: boolean;
+  createdAt?: number;
+}
+
 export interface BrandMember {
   profileId: string;
   brandId: string;

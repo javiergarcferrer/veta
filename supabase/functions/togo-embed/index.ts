@@ -188,15 +188,55 @@ async function gradeLadderFor(admin: Admin, dealer: Row | null): Promise<Readonl
   return brandId ? loadGradeSet(admin, brandId) : loadHouseGradeSet(admin);
 }
 
-/** THE BRAND SILO on the catalog read: keep only the rows of ONE brand's
- *  environment. An unstamped row (brand_id null — pre-brand data) belongs to
- *  the HOUSE brand, mirroring the RLS backfill; a foreign brand's models,
+/**
+ * THE BRANDS ONE WIDGET MAY SERVE.
+ *
+ * For the manufacturer's own embed (no dealer) that is the house brand alone.
+ * For a dealer it is every brand ASSIGNED to them in `dealer_brands`, plus the
+ * legacy `dealers.brand_id` — the two are unioned rather than one replacing the
+ * other, because the column is what three live dealer sites are being served by
+ * right now and the join table is what will outlive it.
+ *
+ * Falls back to the dealer's own column (then the house) when the join table
+ * answers nothing: a read that fails must degrade to today's behaviour, never
+ * to an empty catalogue on somebody else's website.
+ */
+async function brandScopeFor(
+  admin: Admin, dealer: Row | null, houseId: string | null,
+): Promise<ReadonlySet<string>> {
+  const out = new Set<string>();
+  if (!dealer) {
+    if (houseId) out.add(houseId);
+    return out;
+  }
+  const legacy = String(dealer.brand_id || '');
+  if (legacy) out.add(legacy);
+  const { data } = await admin
+    .from('dealer_brands').select('brand_id, active')
+    .eq('dealer_id', String(dealer.id || ''));
+  for (const r of (data as Row[]) || []) {
+    if (r?.active === false) continue;          // suspended for this dealer
+    const id = String(r?.brand_id || '');
+    if (id) out.add(id);
+  }
+  if (!out.size && houseId) out.add(houseId);
+  return out;
+}
+
+/** THE BRAND SILO on the catalog read: keep only the rows of the brands this
+ *  widget may serve. An unstamped row (brand_id null — pre-brand data) belongs
+ *  to the HOUSE brand, mirroring the RLS backfill; a foreign brand's models,
  *  materials and fabric links never reach another brand's widget. With no
- *  house brand resolved (bare database) nothing is filtered — today's
- *  behaviour, honestly degraded rather than silently empty. */
-function filterRowsForBrand(rows: Row[], wantBrand: string | null, houseId: string | null): Row[] {
-  if (!wantBrand) return rows;
-  return rows.filter((r) => String(r.brand_id || houseId || '') === wantBrand);
+ *  brands resolved (bare database) nothing is filtered — today's behaviour,
+ *  honestly degraded rather than silently empty.
+ *
+ *  A SET, not one id: a dealer represents 1..N brands (`dealer_brands`), and
+ *  the one that used to be `dealers.brand_id` is now just the first of them.
+ *  Passing a single brand here served a two-brand dealer half its catalogue,
+ *  silently — the half it happened to be stamped with. */
+function filterRowsForBrand(rows: Row[], want: ReadonlySet<string>, houseId: string | null): Row[] {
+  if (!want.size) return rows;
+  return rows.filter((r) => want.has(String(r.brand_id || houseId || '')));
 }
 
 /** The shared catalog, optionally SCOPED to the colecciones one dealer carries.
@@ -235,7 +275,7 @@ async function loadContext(admin: Admin, dealer: Row | null = null) {
   // the manufacturer's own embed serves the house's. Collection scope then
   // narrows WITHIN the brand — it can never widen across one.
   const houseId = await houseBrandId(admin);
-  const wantBrand = (dealer ? String(dealer.brand_id || '') : '') || houseId;
+  const wantBrand = await brandScopeFor(admin, dealer, houseId);
   const brandModels = filterRowsForBrand(injectCollectionStructure(modelRows), wantBrand, houseId);
   const models = filterModelsForDealer(brandModels, dealer)
     .filter((m) => m.active !== false && m.svg)

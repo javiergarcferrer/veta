@@ -19,6 +19,7 @@ import {
 } from '../../lib/carlHansenClient.js';
 import {
   CH_BROWSER_LIMIT,
+  chBindingPaints,
   chModelName,
   resolveCarlHansenAssets,
   resolveCarlHansenBrowser,
@@ -740,9 +741,17 @@ function ModelDetail({ page, profileId, userId, onBack }) {
               </div>
               <p className="px-3 py-2 text-micro text-ink-500 border-t border-ink-100">
                 Arrastra para girar · rueda para acercar
-                {asset3d.needsBindingReview
-                  ? ' · el binding de materiales todavía no está confirmado, así que puede haber grupos sin repintar'
-                  : ''}
+                {/* SE DICE LO QUE PASA, no una versión suave. Un binding hecho
+                    de nombres de textura no casa con NINGÚN material de la
+                    malla: no se repinta nada y la pieza sale blanca. Aquí es
+                    donde el dealer puede arreglarlo, así que aquí se dice
+                    claro — y por eso el widget público esconde estas piezas
+                    hasta que alguien las confirme. */}
+                {!chBindingPaints(asset3d.binding)
+                  ? ' · el binding nombra texturas, no materiales de la malla: no se repinta nada hasta que lo confirmes aquí'
+                  : asset3d.needsBindingReview
+                    ? ' · binding sin confirmar, puede haber grupos sin repintar'
+                    : ''}
               </p>
             </section>
           ) : null}

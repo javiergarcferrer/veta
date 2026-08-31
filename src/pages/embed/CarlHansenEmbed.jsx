@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RotateCw } from 'lucide-react';
 import { fetchChModels, fetchChConfiguration } from '../../brands/carl-hansen/client.js';
 import { resolveCarlHansenConfigurator } from '../../core/catalog/carlHansenConfigurator.js';
+import { chBindingPaints, chPublicNotice } from '../../core/catalog/index.js';
 import ChStage from '../../components/carlhansen/ChStage.jsx';
 
 /**
@@ -91,6 +92,8 @@ export default function CarlHansenEmbed() {
     return resolveCarlHansenConfigurator(data.spec, data.priceRow, data.page, { selection });
   }, [data, selection]);
 
+  const notice = useMemo(() => chPublicNotice(vm), [vm]);
+
   const pick = useCallback((axisId, key) => {
     setSelection((s) => ({ ...(s || {}), [axisId]: key }));
   }, []);
@@ -143,7 +146,13 @@ export default function CarlHansenEmbed() {
     );
   }
 
-  const asset = data?.asset || null;
+  // EL 3D SÓLO CUANDO PUEDE PINTAR. Un binding hecho de nombres de textura no
+  // casa con ningún material de la malla, así que el escenario saldría
+  // completamente BLANCO al lado de un selector que dice «Roble FSC · Laca»:
+  // una foto que gira y que además miente sobre el color. La fotografía del
+  // fabricante es la respuesta honesta hasta que un humano confirme el binding.
+  const rawAsset = data?.asset || null;
+  const asset = rawAsset?.meshUrl && chBindingPaints(rawAsset.binding) ? rawAsset : null;
 
   return (
     <Frame>
@@ -184,7 +193,6 @@ export default function CarlHansenEmbed() {
                 <figcaption className="px-3 py-2 text-micro text-ink-500 border-t border-ink-100 inline-flex items-center gap-1.5">
                   <RotateCw size={12} aria-hidden />
                   Arrastra para girar · rueda para acercar
-                  {asset.reviewed ? '' : ' · algunos materiales aún sin confirmar'}
                 </figcaption>
               </figure>
             ) : vm.images?.[0]?.url ? (
@@ -231,12 +239,14 @@ export default function CarlHansenEmbed() {
               </dl>
             </div>
 
-            {vm.unresolved?.length > 0 && (
-              <ul className="rounded-xl border border-ink-100 bg-surface p-4 text-xs text-ink-500 space-y-1">
-                {vm.unresolved.map((i) => (
-                  <li key={i.code} className={i.level === 'blocker' ? 'text-red-700' : ''}>{i.message}</li>
-                ))}
-              </ul>
+            {/* EN EL IDIOMA DEL CLIENTE. Los avisos del ViewModel están
+                escritos para el dealer que importa el catálogo («no hay EAN
+                que importar»); un visitante no importa EANs. `chPublicNotice`
+                se queda con lo único que le concierne y lo dice en su idioma. */}
+            {notice && (
+              <p role="status" className="notice notice-sm notice-warning">
+                <span>{notice}</span>
+              </p>
             )}
           </aside>
         </div>

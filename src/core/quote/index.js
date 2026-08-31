@@ -29,10 +29,10 @@ export {
 // Togo plan configurator VM (drag-and-drop top-down → a modular quote line),
 // plus the DXF export (a placed plan → a downloadable CAD file).
 export {
-  resolveConfigurator, resolveTogoModels, resolveTogoModelCards, planTogoReorder, togoPickerFamilies,
+  resolveConfigurator, resolveConfiguratorModels, resolveConfiguratorModelCards, planConfiguratorReorder, configuratorPickerFamilies,
   snapPlacement, snapPlacementInfo, footprintOf, resolvePlacement, compactPlaced,
-  buildTogoComponents, buildTogoModularSeed,
-  createHistory, historyPush, historyUndo, historyRedo, canUndo, canRedo, TOGO_HISTORY_LIMIT,
+  buildConfiguratorComponents, buildConfiguratorModularSeed,
+  createHistory, historyPush, historyUndo, historyRedo, canUndo, canRedo, CONFIGURATOR_HISTORY_LIMIT,
   firstWithoutFabric, placementDressed, dressableRoles, duplicatePlacement, cyclePieceUid,
   placementMode, componentRoles, partsModeTotalUsd, planModeSwitch,
   // Los dos modos, segunda vuelta: que telas VISTEN de verdad una pieza segun
@@ -45,8 +45,8 @@ export {
   effectivePartMaterials, componentViewOf, sellsByComponentsOnly, isWholePieceRole,
   materializedBase, unresolvedPartRoles, unresolvedWholePiece,
   linkOverlap, LINK_OVERLAP_CM,
-  resolveTogoDxf, placementsFromPlaced, placementsFromComponents, lineHasTogoPlan,
-  resolveTogoScene, scenePlacementsFromPlaced, scenePlacementsFromComponents,
+  resolveConfiguratorDxf, placementsFromPlaced, placementsFromComponents, lineHasConfiguratorPlan,
+  resolveConfiguratorScene, scenePlacementsFromPlaced, scenePlacementsFromComponents,
   resolveLaunchHero, LAUNCH_HERO_FABRIC, resolveCollectionMenu,
   heroFabricOptions, planHeroPin,
   partFamiliesFrom, partPricesFor, placementTotalUsd, placementBreakdown, resolveCompleteSku,
@@ -71,7 +71,7 @@ export {
   collectionCandidates, planCollectionChunks, mergeCollectionSuggestions,
   resolveAssignmentDuplicates, resolveCollectionReview, planCollectionBind,
   COLLECTION_PER_MODEL, COLLECTION_MAX_MODELS, COLLECTION_MAX_POOL,
-} from '../../lib/togo/modelMatch.js';
+} from '../../lib/configurator/modelMatch.js';
 // Dealer workspace VM (Distribuidores: the alta wizard, the list board and the
 // per-dealer ficha). `resolveDealerCollections` is the CATÁLOGO dial — which
 // collections a dealer carries, read off the real togo_models set, with "todas"

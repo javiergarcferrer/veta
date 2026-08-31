@@ -20,8 +20,8 @@ import assert from 'node:assert/strict';
 
 import {
   resolveBindingExamples, indexProductsByRoot, exampleAgreement, formatBindingExamples,
-} from '../src/lib/togo/bindingExamples.js';
-import { parseLrDimensions, resolveModelMatches, indexCandidates } from '../src/lib/togo/modelMatch.js';
+} from '../src/lib/configurator/bindingExamples.js';
+import { parseLrDimensions, resolveModelMatches, indexCandidates } from '../src/lib/configurator/modelMatch.js';
 
 const p = (reference, name, subtype, dimensions, priceUsd) => ({ reference, name, subtype, dimensions, priceUsd });
 const m = (id, name, collection, widthCm, depthCm, productRoot) => ({ id, name, collection, widthCm, depthCm, productRoot });
@@ -109,7 +109,7 @@ test('same-colección examples lead, then the house style', () => {
   const ex = resolveBindingExamples(MODELS, PRODUCTS, { collection: 'PRADO 2' });
   assert.equal(ex[0].modelId, 'o2', 'the piece\'s own colección teaches first');
   assert.ok(ex.slice(1).every((e) => !e.sameCollection));
-  // Case-folded: «PRADO 2» and «Prado 2» are one collection (lib/togo/collections).
+  // Case-folded: «PRADO 2» and «Prado 2» are one collection (lib/configurator/collections).
   assert.equal(resolveBindingExamples(MODELS, PRODUCTS, { collection: 'prado 2' })[0].modelId, 'o2');
 });
 

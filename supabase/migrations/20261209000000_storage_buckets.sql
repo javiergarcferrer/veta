@@ -5,7 +5,7 @@
 -- entonces escribiendo contra buckets que no existen —
 --
 --   togo-textures   src/db/swatchUpload.ts        el escaneo de una tela
---   togo-models     src/db/togoMeshUpload.ts      la malla de un modelo
+--   togo-models     src/db/configuratorMeshUpload.ts      la malla de un modelo
 --   swatch-mirror   supabase/functions/swatch-proxy   el espejo redimensionado
 --   images          src/db/                        las fotos del catálogo
 --

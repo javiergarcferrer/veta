@@ -3,7 +3,7 @@
  * confirms, in ONE shape for both asset tiers.
  *
  * Runtime material binding in this repo is BY MATERIAL NAME and already exists:
- * `lib/togo/meshParts.partKeyFor(materialName, nodeIndex)` keys a part by its
+ * `lib/configurator/meshParts.partKeyFor(materialName, nodeIndex)` keys a part by its
  * source material, `placeRealModel` applies it. So the ONLY genuinely new
  * question a Carl Hansen import asks is the JOIN: the archive says
  * `CH24_Beech_Bright_`, the selection tree says `CH24_Frame` (Wood → species →

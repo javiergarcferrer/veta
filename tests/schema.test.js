@@ -39,7 +39,7 @@ import {
  * The relation names `src/db/database.ts` claims exist, read out of the source
  * rather than imported: importing it pulls in the Supabase client and the whole
  * domain-type graph for what is one object literal. (Same source-scan idiom
- * togoDealer.test.js uses on the Edge Function's index.ts.)
+ * configuratorDealer.test.js uses on the Edge Function's index.ts.)
  */
 function declaredRelations() {
   const src = readFileSync(join(REPO_ROOT, 'src', 'db', 'database.ts'), 'utf8');

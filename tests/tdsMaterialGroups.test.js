@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readTdsMaterialGroups, reorderIndexForGroups } from '../src/lib/togo/tdsMaterialGroups.js';
+import { readTdsMaterialGroups, reorderIndexForGroups } from '../src/lib/configurator/tdsMaterialGroups.js';
 
 /** A 3DS chunk: uint16 id, uint32 length (header included), payload. */
 function chunk(id, ...payloads) {

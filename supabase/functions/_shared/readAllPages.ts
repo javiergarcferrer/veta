@@ -25,7 +25,7 @@ export interface PageResult<T> { data: T[] | null; error: { message: string } | 
  * at once (the bounded-reads sweep, 2026-08-22) and a seventeenth hand-rolled
  * copy is how a rule stops being one rule. `togo-embed/payload.ts`, which wrote
  * it first, re-exports from here so its own pin
- * (`tests/togoDealer.test.js:1089`) keeps guarding the implementation.
+ * (`tests/configuratorDealer.test.js:1089`) keeps guarding the implementation.
  */
 export async function readAllPages<T>(
   page: (from: number, to: number) => Promise<PageResult<T>>,

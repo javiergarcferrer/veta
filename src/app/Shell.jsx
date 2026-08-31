@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
 import { isPublicRoute } from '../lib/theme.js';
-import { togoShareUrl } from '../lib/togoEmbed.js';
+import { configuratorShareUrl } from '../lib/configuratorEmbed.js';
 import { CONFIGURATORS, configuratorPath } from '../brands/configurators/index.js';
 import { safeDynamicImport } from '../lib/dynamicImport.js';
 import SignIn from './SignIn.jsx';
@@ -18,14 +18,14 @@ const lazyPage = (loader) => lazy(() => safeDynamicImport(loader));
 import BrandLogo from '../components/BrandLogo.jsx';
 
 const Dashboard = lazyPage(() => import('../pages/Dashboard.jsx'));
-const TogoCatalog = lazyPage(() => import('../pages/admin/TogoCatalog.jsx'));
+const ConfiguratorCatalog = lazyPage(() => import('../pages/admin/ConfiguratorCatalog.jsx'));
 const Brands = lazyPage(() => import('../pages/admin/Brands.jsx'));
 const KvadratImport = lazyPage(() => import('../pages/admin/KvadratImport.jsx'));
 const FredericiaImport = lazyPage(() => import('../pages/admin/FredericiaImport.jsx'));
 const LigneRosetImport = lazyPage(() => import('../pages/admin/LigneRosetImport.jsx'));
 const CarlHansenImport = lazyPage(() => import('../pages/admin/CarlHansen.jsx'));
-const TogoDealers = lazyPage(() => import('../pages/admin/TogoDealers.jsx'));
-const TogoRequests = lazyPage(() => import('../pages/TogoRequests.jsx'));
+const ConfiguratorDealers = lazyPage(() => import('../pages/admin/ConfiguratorDealers.jsx'));
+const ConfiguratorRequests = lazyPage(() => import('../pages/ConfiguratorRequests.jsx'));
 const DealerInbox = lazyPage(() => import('../pages/DealerInbox.jsx'));
 const Quotes = lazyPage(() => import('../pages/quoting/Quotes.jsx'));
 const QuoteDetail = lazyPage(() => import('../pages/quoting/QuoteDetail.jsx'));
@@ -50,9 +50,9 @@ const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
  *    plumbing of their own:
  *
  *      Panel            — the open brand's numbers          (pages/Dashboard)
- *      Modelos          — the 3D studio + model manager (pages/admin/TogoCatalog)
- *      Distribuidores   — dealer records + install kits (pages/admin/TogoDealers)
- *      Solicitudes      — leads out of the configurator (pages/TogoRequests)
+ *      Modelos          — the 3D studio + model manager (pages/admin/ConfiguratorCatalog)
+ *      Distribuidores   — dealer records + install kits (pages/admin/ConfiguratorDealers)
+ *      Solicitudes      — leads out of the configurator (pages/ConfiguratorRequests)
  *      Cotizaciones     — the frozen quote documents    (pages/quoting/Quotes)
  *
  * 3. IMPORTAR — one destination per SUPPLIER SOURCE: a house that publishes its
@@ -132,14 +132,14 @@ function NavItem({ to, label, icon: Icon, onNavigate, end }) {
 /**
  * ONE BRAND'S ROW ON THE RAIL. The row body selects that brand's environment;
  * the ↗ — present only when the registry knows a configurator for this brand —
- * opens the brand's OWN configurator in a new tab. Togo's rides togoShareUrl()
+ * opens the brand's OWN configurator in a new tab. Togo's rides configuratorShareUrl()
  * (the bare path, with its link-preview version pin); every other brand's is
  * its registered suffixed path, which the Vercel rewrite already serves.
  */
 function BrandRow({ b, active, onSelect }) {
   const configurator = CONFIGURATORS.find((c) => c.brandSlug === b.slug) || null;
   const href = configurator
-    ? (configurator.slug ? `${location.origin}${configuratorPath(configurator)}` : togoShareUrl())
+    ? (configurator.slug ? `${location.origin}${configuratorPath(configurator)}` : configuratorShareUrl())
     : null;
   return (
     <div
@@ -349,9 +349,9 @@ function AdminApp() {
         <Suspense fallback={<Loading />}>
           <Routes>
             <Route index element={<Dashboard />} />
-            <Route path="modelos" element={<TogoCatalog />} />
-            <Route path="distribuidores" element={<TogoDealers />} />
-            <Route path="solicitudes" element={<TogoRequests />} />
+            <Route path="modelos" element={<ConfiguratorCatalog />} />
+            <Route path="distribuidores" element={<ConfiguratorDealers />} />
+            <Route path="solicitudes" element={<ConfiguratorRequests />} />
             <Route path="solicitudes/:id" element={<RequestDetail />} />
             <Route path="cotizaciones" element={<Quotes />} />
             <Route path="cotizaciones/:id" element={<QuoteDetail />} />

@@ -128,7 +128,7 @@ test('ownership is stable regardless of row order', () => {
 
 /* ---------------------------- planCatalog ----------------------------- */
 
-const TOGO_ARTICLE = {
+const CONFIGURATOR_ARTICLE = {
   IDMOD: '2510', LIBMOD: 'TOGO ®', CODART: '15420000', IDART: '25401',
   LIBPRIN: 'FIRESIDE CHAIR', LIBSEC: '', LIBTER: '',
   LIBDIM3: 'H', VALDIM3: '27',
@@ -136,7 +136,7 @@ const TOGO_ARTICLE = {
 
 test('a graded article mints one SKU per priced column, as CODART+letter', () => {
   const plan = planCatalog({
-    articles: [TOGO_ARTICLE],
+    articles: [CONFIGURATOR_ARTICLE],
     prices: [
       { CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' },
       { CODART: '15420000', IDART: '25401', COLONNE: 'X', MONTANT: '7180' },
@@ -163,7 +163,7 @@ test('a flat-priced article (COLONNE 0) mints ONE bare 8-digit SKU', () => {
 
 test('a blank MONTANT mints NO SKU and is counted', () => {
   const plan = planCatalog({
-    articles: [TOGO_ARTICLE],
+    articles: [CONFIGURATOR_ARTICLE],
     prices: [
       { CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' },
       { CODART: '15420000', IDART: '25401', COLONNE: 'T', MONTANT: '' },
@@ -179,7 +179,7 @@ test('COST IS NEVER WRITTEN — the feed has none, and the column must survive',
   // The pin that protects the dealer's margin: a PostgREST upsert only writes
   // the columns present in the payload, so `cost` must be absent, not 0/null.
   const plan = planCatalog({
-    articles: [TOGO_ARTICLE],
+    articles: [CONFIGURATOR_ARTICLE],
     prices: [{ CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' }],
     profileId: PROFILE,
   });
@@ -190,7 +190,7 @@ test('COST IS NEVER WRITTEN — the feed has none, and the column must survive',
 
 test('an unknown price column is skipped, not minted under a bogus grade', () => {
   const plan = planCatalog({
-    articles: [TOGO_ARTICLE],
+    articles: [CONFIGURATOR_ARTICLE],
     prices: [{ CODART: '15420000', IDART: '25401', COLONNE: '@', MONTANT: '3590' }],
     profileId: PROFILE,
   });
@@ -211,7 +211,7 @@ test('a price whose CODART has no article row is counted as an orphan', () => {
 test('the losing IDART never writes a row over the winner', () => {
   const plan = planCatalog({
     articles: [
-      TOGO_ARTICLE,
+      CONFIGURATOR_ARTICLE,
       { IDMOD: '3169', LIBMOD: 'TOGO TABLU', CODART: '15420000', IDART: '32947', LIBPRIN: 'FIRESIDE CHAIR', LIBSEC: 'VERSION PANTHERE' },
     ],
     prices: [
@@ -227,7 +227,7 @@ test('the losing IDART never writes a row over the winner', () => {
 
 test('category comes from the model programme via IDMOD', () => {
   const plan = planCatalog({
-    articles: [TOGO_ARTICLE],
+    articles: [CONFIGURATOR_ARTICLE],
     prices: [{ CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' }],
     models: [{ IDMOD: '2510', LIBPROG: 'UPHOLSTERY - SOFAS', LIBMOD: 'TOGO ®' }],
     profileId: PROFILE,
@@ -238,7 +238,7 @@ test('category comes from the model programme via IDMOD', () => {
 
 test('rows come out sorted by reference so a re-run diffs as price changes only', () => {
   const plan = planCatalog({
-    articles: [TOGO_ARTICLE],
+    articles: [CONFIGURATOR_ARTICLE],
     prices: [
       { CODART: '15420000', IDART: '25401', COLONNE: 'C', MONTANT: '4185' },
       { CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' },
@@ -398,7 +398,7 @@ import { planFabricMerge, fabricCategoryFor, measureOf, countOf, colorKey } from
 test('the article carries its copy, designer, volume, packages and origin', () => {
   const plan = planCatalog({
     articles: [{
-      ...TOGO_ARTICLE,
+      ...CONFIGURATOR_ARTICLE,
       REMARQUE: 'Low seating designed to be sat in, not on.',
       VOLUME: '0.1683', NBCOLIS: '1', PAYSORI: '10',
     }],
@@ -424,7 +424,7 @@ test("a graded SKU inherits its range's copy when the article carries none", () 
     REMARQUE: 'FRAME : 3 densities of polyether foam are combined to make the frame.',
   }];
   const plan = planCatalog({
-    articles: [{ ...TOGO_ARTICLE, REMARQUE: '' }],
+    articles: [{ ...CONFIGURATOR_ARTICLE, REMARQUE: '' }],
     prices: [{ CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' }],
     models,
     profileId: PROFILE,
@@ -434,7 +434,7 @@ test("a graded SKU inherits its range's copy when the article carries none", () 
 
 test("the article's own words outrank the range's — a fallback is never an override", () => {
   const plan = planCatalog({
-    articles: [{ ...TOGO_ARTICLE, REMARQUE: 'This exact article, described exactly.' }],
+    articles: [{ ...CONFIGURATOR_ARTICLE, REMARQUE: 'This exact article, described exactly.' }],
     prices: [{ CODART: '15420000', IDART: '25401', COLONNE: 'A', MONTANT: '3590' }],
     models: [{ IDMOD: '2510', LIBPROG: 'SEATS', REMARQUE: 'The range in general.' }],
     profileId: PROFILE,

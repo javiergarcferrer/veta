@@ -18,7 +18,7 @@
 // to the money (frozen at creation — see functions/togo-embed/quotes.ts).
 //
 // It lives next to the pages it serves rather than in `lib/` because it is the
-// quoting surface's own wiring; `lib/togoEmbed.js` is the same idea for the
+// quoting surface's own wiring; `lib/configuratorEmbed.js` is the same idea for the
 // widget and the dealer inbox, and this deliberately mirrors its idioms
 // (`?apikey=` on the URL so the logged-out call needs no custom header, an
 // Error carrying `.status`).

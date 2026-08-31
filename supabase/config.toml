@@ -343,7 +343,7 @@ verify_jwt = false
 
 # togo-match asks Claude to PICK the Ligne Roset root that prices an uploaded
 # model (or one of its componentes) from the shortlist the browser already
-# narrowed with lib/togo/modelMatch. It SUGGESTS and never writes — no db
+# narrowed with lib/configurator/modelMatch. It SUGGESTS and never writes — no db
 # mutation of any kind, same contract as wa-draft. Verifies the caller ITSELF
 # (auth.getUser on the Authorization header) — gateway check off so the CORS
 # preflight passes, same as wa-draft. Reads the Anthropic key from the

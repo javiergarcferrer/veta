@@ -143,7 +143,7 @@ export default function Brands() {
   // id + the brand come back — a tally never needs the rows.
   const { data: modelCounts, loaded: countsLoaded } = useLiveQueryStatus(
     () => (brandIds.length
-      ? db.togoModels.where('brandId').anyOf(brandIds).columns(['id', 'brandId']).toArray()
+      ? db.configuratorModels.where('brandId').anyOf(brandIds).columns(['id', 'brandId']).toArray()
       : Promise.resolve([])),
     [brandIds], [],
   );
@@ -167,7 +167,7 @@ export default function Brands() {
   );
   const requestCounts = useLiveQuery(
     () => (brandIds.length
-      ? db.togoRequests.where('brandId').anyOf(brandIds).columns(['id', 'brandId']).toArray()
+      ? db.configuratorRequests.where('brandId').anyOf(brandIds).columns(['id', 'brandId']).toArray()
       : Promise.resolve([])),
     [brandIds], [],
   );

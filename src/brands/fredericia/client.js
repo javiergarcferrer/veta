@@ -3,7 +3,7 @@
  *
  * The widget is public (`/configurador/fredericia`), so this reaches the
  * `fredericia-embed` Edge Function with the anon key in the query string
- * exactly as the Carl Hansen client and `togoEmbed` do — there is no session
+ * exactly as the Carl Hansen client and `configuratorEmbed` do — there is no session
  * to carry, and no Supabase client enters this module (the brands layer stays
  * ignorant of it; a plain fetch is the whole transport).
  *

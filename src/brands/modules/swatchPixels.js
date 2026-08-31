@@ -5,7 +5,7 @@
  * Shared by every materials adapter, because the requirement is the same
  * whatever the archive around the bitmap looks like: the configurator tiles
  * `textureUrl` when there is a real scan and tints with `rgb` when there is
- * not (see TogoStage / togoFabricAppearance), so a colour that carries neither
+ * not (see ConfiguratorStage / fabricAppearance), so a colour that carries neither
  * cannot be upholstered at all.
  *
  * Four rules, all measured rather than tasteful:

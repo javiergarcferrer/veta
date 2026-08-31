@@ -17,7 +17,7 @@
 //                 REAL piece off the catalog through the whole chain.
 //   • ENTREGA   — the token-gated inbox; a dealer's leads are theirs.
 //
-// MVVM: pages/admin/TogoDealers.jsx + components/togo/Dealer* render THIS and
+// MVVM: pages/admin/ConfiguratorDealers.jsx + components/configurator/Dealer* render THIS and
 // derive nothing. Pure — no React, no db, no fetch. `now` is injectable so the
 // time-derived figures stay testable.
 //
@@ -28,7 +28,7 @@
 // quote it becomes are priced server-side, and a drift here would show the
 // admin a number their visitors never see.
 
-import { canonicalCollection, collectionKey } from '../../../lib/togo/collections.js';
+import { canonicalCollection, collectionKey } from '../../../lib/configurator/collections.js';
 
 /** Configurator + inbox languages, in the order the picker offers them. */
 export const DEALER_LOCALES = [
@@ -125,7 +125,7 @@ export function dealerMoneyLabel(amount, currency, { locale = 'es', display = 's
 }
 
 /**
- * The pieces a resolved catalog actually offers — `resolveTogoModels`'s
+ * The pieces a resolved catalog actually offers — `resolveConfiguratorModels`'s
  * `resolvedById` flattened to what this workspace counts and prices. That map is
  * already gated to ACTIVE + drawable models, so "18 piezas" means eighteen
  * pieces a visitor can really place, not eighteen rows in a table.

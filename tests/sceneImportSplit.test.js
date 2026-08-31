@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { splitGeometryBySolid } from '../src/components/togo/sceneImport.js';
+import { splitGeometryBySolid } from '../src/components/configurator/sceneImport.js';
 
 // ── The slice of three.js `subGeometry` actually touches. No WebGL, no real
 // three: the split is buffer arithmetic and this is every method it calls.

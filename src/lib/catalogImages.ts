@@ -18,7 +18,7 @@ import { imageProxyUrl } from './swatchImage.js';
 
 /** Pointer ids are content-addressed: `lsgimg-<sha1 of url>` by the Shopify
  *  sync, `lrimg-<filename>` by the Escaparate's Ligne Roset photo matcher
- *  (lib/lrPieceImages.ts), and `togosnap-<requestId>` by togo-embed (the
+ *  (lib/lrPieceImages.ts), and `configuratorsnap-<requestId>` by togo-embed (the
  *  visitor-captured composition render, shared by the Solicitudes card AND
  *  the quote line it becomes), and `chimg-<sha1 of url>` by the Carl Hansen
  *  importer (admincms.carlhansen.com variant renders — one pointer per photo,
@@ -54,7 +54,7 @@ export function isSharedCatalogImage(id: string | null | undefined): boolean {
   return !!id && (
     id.startsWith('lsgimg-')
     || id.startsWith('lrimg-')
-    || id.startsWith('togosnap-')
+    || id.startsWith('configuratorsnap-')
     || id.startsWith('chimg-')
     || id.startsWith('chswatch-')
     || id.startsWith('freimg-')

@@ -1,6 +1,6 @@
 // Clickjacking guard for the hash-routed app document — the CLIENT half of the
 // pentest M1 remediation. The server half CANNOT be response headers: the
-// dealer-distributable embeds (#/embed/togo — the iframe snippet pasted into
+// dealer-distributable embeds (#/embed/configurador — the iframe snippet pasted into
 // alcover.do and any Ligne Roset dealer's site — and #/tienda, framed in the
 // dealer's Shopify page) are FRAGMENT routes, so the server sees every one of
 // them as a request for `/`, the same document as the whole back-office. A
@@ -30,7 +30,7 @@ export function isFramed(win) {
 /**
  * The hash-router routes allowed to render inside a host page's iframe — the
  * public, logged-out widgets DESIGNED to be framed, and nothing else:
- *   /embed/*   the Togo configurator widget (togoEmbedSnippet, per-dealer)
+ *   /embed/*   the Togo configurator widget (configuratorEmbedSnippet, per-dealer)
  *   /tienda    the public storefront (framed in the dealer's Shopify site)
  * Everything else framed — login, the whole back-office, the token'd client
  * links — is a clickjacking canvas and must refuse to render. `routePath` is

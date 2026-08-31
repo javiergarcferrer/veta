@@ -12,7 +12,7 @@
 --   • public.images    where kind  = 'catalog-lsg'       (830)
 --
 -- COMPROBADO ANTES DE BORRAR, y esta es la parte que importa de un borrado
--- masivo — ningun togo_model, model_fabric, material, ajuste, solicitud ni
+-- masivo — ningun configurator_model, model_fabric, material, ajuste, solicitud ni
 -- cotizacion referencia ninguna de esas filas; ninguna imagen esta compartida
 -- con un producto de otra marca; y las 109 fotos son punteros a CDN externo
 -- (`external_url`, sin bytes en el bucket), asi que el borrado no deja basura

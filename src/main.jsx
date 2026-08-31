@@ -60,7 +60,7 @@ try {
 // that id loads, and the split means a visitor configuring a chair never
 // downloads the sofa's 3D graph.
 const CONFIGURATOR_VIEWS = {
-  togo: React.lazy(() => safeDynamicImport(() => import('./pages/embed/TogoEmbed.jsx'))),
+  configurador: React.lazy(() => safeDynamicImport(() => import('./pages/embed/ConfiguratorEmbed.jsx'))),
   'carl-hansen': React.lazy(() => safeDynamicImport(() => import('./pages/embed/CarlHansenEmbed.jsx'))),
   fredericia: React.lazy(() => safeDynamicImport(() => import('./pages/embed/FredericiaEmbed.jsx'))),
 };

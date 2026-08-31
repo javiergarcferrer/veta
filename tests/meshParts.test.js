@@ -1,7 +1,7 @@
 // Mesh part model — per-part fabric/SKU rules for structured collections
 // (Prado…): stable part keys off pCon material names, the admin tagger's
 // heuristic proposal, billed-unit counts, the price roll-up, the lead payload
-// sanitizer, and the seat mount. Pure Model (src/lib/togo/meshParts.js).
+// sanitizer, and the seat mount. Pure Model (src/lib/configurator/meshParts.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -11,7 +11,7 @@ import {
   isGroundShadowBox, accessoryRoleFor, partKeysFor, baseKeyOf,
   mergedKeyOf, partLabelOf, finishSpecOf, finishOptionOf, sanitizePartFinishes,
   roleLabelOf, BILLED_ROLES, planPartJoin, planPartSplit,
-} from '../src/lib/togo/meshParts.js';
+} from '../src/lib/configurator/meshParts.js';
 
 test('isGroundShadowBox: only a degenerate-flat floor decal matches — real parts never do', () => {
   // The measured Prado settee (object y 0→87 cm): its pCon ground-shadow plane

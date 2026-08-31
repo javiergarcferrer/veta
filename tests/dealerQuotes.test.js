@@ -10,7 +10,7 @@
  *      edges an attacker would probe (an empty dealer id matching an unrouted
  *      row, an unstamped row reaching an assigned member).
  *
- *   2. THE WIRING (source-scanned, the togoDealer.test.js idiom): the rule is
+ *   2. THE WIRING (source-scanned, the configuratorDealer.test.js idiom): the rule is
  *      only worth what the dispatch does with it. index.ts must resolve the
  *      dealer BY TOKEN before running a dealer op, thread a scope into every
  *      handler, keep the internal lead view (`withInternalRequestFields`) off

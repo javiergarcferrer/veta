@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
   // A Vercel ↔ Supabase integration injects SUPABASE_URL and SUPABASE_ANON_KEY
   // automatically; we pick those up and forward them into the client bundle as
   // the VITE_-prefixed names the app code already reads (db/supabaseClient,
-  // lib/togoEmbed). No manual mirroring in project settings required.
+  // lib/configuratorEmbed). No manual mirroring in project settings required.
   const env = loadEnv(mode, process.cwd(), '');
 
   const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || '';

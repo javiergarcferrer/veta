@@ -28,7 +28,7 @@ const KEY = 'rs.theme';
 const VALUES = new Set(['light', 'dark', 'system']);
 
 /** The customer-facing, always-light routes (HashRouter paths). */
-import { isConfiguratorPathname } from './togoEmbed.js';
+import { isConfiguratorPathname } from './configuratorEmbed.js';
 
 export function isPublicRoute(
   hash = (typeof location !== 'undefined' ? location.hash : ''),

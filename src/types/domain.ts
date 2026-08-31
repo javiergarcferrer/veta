@@ -420,14 +420,14 @@ export interface Settings {
   /** The configurator auto-quote kill switch (ships OFF): on, a new priced
    *  web request is quoted AND sent by togo-quote-worker end-to-end; off,
    *  each becomes a send_togo_quote proposal awaiting one-tap approval. */
-  togoAutoQuote?: boolean;
+  configuratorAutoQuote?: boolean;
   /** PORTADAS — the dealer's chosen cover per configurator collection,
    *  `{ [collection]: { modelId?, code? } }` (written by the Modelos screen's
    *  CoverPicker, planned by `planHeroPin`). Either half may be absent and
    *  keeps deriving; every pin is re-validated against the live public catalogue
    *  in `resolveCollectionMenu`, so a deactivated piece or a discontinued cloth
    *  falls back instead of breaking the index. */
-  togoHeroes?: Record<string, { modelId?: string; code?: string }> | null;
+  configuratorHeroes?: Record<string, { modelId?: string; code?: string }> | null;
   /** The cobranza agent kill switch (ships OFF): on, agent-collections watches
    *  CxC daily and files warm per-client cobranza messages as
    *  send_client_message proposals for one-tap approval — it never sends. */
@@ -791,11 +791,11 @@ export interface LineComponent {
   moduleSelected?: boolean;
   /**
    * Top-down PLAN geometry for a piece placed in the Togo configurator
-   * (the public embed `src/pages/embed/TogoEmbed.jsx`). Each placed Togo piece is one module of a
+   * (the public embed `src/pages/embed/ConfiguratorEmbed.jsx`). Each placed Togo piece is one module of a
    * modular line; its position rides inline on the JSONB component so a configured
    * layout round-trips with the quote — no `layout` column, no migration. Absent
    * on a normally-added component. Centimetres; `rot` ∈ {0, 90, 180, 270}. Built
-   * by `core/quote/views/configuratorView.js` (buildTogoComponents).
+   * by `core/quote/views/configuratorView.js` (buildConfiguratorComponents).
    */
   plan?: {
     pieceId: string;
@@ -1059,7 +1059,7 @@ export interface Product {
 
 /**
  * A Togo configurator model — one dealer-managed entry in the picture catalog
- * (the Togo workspace → Modelos tab, `/togo/modelos`). The dealer uploads the
+ * (the Togo workspace → Modelos tab, `/configurador/modelos`). The dealer uploads the
  * model's DWG (converted IN the
  * browser to a top-down plan `svg` + measured cm footprint) and binds it to a
  * Ligne Roset family (`productRoot`) so the configurator prices it by grade. The
@@ -1105,7 +1105,7 @@ export interface Dealer {
   updatedAt?: number;
 }
 
-export interface TogoModel {
+export interface ConfiguratorModel {
   id: string;
   profileId: string;
   /** Dealer label, e.g. "Sillón Togo". */
@@ -1160,7 +1160,7 @@ export interface TogoModel {
    *  which any edit to the row touches. */
   ingestedAt?: number | null;
   /** The BAKED catalogue thumbnail (public Storage URL) and the STORE KEY it was
-   *  baked under (`togoThumbStoreKey` — content + frame + cloth). With them the
+   *  baked under (`configuratorThumbStoreKey` — content + frame + cloth). With them the
    *  configurator's piece list is plain <img>s; without them, or with a stamp
    *  that no longer matches the row, it renders each tile from the mesh as it
    *  always did. Written by the studio's automatic bake pass, never by hand. */
@@ -1177,7 +1177,7 @@ export interface TogoModel {
 }
 
 /** One placed piece in a web Togo request — mirrors the configurator placement. */
-export interface TogoRequestItem {
+export interface ConfiguratorRequestItem {
   /** The `togo_models.id` the visitor placed. */
   modelId: string;
   x: number;
@@ -1187,27 +1187,27 @@ export interface TogoRequestItem {
 }
 
 /** The visitor's contact captured by the public widget. */
-export interface TogoRequestContact {
+export interface ConfiguratorRequestContact {
   name?: string;
   phone?: string;
   email?: string;
 }
 
 /**
- * A lead from the PUBLIC Togo configurator widget (`#/embed/togo`). Captured by
+ * A lead from the PUBLIC Togo configurator widget (`#/embed/configurador`). Captured by
  * the `togo-embed` Edge Function into `togo_requests` and held on the Togo
  * workspace's Solicitudes tab until the dealer promotes it into the regular quote
  * pipeline (→ a draft quote). `items` replay through the same configurator VM as
  * the internal builder; `status` walks pending → converted | dismissed.
  */
-export interface TogoRequest {
+export interface ConfiguratorRequest {
   id: string;
   profileId: string;
   /** 'contacted' is set by a dealer from its own inbox (`#/dealer/:token`); the
    *  rest are app-side transitions. */
   status: 'pending' | 'contacted' | 'converted' | 'dismissed';
-  contact: TogoRequestContact;
-  items: TogoRequestItem[];
+  contact: ConfiguratorRequestContact;
+  items: ConfiguratorRequestItem[];
   note?: string | null;
   /** The retail estimate (USD) the visitor saw at submit — a display snapshot. */
   estimateUsd?: number | null;
@@ -1216,7 +1216,7 @@ export interface TogoRequest {
   dealerId?: string | null;
   /** The draft quote created when the request was promoted. */
   quoteId?: string | null;
-  /** The visitor-captured composition render (`images.id`, `togosnap-<id>` —
+  /** The visitor-captured composition render (`images.id`, `configuratorsnap-<id>` —
    *  a SHARED row deleteImage refuses): shown on the Solicitudes card and
    *  attached as the quote line's cover by promote/togo-quote-worker. */
   snapshotImageId?: string | null;

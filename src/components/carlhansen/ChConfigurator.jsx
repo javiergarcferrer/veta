@@ -381,7 +381,7 @@ function Gallery({ images, alt }) {
                 loading="lazy"
                 decoding="async"
                 // Lowercase on a raw element: React 18 renders the camelCase
-                // spelling but warns about it (same note as TogoEmbed).
+                // spelling but warns about it (same note as ConfiguratorEmbed).
                 fetchpriority="low"
                 className="h-full w-full object-contain"
               />

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { composePlanPreview } from '../../lib/togo/planPreview.js';
+import { composePlanPreview } from '../../lib/configurator/planPreview.js';
 import { sanitizeSvg } from '../../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
-import { resolveTogoScene, scenePlacementsFromPlaced } from '../../core/quote/index.js';
-import { useTogoSceneSnapshot } from '../togo/togoThumbnails.js';
+import { resolveConfiguratorScene, scenePlacementsFromPlaced } from '../../core/quote/index.js';
+import { useConfiguratorSceneSnapshot } from '../configurator/thumbnails.js';
 
 /**
  * WHAT THE CUSTOMER BUILT, in one frame — the picture every quoting surface
@@ -40,10 +40,10 @@ export default function CompositionView({
   // Only pay for the 3D when there is no stored snapshot to show.
   const stored = !!image || !!snapshotUrl;
   const scene = useMemo(
-    () => (stored || !placed.length ? null : resolveTogoScene(scenePlacementsFromPlaced(placed, models))),
+    () => (stored || !placed.length ? null : resolveConfiguratorScene(scenePlacementsFromPlaced(placed, models))),
     [stored, placed, models],
   );
-  const rendered = useTogoSceneSnapshot(scene);
+  const rendered = useConfiguratorSceneSnapshot(scene);
   const src = snapshotUrl || rendered;
 
   if (!image && !src && !plan) return null;

@@ -57,7 +57,7 @@ export type TableScope =
 
 /** The five tables the brands migration added `brand_id` to. */
 export const BRAND_ID_TABLES: ReadonlySet<string> = new Set([
-  'togoModels', 'materials', 'modelFabrics', 'dealers', 'togoRequests',
+  'configuratorModels', 'materials', 'modelFabrics', 'dealers', 'configuratorRequests',
 ]);
 
 /** Tables partitioned by the catalog discriminator instead. */

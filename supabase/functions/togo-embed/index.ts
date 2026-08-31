@@ -350,7 +350,7 @@ async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Ro
 
   // The per-model projection lives in payload.ts (pure, node-importable) so the
   // ONE rule that matters about it — the public catalog carries NO `svg` — is
-  // pinned in tests/togoDealer.test.js instead of living in a comment here.
+  // pinned in tests/configuratorDealer.test.js instead of living in a comment here.
   const out = models.map((m) => catalogModelShape(m, { products, retail, offeredByRoot, ladder }));
   // Per-dealer presentation: scale every model's USD prices by the dealer's ONE
   // price factor — markup × FX, straight off the row so the widget and the
@@ -366,7 +366,7 @@ async function buildCatalog(admin: Admin, dealer: Row | null = null): Promise<Ro
     configured: dealerModels.length > 0,
     // A dealer's own name/logo take over the storefront identity; the dealer's
     // logo is a URL the client renders directly, so drop the Alcover image id.
-    storeName: dealer ? String(dealer.name || '') : (settings.company_name || 'Togo'),
+    storeName: dealer ? String(dealer.name || '') : (settings.company_name || 'Configurador'),
     logoImageId: dealer && dealer.logo_url ? null : (settings.logo_image_id || null),
     dealer: dealer ? dealerPublicShape(dealer) : null,
     rates,
@@ -468,7 +468,7 @@ async function captureView(body: Row, net: { ip: string; ua: string }): Promise<
     custom: {
       value: value > 0 ? value : undefined,
       currency: 'USD',
-      contentName: 'Configurador Togo',
+      contentName: 'Configurador Configurador',
       numItems: Math.max(0, Math.floor(num(body.pieces))) || undefined,
     },
   }, 'togo');
@@ -478,7 +478,7 @@ async function captureView(body: Row, net: { ip: string; ua: string }): Promise<
 /**
  * The composition RENDER (a PNG data URL captured from the 3D scene at
  * submit, every piece in its chosen fabric), stored once as a SHARED images
- * row (`togosnap-<requestId>` — the prefix deleteImage refuses) so the
+ * row (`configuratorsnap-<requestId>` — the prefix deleteImage refuses) so the
  * Solicitudes card AND the quote the request becomes show the exact picture
  * that was built. Best-effort BY CONTRACT: a storage hiccup or an
  * oversized/mislabeled payload answers null and must never lose the request.
@@ -487,13 +487,13 @@ async function storeSnapshot(admin: Admin, requestId: string, snapshotField: unk
   const snapBytes = snapshotBytesFromDataUrl(snapshotField);
   if (!snapBytes) return null;
   try {
-    const imgId = `togosnap-${requestId}`;
+    const imgId = `configuratorsnap-${requestId}`;
     const path = `${imgId}.png`;
     const up = await admin.storage.from('images')
       .upload(path, snapBytes, { contentType: 'image/png', cacheControl: '31536000', upsert: true });
     if (up.error) throw new Error(up.error.message);
     const { error: imgErr } = await admin.from('images').upsert({
-      id: imgId, kind: 'togo-snapshot', owner_id: requestId, label: '',
+      id: imgId, kind: 'configurador-snapshot', owner_id: requestId, label: '',
       content_type: 'image/png', size: snapBytes.byteLength, storage_path: path,
     });
     if (imgErr) throw new Error(imgErr.message);
@@ -539,7 +539,7 @@ async function captureLead(
   const note = str(body.note, 1000).trim();
   // Meta attribution captured by the widget from its own URL / cookies.
   // `internal` = a signed-in TEAM browser testing the configurator
-  // (lib/togoEmbed): the request still lands, but Meta hears nothing.
+  // (lib/configuratorEmbed): the request still lands, but Meta hears nothing.
   const internal = body.internal === true;
   const fbc = buildFbc(str(body.fbclid, 400), Date.now());
   const fbp = str(body.fbp, 100).trim();
@@ -640,10 +640,10 @@ async function captureLead(
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
         body: JSON.stringify({
           category: 'leads',
-          title: 'Nueva solicitud Togo 🛋️',
+          title: 'Nueva solicitud Configurador 🛋️',
           body: `${who} — ${items.length} módulo(s)${est > 0 ? ` · ~${estText}` : ''}`,
           url: '/#/togo',
-          tag: 'togo-request',
+          tag: 'configurador-request',
         }),
       });
       if (!res.ok) console.error('[togo-embed] push-notify answered', res.status);
@@ -661,7 +661,7 @@ async function captureLead(
   if (!dealer && !internal) {
     await reportConversion({
       name: 'Lead',
-      eventId: `lead-togo-${requestId}`,
+      eventId: `lead-configurador-${requestId}`,
       actionSource: 'website',
       sourceUrl,
       user: {
@@ -677,7 +677,7 @@ async function captureLead(
       custom: {
         value: est > 0 ? est : undefined,
         currency: 'USD',
-        contentName: `Togo — ${items.length} módulo(s)`,
+        contentName: `Configurador — ${items.length} módulo(s)`,
         numItems: items.length,
         orderId: requestId,
       },

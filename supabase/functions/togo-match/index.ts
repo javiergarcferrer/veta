@@ -1,9 +1,9 @@
 // togo-match — Claude PICKS the SKU that prices an uploaded model. Brand-agnostic
 // by construction: it only ever ranks the shortlist the browser already narrowed
-// (lib/togo/modelMatch), so it never needs to know whose catalog that came from.
+// (lib/configurator/modelMatch), so it never needs to know whose catalog that came from.
 // (or one of its componentes) from a shortlist the browser already narrowed.
 //
-// The division of labour is the whole design: `src/lib/togo/modelMatch.js` runs
+// The division of labour is the whole design: `src/lib/configurator/modelMatch.js` runs
 // in the browser (which already holds the 27k-row catalog lazily) and hands over
 // at most MAX_CANDIDATES roots that could legitimately price the piece; this
 // function decides among exactly those. Claude is not a second ranker — it reads

@@ -10,7 +10,7 @@ import { useLiveQueryStatus } from '../db/hooks.js';
 import { db } from '../db/database.js';
 import { formatDate } from '../lib/format.js';
 import { resolveAdminDashboard } from '../core/quote/index.js';
-import { ALCOVER_MESH_V } from '../components/togo/togoModelLoader.js';
+import { ALCOVER_MESH_V } from '../components/configurator/modelLoader.js';
 import EmptyState from '../components/EmptyState.jsx';
 import ListLoading from '../components/ListLoading.jsx';
 import PanelCard from '../components/dashboard/PanelCard.jsx';
@@ -31,7 +31,7 @@ import { fetchQuotes } from './quoting/api.js';
  * `useMemo` and renders the result. It derives nothing — no counting, no
  * grouping, no money, no thresholds. The only mapping it owns is the one thing
  * that is genuinely the View's: a VM `link` token → a route in this app's
- * router (`hrefFor`), the same way TogoRequests/Quotes own their own `to=`.
+ * router (`hrefFor`), the same way ConfiguratorRequests/Quotes own their own `to=`.
  *
  * HONESTY RULES IT RENDERS (all decided in the VM):
  *   • money is grouped BY CURRENCY and never added across them — a quote's
@@ -96,7 +96,7 @@ export default function Dashboard() {
   // Everything below is scoped to the ACTIVE BRAND by the data layer
   // (db/brandScope) — these reads carry no brand plumbing of their own.
   const { data: models, loaded: modelsLoaded } = useLiveQueryStatus(
-    () => q(() => db.togoModels.where('profileId').equals(profileId).toArray()),
+    () => q(() => db.configuratorModels.where('profileId').equals(profileId).toArray()),
     [profileId], [],
   );
   const { data: materials, loaded: materialsLoaded } = useLiveQueryStatus(
@@ -108,7 +108,7 @@ export default function Dashboard() {
     [profileId], [],
   );
   const { data: requests, loaded: requestsLoaded } = useLiveQueryStatus(
-    () => q(() => db.togoRequests.where('profileId').equals(profileId).toArray()),
+    () => q(() => db.configuratorRequests.where('profileId').equals(profileId).toArray()),
     [profileId], [],
   );
   // THE PRICE JOIN, and the heaviest read on the screen: a brand's catalog is

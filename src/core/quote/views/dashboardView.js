@@ -34,7 +34,7 @@
 // Pure: no React, no db, no supabase, no fetch. `now` is injectable so the
 // time-derived figures (how long a lead has waited) stay testable.
 
-import { canonicalCollection, collectionKey } from '../../../lib/togo/collections.js';
+import { canonicalCollection, collectionKey } from '../../../lib/configurator/collections.js';
 import { dealerStoredCollections, dealerPricingLabel, dealerLocaleLabel } from './dealerWorkspace.js';
 import { requestStatusMeta } from './requestDetail.js';
 import { formatQuoteMoney, quoteStatusMeta, QUOTE_STATUSES } from './quoteDoc.js';
@@ -53,7 +53,7 @@ const REQUEST_STATUSES = ['pending', 'contacted', 'converted', 'dismissed'];
 
 /**
  * A mesh the optimizer can actually re-export — mirrors
- * `components/togo/sceneImport.isOptimizableMeshUrl`. Duplicated (one regex)
+ * `components/configurator/sceneImport.isOptimizableMeshUrl`. Duplicated (one regex)
  * rather than imported because that module pulls three.js in, and the home
  * screen must not.
  */
@@ -116,7 +116,7 @@ function modelFacts(model, { priceIndex, productsLoaded, meshVersion }) {
     name: String(model?.name || '').trim() || 'Sin nombre',
     collection: canonicalCollection(model?.collection),
     // ── blockers ─────────────────────────────────────────────────────────
-    // `resolveTogoModels` drops a model with no `svg` from the palette outright,
+    // `resolveConfiguratorModels` drops a model with no `svg` from the palette outright,
     // so this is the hardest of the four: the piece does not exist for a visitor.
     noPlan: !model?.svg,
     // «Borrador» IS `active === false` and nothing else — a legacy NULL is a
@@ -334,7 +334,7 @@ function resolveDealerBoard({ dealers, models, requests }) {
   const mods = rowsOf(models);
   const reqs = rowsOf(requests);
 
-  // What the widget actually serves — `resolveTogoModels`' own publish gate.
+  // What the widget actually serves — `resolveConfiguratorModels`' own publish gate.
   const servable = mods.filter((m) => m?.active !== false && m?.svg);
   const countByKey = new Map();
   for (const m of servable) {

@@ -16,21 +16,21 @@
  * ~165 KB of markup and the public configurator resolves brand modules too — it
  * must not download a seed library it can never import.
  *
- * The footprint metadata comes from `assets/togo/pieces.js` (measured from the
+ * The footprint metadata comes from `assets/ligne-roset/pieces.js` (measured from the
  * source DWGs and shared with the procedural-geometry fallback), and the plans
  * ride in as inline SVG via `?raw` so they can be written straight into
  * `togo_models`.
  */
-import { TOGO_PIECES } from '../../assets/togo/pieces.js';
-import svgChauf from '../../assets/togo/togo_chauf.svg?raw';
-import svgA from '../../assets/togo/togo_a.svg?raw';
-import svgGb from '../../assets/togo/togo_gb.svg?raw';
-import svgMc from '../../assets/togo/togo_mc.svg?raw';
-import svgLounge from '../../assets/togo/togo_lounge.svg?raw';
+import { CONFIGURATOR_PIECES } from '../../assets/ligne-roset/pieces.js';
+import svgChauf from '../../assets/ligne-roset/togo_chauf.svg?raw';
+import svgA from '../../assets/ligne-roset/togo_a.svg?raw';
+import svgGb from '../../assets/ligne-roset/togo_gb.svg?raw';
+import svgMc from '../../assets/ligne-roset/togo_mc.svg?raw';
+import svgLounge from '../../assets/ligne-roset/togo_lounge.svg?raw';
 
 const SVG_BY_ID = { chauf: svgChauf, a: svgA, gb: svgGb, mc: svgMc, lounge: svgLounge };
 
-export const TOGO_SEEDS = TOGO_PIECES.map((p) => ({
+export const CONFIGURATOR_SEEDS = CONFIGURATOR_PIECES.map((p) => ({
   name: p.label,
   model: p.model,
   widthCm: p.widthCm,
@@ -39,4 +39,4 @@ export const TOGO_SEEDS = TOGO_PIECES.map((p) => ({
   match: p.match,
 }));
 
-export default TOGO_SEEDS;
+export default CONFIGURATOR_SEEDS;

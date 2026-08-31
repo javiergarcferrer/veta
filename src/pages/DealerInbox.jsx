@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchDealerInbox, updateDealerLead, dealerQuoteOp } from '../lib/togoEmbed.js';
-import { t, resolveTogoLocale, piecesLabel } from '../lib/togo/i18n.js';
+import { fetchDealerInbox, updateDealerLead, dealerQuoteOp } from '../lib/configuratorEmbed.js';
+import { t, resolveConfiguratorLocale, piecesLabel } from '../lib/configurator/i18n.js';
 import { swatchUrl, swatchProxyUrl } from '../lib/swatchImage.js';
-import { planToDxf } from '../lib/togo/planToDxf.js';
-import { composePlanPreview, planPlacements } from '../lib/togo/planPreview.js';
+import { planToDxf } from '../lib/configurator/planToDxf.js';
+import { composePlanPreview, planPlacements } from '../lib/configurator/planPreview.js';
 import { sanitizeSvg } from '../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
-import { resolveTogoScene, scenePlacementsFromPlaced, quoteShareUrl } from '../core/quote/index.js';
-import { useTogoSceneSnapshot } from '../components/togo/togoThumbnails.js';
+import { resolveConfiguratorScene, scenePlacementsFromPlaced, quoteShareUrl } from '../core/quote/index.js';
+import { useConfiguratorSceneSnapshot } from '../components/configurator/thumbnails.js';
 import { safeDynamicImport } from '../lib/dynamicImport.js';
-import { disposeGroup } from '../components/togo/togoSceneBuilder.js';
-import { loadTogoModels } from '../components/togo/togoModelLoader.js';
+import { disposeGroup } from '../components/configurator/sceneBuilder.js';
+import { loadConfiguratorModels } from '../components/configurator/modelLoader.js';
 
 /**
  * Public, login-less dealer lead inbox (route #/dealer/:token). A Ligne Roset
@@ -74,7 +74,7 @@ export default function DealerInbox() {
 
   // Before the dealer (and its locale) is known, fall back to the browser's.
   const bootLocale = useMemo(
-    () => resolveTogoLocale({
+    () => resolveConfiguratorLocale({
       dealerLocale: typeof navigator !== 'undefined' ? String(navigator.language || '').slice(0, 2) : undefined,
     }),
     [],
@@ -102,7 +102,7 @@ export default function DealerInbox() {
     return () => { active = false; };
   }, [token]);
 
-  const locale = state.dealer ? resolveTogoLocale({ dealerLocale: state.dealer.locale }) : bootLocale;
+  const locale = state.dealer ? resolveConfiguratorLocale({ dealerLocale: state.dealer.locale }) : bootLocale;
 
   // Title the tab like the other public links; restore on unmount so the app's
   // title isn't left overwritten.
@@ -501,10 +501,10 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus, li
     [items, req.id],
   );
   const scene3d = useMemo(
-    () => resolveTogoScene(scenePlacementsFromPlaced(placed, models || {})),
+    () => resolveConfiguratorScene(scenePlacementsFromPlaced(placed, models || {})),
     [placed, models],
   );
-  const snapshotUrl = useTogoSceneSnapshot(scene3d);
+  const snapshotUrl = useConfiguratorSceneSnapshot(scene3d);
 
   // No currency conversion — the figure IS the price-list value; the dealer's
   // currency only labels it.
@@ -532,12 +532,12 @@ function LeadDetail({ req, models, modelNames, locale, moneyFmt, onSetStatus, li
         safeDynamicImport(() => import('three')),
         safeDynamicImport(() => import('three/examples/jsm/geometries/RoundedBoxGeometry.js')),
         safeDynamicImport(() => import('three/examples/jsm/exporters/GLTFExporter.js')),
-        safeDynamicImport(() => import('../components/togo/togoGlbExport.js')),
+        safeDynamicImport(() => import('../components/configurator/glbExport.js')),
       ]);
       // A PRIVATE model cache (the second arg): this path disposes what it
       // loads once the file is written, and the session-shared cache belongs
       // to the card snapshots rendering behind this dialog.
-      const { cache, modelFor } = await loadTogoModels(scene3d, new Map());
+      const { cache, modelFor } = await loadConfiguratorModels(scene3d, new Map());
       const { fabricTextures, colors, pbr, normals, extras } = await mod.loadSceneFabrics(
         THREE, scene3d, {}, (c) => swatchProxyUrl(c) || swatchUrl(c),
       );

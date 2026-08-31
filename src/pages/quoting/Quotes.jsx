@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { FileText, Loader2, Search, Eye, Link2, AlertTriangle, Plus } from 'lucide-react';
 import { resolveQuotesBoard } from '../../core/quote/index.js';
 import { formatDate } from '../../lib/format.js';
-import { togoShareUrl } from '../../lib/togoEmbed.js';
+import { configuratorShareUrl } from '../../lib/configuratorEmbed.js';
 import EmptyState from '../../components/EmptyState.jsx';
 import { fetchQuotes } from './api.js';
 
@@ -27,11 +27,11 @@ const TONE = {
 
 /** The composer IS the configurator: this opens it in a new tab, where the
  *  signed-in session shows «Crear cotización» on the summary form (the team
- *  door — pages/embed/TogoEmbed). The document then lands on this list. */
+ *  door — pages/embed/ConfiguratorEmbed). The document then lands on this list. */
 function NewQuoteButton() {
   return (
     <a
-      href={togoShareUrl()}
+      href={configuratorShareUrl()}
       target="_blank"
       rel="noreferrer"
       className="btn-primary text-sm"

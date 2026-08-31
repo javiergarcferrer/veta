@@ -7,7 +7,7 @@ import { resolveCarlHansenConfigurator } from '../../core/catalog/carlHansenConf
  * es Togo.
  *
  * ── POR QUÉ NO ES EL MISMO WIDGET ───────────────────────────────────────────
- * `TogoEmbed` composes GEOMETRY: you place modules on a floor, drag them,
+ * `ConfiguratorEmbed` composes GEOMETRY: you place modules on a floor, drag them,
  * rotate them, and the price is the sum of what you placed. That instrument is
  * correct for a modular sofa and wrong for a chair. A Wishbone is ONE chair;
  * what you choose is its wood, its finish and its seat — AXES — and the answer

@@ -18,7 +18,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { bodySignature, partKeysFor, partRoleFor, baseKeyOf } from '../src/lib/togo/meshParts.js';
+import { bodySignature, partKeysFor, partRoleFor, baseKeyOf } from '../src/lib/configurator/meshParts.js';
 
 /** Un tetraedro unidad, escalado — geometría real para firmar. */
 function tetra(scale = 1, dx = 0) {

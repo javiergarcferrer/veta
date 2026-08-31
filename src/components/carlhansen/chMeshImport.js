@@ -8,8 +8,8 @@
  *   Range-read the zip TAIL  → `zipRead.readCentralDirectory`   (a few KB, not 22 MB)
  *   decide what it even is   → `assetTier.classifyZip`          (tier a / b / none)
  *   Range-read ONE entry     → `zipRead.localDataRange` + `inflateEntry`
- *   load + split + re-export → `components/togo/sceneImport`    (the existing pipeline)
- *   publish                  → `db/togoMeshUpload` (bucket `togo-models`)
+ *   load + split + re-export → `components/configurator/sceneImport`    (the existing pipeline)
+ *   publish                  → `db/configuratorMeshUpload` (bucket `togo-models`)
  *   record                   → `carl_hansen_assets`
  *
  * ⚠ THE RANGE READS GO THROUGH THE EDGE FUNCTION, NOT THE CDN — measured with a
@@ -46,10 +46,10 @@
 import { readCentralDirectory, localDataRange, inflateEntry } from '../../brands/carl-hansen/zipRead.js';
 import { classifyZip } from '../../brands/carl-hansen/assetTier.js';
 import { buildBindingPlan } from '../../brands/carl-hansen/materialBind.js';
-import { partKeyFor } from '../../lib/togo/meshParts.js';
-import { ACCEPT_TEXTURES, loadPiecesFromFiles, exportPieceGlb } from '../togo/sceneImport.js';
-import { ALCOVER_MESH_V } from '../togo/togoModelLoader.js';
-import { uploadTogoMesh, removeTogoMesh } from '../../db/togoMeshUpload.js';
+import { partKeyFor } from '../../lib/configurator/meshParts.js';
+import { ACCEPT_TEXTURES, loadPiecesFromFiles, exportPieceGlb } from '../configurator/sceneImport.js';
+import { ALCOVER_MESH_V } from '../configurator/modelLoader.js';
+import { uploadConfiguratorMesh, removeConfiguratorMesh } from '../../db/configuratorMeshUpload.js';
 import { db, TEAM_PROFILE_ID } from '../../db/database.js';
 import { supabase } from '../../db/supabaseClient.js';
 
@@ -282,7 +282,7 @@ export async function convertChZip({ modelId, zipUrl, zipName = '', axes = null,
   say('export');
   const blob = await exportPieceGlb(THREE, meshes);
   say('upload', `${(blob.size / 1048576).toFixed(1)} MB`);
-  const meshUrl = await uploadTogoMesh(
+  const meshUrl = await uploadConfiguratorMesh(
     new File([blob], `ch-${slugify(modelId)}.glb`, { type: 'model/gltf-binary' }),
   );
 
@@ -308,7 +308,7 @@ export async function convertChZip({ modelId, zipUrl, zipName = '', axes = null,
   await db.carlHansenAssets.put(row);
   // Best-effort: the superseded GLB is nobody's source of truth once the row
   // points elsewhere, and leaving it litters the bucket.
-  if (previous?.meshUrl && previous.meshUrl !== meshUrl) await removeTogoMesh(previous.meshUrl);
+  if (previous?.meshUrl && previous.meshUrl !== meshUrl) await removeConfiguratorMesh(previous.meshUrl);
 
   say('done');
   return { ...row, classification, materialNames, failed: failed || [] };

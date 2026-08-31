@@ -15,7 +15,7 @@ import {
   parseKvadratFilename, resolveKvadratColor, parseKvadratExport, anisotropyRGB,
 } from '../src/brands/modules/kvadrat.js';
 import { moduleSetFor, moduleSetById } from '../src/brands/modules/index.js';
-import { buildFabricByCode } from '../src/lib/togo/fabricIndex.js';
+import { buildFabricByCode } from '../src/lib/configurator/fabricIndex.js';
 
 // El info.txt REAL de Asator 0114, byte por byte.
 const ASATOR_INFO = [

@@ -14,12 +14,12 @@
 //
 //   `setActiveModules` lo llama UN solo sitio, `context/AppContext`. El
 //   CONFIGURADOR PUBLICO —el que ve el cliente en /configurator— monta
-//   `TogoEmbed` por su cuenta, sin AppContext, y por tanto lee este default.
+//   `ConfiguratorEmbed` por su cuenta, sin AppContext, y por tanto lee este default.
 //   Cambiarlo a generico hoy haria que el widget vivo leyera el catalogo de
 //   Ligne Roset con la gramatica equivocada.
 //
 // EL ARREGLO, cuando toque, es en este orden: que el payload de `togo-embed`
-// diga a que MARCA sirve, que TogoEmbed instale ese juego al arrancar, y solo
+// diga a que MARCA sirve, que ConfiguratorEmbed instale ese juego al arrancar, y solo
 // entonces mover el default a generico. Cuando eso pase, las dos primeras
 // aserciones de aqui son las que hay que dar la vuelta —y ese es justamente el
 // aviso que se quiere encontrar en ese momento—.

@@ -25,7 +25,7 @@ import {
   CONFIGURATORS, DEFAULT_CONFIGURATOR, configuratorById,
   configuratorForPathname, configuratorPath,
 } from '../src/brands/configurators/index.js';
-import { isConfiguratorPathname } from '../src/lib/togoEmbed.js';
+import { isConfiguratorPathname } from '../src/lib/configuratorEmbed.js';
 import { isPublicRoute } from '../src/lib/theme.js';
 import { resolveCarlHansenConfigurator } from '../src/core/catalog/carlHansenConfigurator.js';
 import { canonicalLabel } from '../src/brands/carl-hansen/variantMatch.js';
@@ -44,13 +44,15 @@ const PAGE = load('ch24.pageData.json');
 
 /* ─────────────────────────────────────────────────── el seam ────────────── */
 
-test('las rutas desnudas son de Togo, para siempre', () => {
+test('las rutas desnudas son del configurador de planta, para siempre', () => {
   // They are printed on things and pasted into dealers' websites. Whatever
-  // becomes the "main" brand later, these keep resolving to Togo.
+  // becomes the "main" brand later, these keep resolving to the Ligne Roset
+  // plan configurator — the instrument stopped being NAMED after one sofa, but
+  // the paths it owns did not move.
   for (const p of ['/configurador', '/configurator', '/configurador/', '/configurator/']) {
-    assert.equal(configuratorForPathname(p)?.id, 'togo', p);
+    assert.equal(configuratorForPathname(p)?.id, 'configurador', p);
   }
-  assert.equal(DEFAULT_CONFIGURATOR.id, 'togo');
+  assert.equal(DEFAULT_CONFIGURATOR.id, 'configurador');
   assert.equal(configuratorPath(DEFAULT_CONFIGURATOR), '/configurador');
 });
 

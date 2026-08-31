@@ -11,7 +11,7 @@
  *
  * This module is the PURE half of that: bytes in, structure out. It never
  * fetches (the caller owns the Range request) and it never decompresses on its
- * own — `inflateRaw` is INJECTED, exactly like `togoGlbExport(THREE, …)` hands
+ * own — `inflateRaw` is INJECTED, exactly like `glbExport(THREE, …)` hands
  * three.js in from the effectful layer. The browser passes a
  * `DecompressionStream('deflate-raw')` adapter:
  *

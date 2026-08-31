@@ -48,7 +48,7 @@ interface CatalogModel {
 }
 
 /* ------------------------------ mesh parts (per-part SKUs) ------------------------------ */
-// The Deno half of src/lib/togo/meshParts.js — the Deno↔Vite wall forbids
+// The Deno half of src/lib/configurator/meshParts.js — the Deno↔Vite wall forbids
 // importing it, so the DATA rules live at two layers on purpose (like the
 // quote-pick reducer). tests/meshParts.test.js pins the two in agreement.
 
@@ -59,7 +59,7 @@ interface CatalogModel {
 
 // The slot kinds + the three lists they derive live in ONE Deno home so the two
 // functions cannot drift from each other: `_shared/partKinds`. Canonical side and
-// reasoning: src/lib/togo/meshParts.js. Welded by tests/meshParts.test.js.
+// reasoning: src/lib/configurator/meshParts.js. Welded by tests/meshParts.test.js.
 import {
   PART_KINDS, PART_ROLES, MATERIALIZATION_ROLES, UNPRICED_ROLES, BILLED_ROLES,
 } from '../_shared/partKinds.ts';
@@ -74,10 +74,10 @@ export { PART_KINDS, PART_ROLES, MATERIALIZATION_ROLES, UNPRICED_ROLES, BILLED_R
 // Roles that NEVER bill, for two different reasons that reach the same answer:
 // a zone is already inside the base SKU, and a `structure` is a finish on metal
 // (lacado negro, acero) the customer picks for free. One list, so "does this
-// bill?" is asked ONCE. (Mirror of lib/togo/meshParts.js — the wall pin in
+// bill?" is asked ONCE. (Mirror of lib/configurator/meshParts.js — the wall pin in
 // tests/meshParts.test.js compares them.)
 
-// The CEILING on a typed billed count — mirror of lib/togo/meshParts.js
+// The CEILING on a typed billed count — mirror of lib/configurator/meshParts.js
 // `COUNT_MAX` (the wall forbids importing it; tests/meshParts.test.js pins the
 // two in agreement). `counts` is the one dealer-typed number that rides straight
 // into a price as a QUANTITY: a fat-fingered 100000 multiplied the part SKU by
@@ -111,7 +111,7 @@ export function partCount(parts: Row | null | undefined, role: string): number {
 // re-prices the SKU, so nothing here touches priceInboxItems.
 //
 // The FROZEN contract, shared verbatim with the client twin
-// (src/lib/togo/meshParts.js — the Deno↔Vite wall forbids importing it, so the
+// (src/lib/configurator/meshParts.js — the Deno↔Vite wall forbids importing it, so the
 // rule lives at TWO layers on purpose, exactly like sanitizePartMaterials below;
 // tests/meshParts.test.js pins the two in agreement): key trimmed to ≤64 chars,
 // optionId trimmed to a ≤32-char string, at most MAX_PART_FINISHES entries (the
@@ -160,18 +160,18 @@ export function sanitizePartMaterials(raw: unknown): Row | null {
 }
 
 /* ------------------------------ colección ESTRUCTURA (the shared palette) ------------------------------ */
-// The Deno half of src/lib/togo/collectionFinishes.js — plus the two
-// src/lib/togo/meshParts.js helpers it reasons through (`mergedKeyOf`,
+// The Deno half of src/lib/configurator/collectionFinishes.js — plus the two
+// src/lib/configurator/meshParts.js helpers it reasons through (`mergedKeyOf`,
 // `partRoleFor`) and the `finishSpecOf` normalizer it gates on. Same wall, same
 // reason as the block above: only DATA crosses, so the rule lives at TWO layers
-// on purpose and tests/togoQuote.test.js pins the two in agreement.
+// on purpose and tests/configuratorQuote.test.js pins the two in agreement.
 //
 // WHY THE SERVER NEEDS IT AT ALL. An estructura palette (patas, marcos, bases en
 // acero o acero lacado negro) is a COLECCIÓN-level parameter, but storage is per
 // MODEL: it reaches a sibling by fanning out ON SAVE, which leaves a hole
 // nothing downstream can close — a group MARKED Estructura whose own row carries
 // no palette offers the client NOTHING, because `structureGroupsOf` reads that
-// model's own `parts`. The app closes it in its VM (`resolveTogoModels` injects
+// model's own `parts`. The app closes it in its VM (`resolveConfiguratorModels` injects
 // the colección's palette at read time, on a copy), and the two consumers that
 // never pass through that VM are both served from here: the PUBLIC WIDGET builds
 // its `resolvedById` straight out of this function's payload, and the AUTO-QUOTE
@@ -395,7 +395,7 @@ function withCollectionStructure(parts: Row | null, spec: Row | null): Row | nul
   return { ...parts, finishes };
 }
 
-/** THE READ-TIME INJECTION — mirror of `resolveTogoModels`'s: the same rows,
+/** THE READ-TIME INJECTION — mirror of `resolveConfiguratorModels`'s: the same rows,
     each group MARKED Estructura that carries no valid palette of its own filled
     from its colección's. The union is resolved ONCE per colección and over EVERY
     row (the palette belongs to the family, not to whichever of its pieces
@@ -426,7 +426,7 @@ export const SNAPSHOT_MAX_BYTES = 1_500_000;
 /** Decode the widget's composition snapshot (a PNG data URL) to bytes —
     STRICT: png only, base64 only, bounded size; anything else → null (the
     lead still lands, just without a picture). Pure (atob exists in Deno and
-    Node alike) so tests/togoQuote.test.js pins it. */
+    Node alike) so tests/configuratorQuote.test.js pins it. */
 export function snapshotBytesFromDataUrl(raw: unknown, maxBytes = SNAPSHOT_MAX_BYTES): Uint8Array | null {
   const s = typeof raw === 'string' ? raw : '';
   const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(s);
@@ -826,7 +826,7 @@ export function buildPriceIndex(
  *  grade. Same lead, two prices, and the dearer one is the one the dealer quotes
  *  from. The wall forbids importing either mirror (sibling Edge Functions never
  *  import across folders), so the rule lives at THREE layers on purpose; the
- *  fixtures in tests/togoDealer.test.js are the ones tests/togoQuote.test.js
+ *  fixtures in tests/configuratorDealer.test.js are the ones tests/configuratorQuote.test.js
  *  pins the other two with.
  *
  *  MONOCOLOR IS JUDGED BY FABRIC CODE — the identity the customer actually

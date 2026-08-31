@@ -17,7 +17,7 @@
 //
 // ── WHY THE LADDER IS PASSED IN AND NEVER FETCHED HERE BY A CALLER ──────────
 // The consumers are PURE modules (zero `Deno.*`, zero `createClient`) — the
-// Node suite imports them across the wall, and tests/togoDealer +
+// Node suite imports them across the wall, and tests/configuratorDealer +
 // tests/lrCatalogParity pin that purity. Putting a client inside them would
 // break those pins by design. So the IMPURE entry point (each function's
 // index.ts) loads the brand row once and passes the resolved set down; the

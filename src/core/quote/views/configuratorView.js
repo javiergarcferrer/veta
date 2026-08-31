@@ -14,16 +14,16 @@
 // between axis-aligned pieces), never a barrier. The viewport frames whatever
 // the customer builds, wherever they build it.
 import { compoundSubtotal } from '../../../lib/pricing.js';
-import { canonicalCollection, distinctCollections } from '../../../lib/togo/collections.js';
+import { canonicalCollection, distinctCollections } from '../../../lib/configurator/collections.js';
 import { activeCatalogModule } from '../../../brands/runtime.js';
 // SECURITY (L6): model.svg is dealer-authored DB content rendered via innerHTML downstream.
 import { sanitizeSvg } from '../../../lib/sanitizeSvg.js';
 import { groupFamilies, productForGrade } from '../../../lib/catalog.js';
 import { composeSubtype, composeFabricLabel } from '../../../lib/subtype.js';
-import { planToDxf } from '../../../lib/togo/planToDxf.js';
-import { inferTogoForm, inferTogoKind } from '../../../lib/togo/togoModel.js';
-import { PART_ROLES, PART_LABELS, MATERIALIZATION_ROLES, partCount, partMeshCount, piecePartsTotal, mountOf, finishSpecOf } from '../../../lib/togo/meshParts.js';
-import { structureFinishesOf, structureKeysOf } from '../../../lib/togo/collectionFinishes.js';
+import { planToDxf } from '../../../lib/configurator/planToDxf.js';
+import { inferConfiguratorForm, inferConfiguratorKind } from '../../../lib/configurator/model.js';
+import { PART_ROLES, PART_LABELS, MATERIALIZATION_ROLES, partCount, partMeshCount, piecePartsTotal, mountOf, finishSpecOf } from '../../../lib/configurator/meshParts.js';
+import { structureFinishesOf, structureKeysOf } from '../../../lib/configurator/collectionFinishes.js';
 
 export const PX_PER_CM = 1;      // cm→px scale the View renders at
 export const SNAP_GRID_CM = 2;   // free-ish fine grid axis-aligned drags land on
@@ -70,7 +70,7 @@ const norm360 = (deg) => {
  * of `{ id, sortOrder }` writes that gets there.
  *
  * The order the dealer arranges here IS the configurator's palette order
- * (togo-embed and resolveTogoModelCards both sort by sortOrder), so this is the
+ * (togo-embed and resolveConfiguratorModelCards both sort by sortOrder), so this is the
  * one place that decides it — shared by the arrows (toIndex = current ± 1) and
  * by drag-and-drop (toIndex = wherever it was dropped), which is why it can't
  * live in the View: two callers, one meaning.
@@ -82,9 +82,9 @@ const norm360 = (deg) => {
  * defragmented on the next move. Only rows whose position actually CHANGED are
  * written: on an already-tidy list a neighbour swap is exactly two writes.
  *
- * `cards` must be the resolved, sorted list (resolveTogoModelCards). Pure.
+ * `cards` must be the resolved, sorted list (resolveConfiguratorModelCards). Pure.
  */
-export function planTogoReorder(cards, { id, toIndex } = {}) {
+export function planConfiguratorReorder(cards, { id, toIndex } = {}) {
   const list = cards || [];
   const card = list.find((c) => c.id === id);
   if (!card) return [];
@@ -116,7 +116,7 @@ export function planTogoReorder(cards, { id, toIndex } = {}) {
  * "Vinculado". Pure — no React, no db. `families` may be a root→family Map or an
  * array (empty/undefined while the catalog hasn't been loaded yet).
  */
-export function resolveTogoModelCards(models, families) {
+export function resolveConfiguratorModelCards(models, families) {
   const byRoot = families instanceof Map
     ? families
     : new Map((families || []).map((f) => [f.root, f]));
@@ -135,18 +135,18 @@ export function resolveTogoModelCards(models, families) {
         graded: !!fam?.graded,
         gradeCount: fam?.graded ? fam.grades.length : 0,
         // Modular family the card files under (legacy rows = Togo). CANONICAL:
-        // «Exclusif» and «EXCLUSIF» are one collection, not two (lib/togo/collections).
+        // «Exclusif» and «EXCLUSIF» are one collection, not two (lib/configurator/collections).
         collection: canonicalCollection(m.collection),
         meshUrl: m.meshUrl || null,
         meshUpAxis: m.meshUpAxis || 'y',
         meshRotateY: m.meshRotateY || 0,
-        // Same shape the configurator palette (and renderTogoThumb) consumes,
+        // Same shape the configurator palette (and renderConfiguratorThumb) consumes,
         // so the admin card renders the IDENTICAL studio-rig 3D preview.
         mesh: m.meshUrl
           ? { url: m.meshUrl, scale: m.meshScale ?? null, upAxis: m.meshUpAxis || 'y', rotateY: m.meshRotateY || 0 }
           : null,
         // Per-part tagging + seat mount (the admin "Partes y montaje" editor).
-        // RAW on purpose — no estructura injection here (resolveTogoModels does
+        // RAW on purpose — no estructura injection here (resolveConfiguratorModels does
         // that for the CLIENT's palette): the studio edits and SAVES what this
         // carries, and handing it the colección's palette would write back a
         // copy of a parameter that is meant to live in one place.
@@ -162,18 +162,18 @@ export function resolveTogoModelCards(models, families) {
  * returns [] until the (lazily-loaded) catalog is available, so the View can show
  * a "Cargando catálogo…" affordance without faking options.
  */
-export function togoPickerFamilies(products) {
+export function configuratorPickerFamilies(products) {
   if (!products) return [];
-  const isTogo = (f) => /togo/i.test(f.name || '');
+  const isConfigurator = (f) => /togo/i.test(f.name || '');
   const all = groupFamilies(products).filter((f) => f.name);
-  return [...all.filter(isTogo), ...all.filter((f) => !isTogo(f))]
-    .sort((a, b) => (isTogo(b) - isTogo(a)) || (a.name || '').localeCompare(b.name || ''));
+  return [...all.filter(isConfigurator), ...all.filter((f) => !isConfigurator(f))]
+    .sort((a, b) => (isConfigurator(b) - isConfigurator(a)) || (a.name || '').localeCompare(b.name || ''));
 }
 
 /**
  * THE COLECCIÓN'S ESTRUCTURA, INJECTED AT READ TIME.
  *
- * An estructura palette is a COLECCIÓN-level parameter (lib/togo/collectionFinishes)
+ * An estructura palette is a COLECCIÓN-level parameter (lib/configurator/collectionFinishes)
  * but storage is per model — it reaches siblings by fanning out ON SAVE, and
  * that left a hole nothing downstream could close: a group marked Estructura
  * whose row carries no palette (saved before the palette existed, or by a dealer
@@ -213,7 +213,7 @@ function withCollectionStructure(parts, spec) {
  * same wherever it's resolved. Pure — no React, no db. Returns:
  *   { families, activeModels, resolvedById, svgById }
  */
-export function resolveTogoModels(models, products) {
+export function resolveConfiguratorModels(models, products) {
   const families = new Map();
   for (const f of groupFamilies(products || [])) families.set(f.root, f);
   const activeModels = (models || [])
@@ -446,14 +446,14 @@ export function compactPlaced(placed, resolvedById) {
 // mechanics. Snapshots are the placed arrays themselves (immutably updated by
 // every mutation, so sharing references is safe).
 
-export const TOGO_HISTORY_LIMIT = 60;
+export const CONFIGURATOR_HISTORY_LIMIT = 60;
 
 export function createHistory() {
   return { past: [], future: [] };
 }
 
 /** Record `snapshot` (the state BEFORE a change) — clears the redo branch. */
-export function historyPush(hist, snapshot, limit = TOGO_HISTORY_LIMIT) {
+export function historyPush(hist, snapshot, limit = CONFIGURATOR_HISTORY_LIMIT) {
   const past = [...(hist?.past || []), snapshot];
   if (past.length > limit) past.splice(0, past.length - limit);
   return { past, future: [] };
@@ -1149,7 +1149,7 @@ export function placementBreakdown(p, resolvedById, labels = PART_LABELS) {
  *  variant, printing its raw group key + option id. Returns '' when there are
  *  no finishes, keeping finish-less components BYTE-IDENTICAL to before.
  *  (Mirrored in togo-quote-worker/quoteSeed.ts `finishNote` — edit both; the
- *  parity pin in tests/togoQuote.test.js compares the seeds id-for-id.) */
+ *  parity pin in tests/configuratorQuote.test.js compares the seeds id-for-id.) */
 function finishNote(partFinishes) {
   if (!partFinishes || typeof partFinishes !== 'object') return '';
   const bits = [];
@@ -1164,7 +1164,7 @@ function finishNote(partFinishes) {
   return bits.join(' · ');
 }
 
-export function buildTogoComponents(placed, resolvedById, newId) {
+export function buildConfiguratorComponents(placed, resolvedById, newId) {
   return (placed || []).flatMap((p) => {
     const r = resolvePlacement(p, resolvedById);
     const wCm = Number(r.widthCm) || 0;
@@ -1195,7 +1195,7 @@ export function buildTogoComponents(placed, resolvedById, newId) {
     const finishes = finishNote(p.partFinishes || null);
     const base = {
       id: newId(),
-      name: (complete ? complete.name : '') || r.name || r.label || 'Togo',
+      name: (complete ? complete.name : '') || r.name || r.label || 'Configurador',
       reference: (complete ? complete.reference : mb.reference) || r.reference || '',
       subtype: finishes ? [r.subtype || '', finishes].filter(Boolean).join(' · ') : (r.subtype || ''),
       dimensions: r.dimensions || (wCm && dCm ? `${wCm}×${dCm} cm` : ''),
@@ -1203,7 +1203,7 @@ export function buildTogoComponents(placed, resolvedById, newId) {
       unitPrice: (badBase || byParts) ? 0 : (Number(complete ? complete.unitUsd : mb.unitUsd) || 0),
       swatchImageId: r.swatchImageId ?? null,
       moduleGroup,
-      moduleName: r.label || r.name || 'Togo',
+      moduleName: r.label || r.name || 'Configurador',
       // rot rides at 0.1° so a free-rotated layout round-trips through the quote
       // without JSON float noise. `collection` rides too so the 3D seam bleed stays
       // collection-correct when a promoted quote replays through the scene; the
@@ -1252,7 +1252,7 @@ export function buildTogoComponents(placed, resolvedById, newId) {
         unitPrice: unit == null ? 0 : (Number(unit) || 0),
         swatchImageId: null,
         moduleGroup,
-        moduleName: r.label || r.name || 'Togo',
+        moduleName: r.label || r.name || 'Configurador',
       }];
     });
     return [base, ...extras];
@@ -1266,9 +1266,9 @@ export function buildTogoComponents(placed, resolvedById, newId) {
  *  configurator invents NO categories: a build whose products don't resolve
  *  files as '' and the dealer picks from the real FamilyPicker list.
  *  (Mirrored in togo-quote-worker/quoteSeed.ts — edit both.) */
-export function buildTogoModularSeed(placed, resolvedById, newId) {
+export function buildConfiguratorModularSeed(placed, resolvedById, newId) {
   const cols = [...new Set((placed || []).map((p) => (resolvedById[p.pieceId] || {}).collection || 'Togo'))];
-  const label = cols.length === 1 ? cols[0] : (cols.length ? 'Modular' : 'Togo');
+  const label = cols.length === 1 ? cols[0] : (cols.length ? 'Modular' : 'Configurador');
   // Dominant catalog family among the placed bases; first-seen wins a tie.
   const counts = new Map();
   for (const p of (placed || [])) {
@@ -1280,7 +1280,7 @@ export function buildTogoModularSeed(placed, resolvedById, newId) {
   return {
     family,
     name: `${label} — configuración`,
-    components: buildTogoComponents(placed, resolvedById, newId),
+    components: buildConfiguratorComponents(placed, resolvedById, newId),
   };
 }
 
@@ -1298,7 +1298,7 @@ export function resolveConfigurator(placed, resolvedById, opts = {}) {
   const margin = opts.marginCm ?? PLAN_MARGIN_CM;
   let seq = 0;
   const idOf = () => `t${seq++}`;
-  const components = buildTogoComponents(placed, resolvedById, idOf);
+  const components = buildConfiguratorComponents(placed, resolvedById, idOf);
 
   // Overall assembled footprint (cm) — the union of every piece's footprint box.
   // A top configurator win (and what the DXF frame labels): the customer reads
@@ -1330,7 +1330,7 @@ export function resolveConfigurator(placed, resolvedById, opts = {}) {
       uid: p.uid,
       pieceId: p.pieceId,
       rot,
-      label: r.label || r.name || 'Togo',
+      label: r.label || r.name || 'Configurador',
       widthCm: wCm,
       depthCm: dCm,
       dimsLabel: wCm && dCm ? `${wCm}×${dCm}` : '',
@@ -1390,7 +1390,7 @@ export function placementsFromPlaced(placed, resolvedById, svgById = {}) {
     return {
       pieceId: p.pieceId, x: p.x, y: p.y, rot: p.rot,
       widthCm: Number(r.widthCm) || 0, depthCm: Number(r.depthCm) || 0,
-      label: r.label || r.name || 'Togo', svg: svgById[p.pieceId] || '',
+      label: r.label || r.name || 'Configurador', svg: svgById[p.pieceId] || '',
     };
   });
 }
@@ -1403,12 +1403,12 @@ export function placementsFromComponents(components, svgById = {}) {
     .map((c) => ({
       pieceId: c.plan.pieceId, x: Number(c.plan.x), y: Number(c.plan.y), rot: c.plan.rot,
       widthCm: Number(c.plan.widthCm) || 0, depthCm: Number(c.plan.depthCm) || 0,
-      label: c.moduleName || c.name || 'Togo', svg: svgById[c.plan.pieceId] || '',
+      label: c.moduleName || c.name || 'Configurador', svg: svgById[c.plan.pieceId] || '',
     }));
 }
 
 /** Whether a quote line carries a Togo plan (so the View shows the DXF action). */
-export function lineHasTogoPlan(line) {
+export function lineHasConfiguratorPlan(line) {
   return !!(line?.components || []).some((c) => c?.plan && Number.isFinite(Number(c.plan.x)));
 }
 
@@ -1426,7 +1426,7 @@ export function scenePlacementsFromPlaced(placed, resolvedById) {
     return {
       x: p.x, y: p.y, rot: p.rot,
       widthCm: Number(r.widthCm) || 0, depthCm: Number(r.depthCm) || 0,
-      label: r.label || r.name || 'Togo', fabricCode: p.material?.code || r.code || '',
+      label: r.label || r.name || 'Configurador', fabricCode: p.material?.code || r.code || '',
       collection: r.collection || null,
       mesh: r.mesh || null,
       // Per-part upholstery: the model's tagging + this placement's part picks
@@ -1449,7 +1449,7 @@ export function scenePlacementsFromComponents(components) {
     .map((c) => ({
       x: Number(c.plan.x), y: Number(c.plan.y), rot: c.plan.rot,
       widthCm: Number(c.plan.widthCm) || 0, depthCm: Number(c.plan.depthCm) || 0,
-      label: c.moduleName || c.name || 'Togo', fabricCode: '',
+      label: c.moduleName || c.name || 'Configurador', fabricCode: '',
       collection: c.plan.collection || null,
       // The plan snapshot carries the part tagging + picks + mount, so a
       // promoted quote replays with the same per-part upholstery and height.
@@ -1467,7 +1467,7 @@ export function scenePlacementsFromComponents(components) {
  * its world (x,z) centre in cm, its 90° rotation, an inferred form (arm count),
  * and the fabric code. Plus the overall footprint (for the camera + readout).
  */
-export function resolveTogoScene(placements) {
+export function resolveConfiguratorScene(placements) {
   const list = placements || [];
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const items = list.map((p) => {
@@ -1483,11 +1483,11 @@ export function resolveTogoScene(placements) {
   const cy = has ? (minY + maxY) / 2 : 0;
   const pieces = items.map(({ rot, cx: pcx, cy: pcy, p }, i) => ({
     id: i,
-    label: p.label || 'Togo',
+    label: p.label || 'Configurador',
     widthCm: Number(p.widthCm) || 0,
     depthCm: Number(p.depthCm) || 0,
-    form: inferTogoForm(p.label, p.widthCm, p.depthCm),
-    kind: inferTogoKind(p.label, p.widthCm, p.depthCm),
+    form: inferConfiguratorForm(p.label, p.widthCm, p.depthCm),
+    kind: inferConfiguratorKind(p.label, p.widthCm, p.depthCm),
     x: +(pcx - cx).toFixed(2),
     z: +(pcy - cy).toFixed(2),
     rotationDeg: rot,
@@ -1571,7 +1571,7 @@ function heroRank(model) {
 // now wears a DIFFERENT real fabric, so the index looks like a showroom.
 //
 // The pick is deterministic, never Math.random(): the render is cached by
-// `${modelId}:${dims}:${code}` (togoThumbnails), so a pick that reshuffled on
+// `${modelId}:${dims}:${code}` (thumbnails), so a pick that reshuffled on
 // every mount would re-render the whole index each time it opened and never hit
 // the cache — and the shop window would change colour behind the visitor's back.
 // A hash of the collection NAME gives a stable, evenly-spread choice that only
@@ -1779,7 +1779,7 @@ export function planHeroPin(heroes, collection, patch = {}) {
  * hero fabric.
  *
  * `models` / `materials` are the PUBLIC togo-embed catalog rows verbatim.
- * Returns `{ scene, model, fabric }` — `scene` is a one-piece `resolveTogoScene`
+ * Returns `{ scene, model, fabric }` — `scene` is a one-piece `resolveConfiguratorScene`
  * result the 3D turntable renders directly — or **null** when there is nothing
  * honest to show (no catalog yet, or no piece carrying a real mesh), in which
  * case the card keeps its drawn silhouette. A missing fabric is NOT fatal: the
@@ -1816,7 +1816,7 @@ export function resolveLaunchHero(models, materials, opts = {}) {
 
   // The card frames ONE piece at the origin, unrotated — the turntable owns the
   // spin, so a model's default spawn rotation would only cock it off-axis.
-  const scene = resolveTogoScene([{
+  const scene = resolveConfiguratorScene([{
     x: 0, y: 0, rot: 0,
     widthCm: Number(model.widthCm) || 0, depthCm: Number(model.depthCm) || 0,
     label: model.name || 'Sofa',
@@ -1832,11 +1832,11 @@ export function resolveLaunchHero(models, materials, opts = {}) {
 }
 
 /** Project placements → a downloadable DXF + a tidy filename. Pure (no DOM). */
-export function resolveTogoDxf(placements, opts = {}) {
+export function resolveConfiguratorDxf(placements, opts = {}) {
   const list = placements || [];
   const name = sanitizeName(opts.name);
   return {
-    dxf: planToDxf(list, { label: name || 'Togo' }),
+    dxf: planToDxf(list, { label: name || 'Configurador' }),
     filename: `Plano Togo${name ? ` - ${name}` : ''}.dxf`,
     count: list.length,
   };

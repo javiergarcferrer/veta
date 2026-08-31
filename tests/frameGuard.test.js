@@ -1,7 +1,7 @@
 /**
  * Pins the clickjacking/embed wall (pentest M1, client half — lib/frameGuard):
  *
- * The dealer-distributable embeds (#/embed/togo pasted into alcover.do and any
+ * The dealer-distributable embeds (#/embed/configurador pasted into alcover.do and any
  * Ligne Roset dealer's site; #/tienda framed in the dealer's Shopify page) are
  * FRAGMENT routes — the server sees them all as `/`, the same document as the
  * money back-office. So anti-clickjacking CANNOT be a response header on `/`:
@@ -23,9 +23,9 @@ import { isFramed, isEmbeddableRoute } from '../src/lib/frameGuard.js';
 const root = (p) => path.join(path.dirname(fileURLToPath(import.meta.url)), '..', p);
 
 test('frameGuard: ONLY the embeddable public widgets may render framed', () => {
-  // Designed-to-be-framed surfaces (togoEmbedSnippet + the Shopify tienda).
-  assert.equal(isEmbeddableRoute('/embed/togo'), true);
-  assert.equal(isEmbeddableRoute('/embed/togo/whatever'), true); // future embeds ride /embed/*
+  // Designed-to-be-framed surfaces (configuratorEmbedSnippet + the Shopify tienda).
+  assert.equal(isEmbeddableRoute('/embed/configurador'), true);
+  assert.equal(isEmbeddableRoute('/embed/configurador/whatever'), true); // future embeds ride /embed/*
   assert.equal(isEmbeddableRoute('/tienda'), true);
   assert.equal(isEmbeddableRoute('/tienda/detalle'), true);
 
@@ -58,11 +58,11 @@ test('vercel.json must NEVER frame-block: the embeds are hash routes served as /
     for (const h of block.headers || []) {
       assert.notEqual(
         String(h.key).toLowerCase(), 'x-frame-options',
-        `X-Frame-Options on "${block.source}" blocks every pasted #/embed/togo and #/tienda iframe — framing is gated client-side in lib/frameGuard`,
+        `X-Frame-Options on "${block.source}" blocks every pasted #/embed/configurador and #/tienda iframe — framing is gated client-side in lib/frameGuard`,
       );
       assert.ok(
         !/frame-ancestors/i.test(String(h.value)),
-        `frame-ancestors on "${block.source}" blocks every pasted #/embed/togo and #/tienda iframe — framing is gated client-side in lib/frameGuard`,
+        `frame-ancestors on "${block.source}" blocks every pasted #/embed/configurador and #/tienda iframe — framing is gated client-side in lib/frameGuard`,
       );
     }
   }

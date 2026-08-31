@@ -1,6 +1,6 @@
 /**
  * A bounded, insertion-ordered cache with a release hook — the Model behind the
- * render caches in `components/togo/togoThumbnails.js`.
+ * render caches in `components/configurator/thumbnails.js`.
  *
  * It exists because those caches grew for the whole session with nothing ever
  * released: every (model × fabric) a customer tries mints another PNG blob, so

@@ -2,7 +2,7 @@
  * EL REGISTRO DE CONFIGURADORES — una marca, su propio configurador.
  *
  * This product had exactly one configurator for its whole life, and its name
- * says so: `TogoEmbed`. That was never a shortcut — it was correct while there
+ * says so: `ConfiguratorEmbed`. That was never a shortcut — it was correct while there
  * was one brand. It stops being correct the moment a second manufacturer needs
  * to be configured, because the two do not answer the same question:
  *
@@ -58,7 +58,7 @@ export const CONFIGURATOR_STEMS = Object.freeze(['configurador', 'configurator']
  */
 export const CONFIGURATORS = Object.freeze([
   Object.freeze({
-    id: 'togo',
+    id: 'configurador',
     slug: '',
     brandSlug: 'ligne-roset',
     label: 'Configurador de planta',

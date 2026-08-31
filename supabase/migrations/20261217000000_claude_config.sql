@@ -3,7 +3,7 @@
 --
 -- `togo-match` (portada de RosetSoft) pide a Claude que ELIJA la referencia que
 -- tarifa un modelo subido, entre la lista corta que el navegador ya redujo
--- (lib/togo/modelMatch). La llave es un secreto: tabla de SÓLO ESCRITURA (sin
+-- (lib/configurator/modelMatch). La llave es un secreto: tabla de SÓLO ESCRITURA (sin
 -- SELECT de cliente), escrita por un RPC SECURITY DEFINER, leída únicamente por
 -- la función con el service role — el mismo patrón que lr_etiquette_config.
 --

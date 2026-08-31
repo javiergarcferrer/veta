@@ -5,7 +5,7 @@
  *
  * Three things are pinned here and nothing else — the conversion itself is
  * EXISTING machinery (sceneImport → splitScene → exportPieceGlb →
- * uploadTogoMesh) and the last test in this file fails if anyone rebuilds it:
+ * uploadConfiguratorMesh) and the last test in this file fails if anyone rebuilds it:
  *
  *   1. the binary reader, against zips this file BUILDS with node:zlib so the
  *      round trip is real (stored + deflated + a refused method + a truncated
@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { readCentralDirectory, localDataRange, inflateEntry, crc32 } from '../src/brands/carl-hansen/zipRead.ts';
 import { classifyZip } from '../src/brands/carl-hansen/assetTier.ts';
 import { buildBindingPlan, materialKindOf } from '../src/brands/carl-hansen/materialBind.ts';
+import { chSurfaceFor } from '../src/brands/carl-hansen/surface.ts';
 
 // ── a minimal ZIP writer, so the reader is tested against real bytes ─────────
 
@@ -360,4 +361,69 @@ test('the browser importer REUSES the existing pipeline — no second OBJ/GLB st
       + '(meshParts.partKeyFor), never from parsing .obj/.mtl text.',
     );
   }
+});
+
+/* ------------------------- la superficie de una opción ------------------------- */
+
+/**
+ * `chSurfaceFor` es lo que convierte una malla que gira en un configurador: sin
+ * él, tocar «Nogal, aceite» no cambiaría un pixel. Lo que se fija aquí es que
+ * lee la ESPECIE del grupo y el ACABADO de la hoja — al revés pinta todas las
+ * maderas iguales — y que calla cuando no reconoce el material.
+ */
+
+test('surface — la especie sale del grupo y el acabado de la hoja (el árbol real de CH24)', () => {
+  // El eje Frame de la CH24 nombra sus hojas «Oil»/«Lacquer» y cuelga la
+  // especie del nodo visible de arriba. Misma hoja, distinta especie ⇒
+  // distinto color; misma especie, distinta hoja ⇒ mismo color, distinto brillo.
+  const oakOil = chSurfaceFor({ kind: 'wood', groupLabel: 'FSC™-certified Oak', label: 'Oil' });
+  const oakLacquer = chSurfaceFor({ kind: 'wood', groupLabel: 'FSC™-certified Oak', label: 'Lacquer' });
+  const walnutOil = chSurfaceFor({ kind: 'wood', groupLabel: 'Walnut', label: 'Oil' });
+
+  assert.equal(oakOil.color, oakLacquer.color, 'la especie manda el color');
+  assert.notEqual(oakOil.color, walnutOil.color, 'roble y nogal no pueden pintarse igual');
+  assert.ok(oakLacquer.roughness < oakOil.roughness, 'la laca brilla más que el aceite');
+  assert.equal(oakOil.metalness, 0);
+});
+
+test('surface — el swatch publicado gana sobre la tabla', () => {
+  // Una colorway nueva de Kvadrat entra sola: si el árbol trajo su imagen, ese
+  // color muestreado ES el color y ninguna tabla lo mejora.
+  const sampled = chSurfaceFor({ kind: 'upholstery', groupLabel: 'Thor', label: 'Thor 301', sampled: 0x8899aa });
+  assert.equal(sampled.color, 0x8899aa);
+  // …y sin swatch, una tela que la tabla no nombra no se inventa un color.
+  const unknown = chSurfaceFor({ kind: 'upholstery', groupLabel: 'Thor', label: 'Thor 301' });
+  assert.equal(unknown.color, null, 'un color inventado sobre un cuero es peor que no tocarlo');
+  assert.ok(unknown.roughness > 0.8, 'pero sigue comportándose como tela');
+});
+
+test('surface — el metal se comporta como metal, lo nombre el eje o la hoja', () => {
+  const declared = chSurfaceFor({ kind: 'metal', label: 'Stainless Steel' });
+  assert.ok(declared.metalness > 0.8);
+  assert.ok(declared.roughness < 0.4);
+  // Un eje que no declaró familia pero nombra latón: la palabra basta.
+  const undeclared = chSurfaceFor({ kind: null, groupLabel: 'Frame', label: 'brass' });
+  assert.ok(undeclared.metalness > 0.8, 'el latón no puede quedar plástico');
+  assert.notEqual(undeclared.color, null);
+});
+
+test('surface — la precedencia de la tabla es el orden publicado, no el alfabeto', () => {
+  // «white oil» antes que «white», «natural paper cord» antes que «paper cord»:
+  // la entrada más específica gana o el acabado claro se come al tono.
+  const whiteOil = chSurfaceFor({ kind: 'wood', groupLabel: 'Oak', label: 'White oil' });
+  const white = chSurfaceFor({ kind: 'wood', groupLabel: 'Oak', label: 'White' });
+  assert.ok(whiteOil.roughness > 0.5, 'el aceite blanco sigue siendo aceite');
+  assert.ok(white.roughness < whiteOil.roughness, 'pintado blanco no es aceite blanco');
+
+  const natural = chSurfaceFor({ kind: 'cord', label: 'Natural Paper Cord' });
+  const black = chSurfaceFor({ kind: 'cord', label: 'Black Paper Cord' });
+  assert.notEqual(natural.color, black.color, 'las dos cuerdas de la Wishbone no son la misma');
+});
+
+test('surface — lo que no se reconoce se deja como vino de fábrica', () => {
+  // Sin familia y sin palabra conocida no hay nada honesto que decir: null deja
+  // el material del GLB intacto en vez de pintarle un gris inventado.
+  assert.equal(chSurfaceFor({ kind: null, label: 'Edition 60' }), null);
+  assert.equal(chSurfaceFor(null), null);
+  assert.equal(chSurfaceFor({}), null);
 });

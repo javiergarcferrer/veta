@@ -1,7 +1,7 @@
 // togo-embed/payload.ts — WHAT LEAVES THIS FUNCTION, and how it may be cached.
 // Pure like dealer.ts (no Deno globals, no URL imports, no supabase client), so
 // `node --import tsx` imports it straight across the Deno↔Vite wall and pins
-// both rules in tests/togoDealer.test.js.
+// both rules in tests/configuratorDealer.test.js.
 //
 // Two projections + one policy, together because they answer the same question —
 // what bytes go out, to whom, and for how long:
@@ -228,7 +228,7 @@ export function etagMatches(header: string | null | undefined, etag: string): bo
 /* `readAllPages` now lives in `_shared/` — sixteen reads across nine functions
    needed the same drain (the bounded-reads sweep, 2026-08-22), and a second
    copy is how one rule becomes two. Re-exported here so this module's callers
-   and its pin (tests/togoDealer.test.js:1089) keep importing it from where it
+   and its pin (tests/configuratorDealer.test.js:1089) keep importing it from where it
    was written. */
 export { READ_PAGE, readAllPages } from '../_shared/readAllPages.ts';
 export type { PageResult } from '../_shared/readAllPages.ts';

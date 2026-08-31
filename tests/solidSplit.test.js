@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { splitSolids } from '../src/lib/togo/solidSplit.js';
+import { splitSolids } from '../src/lib/configurator/solidSplit.js';
 
 /** A box built THE WAY AN EXPORTER BUILDS ONE: every face carries its own four
  *  vertices (24 in total, no index shared between faces), because a hard normal

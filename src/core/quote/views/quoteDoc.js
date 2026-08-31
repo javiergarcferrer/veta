@@ -17,14 +17,14 @@
 //
 // Pure: no React, no db, no supabase.
 
-import { t, piecesLabel, resolveTogoLocale, DEFAULT_TOGO_LOCALE } from '../../../lib/togo/i18n.js';
+import { t, piecesLabel, resolveConfiguratorLocale, DEFAULT_CONFIGURATOR_LOCALE } from '../../../lib/configurator/i18n.js';
 
 /* --------------------------------- copy ---------------------------------- */
 
 // The handful of strings the configurator's own dictionary doesn't carry (it
 // speaks about building a sofa, not about a document). Everything else — total,
 // plan, note, «incluido», «sin precio», the part names, the piece count — comes
-// from lib/togo/i18n so the customer's page reads in ONE voice with the widget
+// from lib/configurator/i18n so the customer's page reads in ONE voice with the widget
 // they built in. Same four locales as that dictionary, for the same reason:
 // the configurator ships to dealers outside the DR.
 const DOC_COPY = {
@@ -72,7 +72,7 @@ const DOC_COPY = {
 
 /** The document's own copy for a locale (unknown locale ⇒ the default). */
 export function quoteDocCopy(locale) {
-  return DOC_COPY[locale] || DOC_COPY[DEFAULT_TOGO_LOCALE];
+  return DOC_COPY[locale] || DOC_COPY[DEFAULT_CONFIGURATOR_LOCALE];
 }
 
 /* --------------------------------- money --------------------------------- */
@@ -86,7 +86,7 @@ export function quoteDocCopy(locale) {
  * a live rate at a frozen number is precisely how a sent quote starts saying a
  * different total than the day it was sent.
  */
-export function formatQuoteMoney(value, currency = 'USD', locale = DEFAULT_TOGO_LOCALE) {
+export function formatQuoteMoney(value, currency = 'USD', locale = DEFAULT_CONFIGURATOR_LOCALE) {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
@@ -97,7 +97,7 @@ export function formatQuoteMoney(value, currency = 'USD', locale = DEFAULT_TOGO_
     // quote total must not be the one number on screen using a different
     // convention. A dealer locale that is genuinely elsewhere — fr, de, en —
     // formats in its own, because that document is read there.
-    const numberLocale = locale === DEFAULT_TOGO_LOCALE ? 'en-US' : locale;
+    const numberLocale = locale === DEFAULT_CONFIGURATOR_LOCALE ? 'en-US' : locale;
     return new Intl.NumberFormat(numberLocale, { style: 'currency', currency: currency || 'USD' }).format(n);
   } catch {
     // An unknown/garbled currency code must still print the money.
@@ -114,7 +114,7 @@ export const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'declined'];
 const STATUS_TONE = { draft: 'neutral', sent: 'info', accepted: 'good', declined: 'bad' };
 
 /** `{ key, label, tone }` for a quote status, in the document's locale. */
-export function quoteStatusMeta(status, locale = DEFAULT_TOGO_LOCALE) {
+export function quoteStatusMeta(status, locale = DEFAULT_CONFIGURATOR_LOCALE) {
   const key = QUOTE_STATUSES.includes(status) ? status : 'draft';
   return { key, label: quoteDocCopy(locale)[key], tone: STATUS_TONE[key] };
 }
@@ -139,7 +139,7 @@ function fabricLabel(material) {
  * reads a French document.
  */
 export function resolveQuoteDoc({ quote, brand = null, models = {}, locale: forced = null } = {}) {
-  const locale = forced || resolveTogoLocale({ dealerLocale: brand?.locale });
+  const locale = forced || resolveConfiguratorLocale({ dealerLocale: brand?.locale });
   const copy = quoteDocCopy(locale);
   const q = quote || {};
   const currency = (q.totals && q.totals.currency) || q.currency || 'USD';

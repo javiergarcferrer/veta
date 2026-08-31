@@ -1,9 +1,9 @@
 // A material's SWATCH TEXTURE → the public `togo-textures` bucket, the same one
 // the configurator already tiles from (`materials.colors[].textureUrl`, read by
-// TogoStage / togoFabricAppearance and served through the togo-embed payload).
+// ConfiguratorStage / fabricAppearance and served through the togo-embed payload).
 //
 // Browser-only (it uses the supabase client), so it lives in the db layer beside
-// togoMeshUpload.ts and follows the same contract: validate, upload under a
+// configuratorMeshUpload.ts and follows the same contract: validate, upload under a
 // collision-proof path, hand back the PUBLIC url the row stores.
 //
 // The bytes arriving here have already been decoded, bounded and re-encoded by

@@ -1,8 +1,8 @@
 /**
  * Figures — the ONE way this app draws a number.
  *
- * Before this file there were twelve. `Kpi` in Atlas, `Kpi` in TogoOverview,
- * `Kpi` in TogoActivity, `Stat` in instagram/chrome, `Stat` in DealerPanel,
+ * Before this file there were twelve. `Kpi` in Atlas, `Kpi` in ConfiguratorOverview,
+ * `Kpi` in ConfiguratorActivity, `Stat` in instagram/chrome, `Stat` in DealerPanel,
  * `Stat` in admin/Fredericia, `Metric` in StockCountPanel, `Metric` in
  * Difusión, `StatTile` in CustomerContextPanel, `Tile` and `KpiTile` in
  * Análisis 360, `StatKpi` in Estados, `Figure` in ContractPaper — each one a

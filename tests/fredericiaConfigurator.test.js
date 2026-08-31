@@ -148,10 +148,10 @@ test('empty rows resolve to null, never a phantom model', () => {
 
 /* ───────────────────────────── registry ───────────────────────────── */
 
-test('registry: /configurador/fredericia is this instrument; the bare path stays Togo', () => {
+test('registry: /configurador/fredericia is this instrument; the bare path stays Configurador', () => {
   assert.equal(configuratorForPathname('/configurador/fredericia')?.id, 'fredericia');
   assert.equal(configuratorForPathname('/configurator/fredericia')?.id, 'fredericia');
-  assert.equal(configuratorForPathname('/configurador')?.id, 'togo');
+  assert.equal(configuratorForPathname('/configurador')?.id, 'configurador');
   assert.equal(configuratorById('fredericia')?.brandSlug, 'fredericia');
 });
 

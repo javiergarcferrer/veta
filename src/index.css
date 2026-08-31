@@ -59,7 +59,7 @@
 
 /* ── LIGNE ROSET's own type (owner-supplied, 2026-07) ───────────────────────
    VERLAG, in its Light and Book cuts — it carries every role on the public
-   Ligne Roset surfaces (the configurator's `.togo-rams` skin): display, the
+   Ligne Roset surfaces (the configurator's `.configurator-rams` skin): display, the
    eyebrows, body copy and inputs alike. The internal app keeps Alcover's own
    Lausanne/Söhne/Rauschen.
 
@@ -1880,7 +1880,7 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Togo configurator skin (`.togo-rams` on <body> while the embed is mounted) —
+   Configurador configurator skin (`.configurator-rams` on <body> while the embed is mounted) —
    LIGNE ROSET'S OWN SITE LANGUAGE, read off ligne-roset.com itself (owner,
    2026-07: the pitch to Ligne Roset, so the configurator should look like it
    belongs on their site). Its rules:
@@ -1904,7 +1904,7 @@
    Roset's own site is proof — it is mostly white and mostly type, and it reads
    warm because the geometry is soft and the photography is unframed.
 
-   Scoped to `body.togo-rams`, which is why the shared components the embed
+   Scoped to `body.configurator-rams`, which is why the shared components the embed
    borrows (MaterialColorPicker, Modal, the portalled sheets) re-skin here
    WITHOUT touching how they look inside the internal app. */
 
@@ -1912,7 +1912,7 @@
        the whole surface off pure neutral without introducing a second hue. The
        brand ramp is remapped onto the SAME scale so every inherited
        `bg-brand-*` / `text-brand-*` follows without a per-element override. */
-body.togo-rams {
+body.configurator-rams {
   /* The widget is white-locked (canvas/surface pinned below), so native
      chrome — scrollbars, form controls — must never render in the OS's dark
      scheme: a dark classic scrollbar against these white panes is the "hard
@@ -1938,32 +1938,32 @@ body.togo-rams {
         `font-wordmark` → Rauschen B, `font-sans` → Lausanne) are Alcover's
         type and would otherwise punch through the inherited face, so they're
         remapped rather than hunted down in the markup. */
-body.togo-rams { font-family: 'Verlag', 'Lausanne', system-ui, sans-serif; }
-body.togo-rams .font-display,
-body.togo-rams .font-wordmark,
-body.togo-rams .font-sans {
+body.configurator-rams { font-family: 'Verlag', 'Lausanne', system-ui, sans-serif; }
+body.configurator-rams .font-display,
+body.configurator-rams .font-wordmark,
+body.configurator-rams .font-sans {
   font-family: 'Verlag', 'Lausanne', system-ui, sans-serif;
 }
 /* Display sizes take Verlag LIGHT — at wordmark scale the Book cut reads heavy,
    and light-weight display type is the inbox's own register. The app's headings
    carry a `font-semibold` from its own scale, which is what this overrides. */
-body.togo-rams h1, body.togo-rams h2, body.togo-rams h3,
-body.togo-rams .font-wordmark { font-weight: 300; }
+body.configurator-rams h1, body.configurator-rams h2, body.configurator-rams h3,
+body.configurator-rams .font-wordmark { font-weight: 300; }
 
-/* …EXCEPT the launch card (`.togo-card-type`), which keeps ALCOVER's own type
+/* …EXCEPT the launch card (`.configurator-card-type`), which keeps ALCOVER's own type
    (owner, 2026-07). The card is the shop-window tile that sits on the dealer's
    page — the LOGO carries Ligne Roset there, so the two lines of type around it
    are ours. Verlag stays on the configurator proper, which is the surface the
    customer actually designs in. Nested one level deeper than the remap above,
    so it wins on specificity without an `!important`. */
-body.togo-rams .togo-card-type,
-body.togo-rams .togo-card-type .font-sans {
+body.configurator-rams .configurator-card-type,
+body.configurator-rams .configurator-card-type .font-sans {
   font-family: 'Lausanne', system-ui, -apple-system, sans-serif;
 }
-body.togo-rams .togo-card-type .font-display {
+body.configurator-rams .configurator-card-type .font-display {
   font-family: 'Sohne', 'Lausanne', system-ui, sans-serif;
 }
-body.togo-rams .togo-card-type .font-wordmark {
+body.configurator-rams .configurator-card-type .font-wordmark {
   font-family: '"Rauschen B"', Sohne, Lausanne, serif;
 }
 
@@ -1975,13 +1975,13 @@ body.togo-rams .togo-card-type .font-wordmark {
        a hard rectangle reads as a label). ligne-roset.com does the opposite:
        its actions are fully-rounded pills. So the radius comes back, and the
        controls go further and become proper pills. */
-body.togo-rams .btn,
-body.togo-rams .btn-primary,
-body.togo-rams .btn-brand,
-body.togo-rams .btn-secondary,
-body.togo-rams .btn-ghost,
-body.togo-rams .btn-icon,
-body.togo-rams .btn-icon-danger {
+body.configurator-rams .btn,
+body.configurator-rams .btn-primary,
+body.configurator-rams .btn-brand,
+body.configurator-rams .btn-secondary,
+body.configurator-rams .btn-ghost,
+body.configurator-rams .btn-icon,
+body.configurator-rams .btn-icon-danger {
   border-radius: 9999px;
 }
 
@@ -1990,8 +1990,8 @@ body.togo-rams .btn-icon-danger {
        nothing, so they cut the plan into pieces instead of hovering over it.
        0.72 with a real blur lets the plan show through — the panel reads as a
        layer above the work (depth cue) rather than a hole punched in it. */
-body.togo-rams .card { box-shadow: none; background-image: none; border-color: rgb(var(--ink-200)); }
-body.togo-rams .hud-panel {
+body.configurator-rams .card { box-shadow: none; background-image: none; border-color: rgb(var(--ink-200)); }
+body.configurator-rams .hud-panel {
   background: rgb(255 255 255 / 0.72);
   -webkit-backdrop-filter: blur(20px) saturate(1.15);
   backdrop-filter: blur(20px) saturate(1.15);
@@ -2003,33 +2003,33 @@ body.togo-rams .hud-panel {
        is a dark pill (ligne-roset.com's own "Newsletter" treatment) that
        DEEPENS rather than inverting — an invert flips the figure/ground
        relationship mid-gesture, which reads as the button disappearing. */
-body.togo-rams .btn { @apply font-normal transition-[background-color,color,border-color,transform] duration-150; }
-body.togo-rams .btn-primary,
-body.togo-rams .btn-brand {
+body.configurator-rams .btn { @apply font-normal transition-[background-color,color,border-color,transform] duration-150; }
+body.configurator-rams .btn-primary,
+body.configurator-rams .btn-brand {
   @apply border bg-ink-900 text-white text-micro uppercase tracking-[0.08em] px-5;
   border-color: rgb(var(--ink-900));
   background-image: none;
   box-shadow: none;
 }
-body.togo-rams .btn-primary:hover,
-body.togo-rams .btn-brand:hover {
+body.configurator-rams .btn-primary:hover,
+body.configurator-rams .btn-brand:hover {
   background-color: rgb(var(--ink-700));
   border-color: rgb(var(--ink-700));
   color: #fff;
   filter: none;
   box-shadow: none;
 }
-body.togo-rams .btn-secondary {
+body.configurator-rams .btn-secondary {
   @apply bg-white text-ink-900 text-micro uppercase tracking-[0.08em] px-5;
   border-color: rgb(var(--ink-300));
   box-shadow: none;
 }
-body.togo-rams .btn-secondary:hover { background-color: rgb(var(--ink-50)); border-color: rgb(var(--ink-900)); }
-body.togo-rams .btn-ghost:hover { @apply bg-ink-100; box-shadow: none; }
+body.configurator-rams .btn-secondary:hover { background-color: rgb(var(--ink-50)); border-color: rgb(var(--ink-900)); }
+body.configurator-rams .btn-ghost:hover { @apply bg-ink-100; box-shadow: none; }
 /* A press is confirmed by a small scale, not a lift — the shadow-lift needs a
    shadow to read against, and this skin has none. */
-body.togo-rams .btn:hover { transform: none; }
-body.togo-rams .btn:active { transform: scale(0.97); }
+body.configurator-rams .btn:hover { transform: none; }
+body.configurator-rams .btn:active { transform: scale(0.97); }
 
 /* 4b — DESTRUCTIVE actions wear red, always. Red is the only hue the chrome
         keeps, and this is what it's for: an outlined red pill is found
@@ -2038,11 +2038,11 @@ body.togo-rams .btn:active { transform: scale(0.97); }
         irreversible control on the screen look exactly like the reversible ones
         beside it — a real hazard, not a style preference. Outline, never a fill:
         a solid red block draws more attention than a secondary action deserves. */
-body.togo-rams .btn-icon-danger {
+body.configurator-rams .btn-icon-danger {
   color: rgb(220 38 38);
   border: 1px solid rgb(220 38 38 / 0.45);
 }
-body.togo-rams .btn-icon-danger:hover {
+body.configurator-rams .btn-icon-danger:hover {
   color: #fff;
   background-color: rgb(220 38 38);
   border-color: rgb(220 38 38);
@@ -2051,24 +2051,24 @@ body.togo-rams .btn-icon-danger:hover {
 /* 5 — Inputs: a hairline box, no inner shadow, no coloured focus glow — the
        border simply goes to ink when focused. Pill-free: a field is read, not
        pressed, so it keeps a soft rectangle. */
-body.togo-rams .input {
+body.configurator-rams .input {
   box-shadow: none;
   border-radius: 0.5rem;
   border-color: rgb(var(--ink-200));
 }
-body.togo-rams .input:hover { border-color: rgb(var(--ink-300)); }
-body.togo-rams .input:focus { border-color: rgb(var(--ink-900)); box-shadow: none; }
+body.configurator-rams .input:hover { border-color: rgb(var(--ink-300)); }
+body.configurator-rams .input:focus { border-color: rgb(var(--ink-900)); box-shadow: none; }
 /* 0.08em, not 0.15em: ligne-roset.com letterspaces its labels lightly. The hard
    spacing read as a spec sheet and, at 11px, actively hurt word recognition —
    past ~0.1em the eye stops reading words and starts reading letters. */
-body.togo-rams .label,
-body.togo-rams .eyebrow { @apply tracking-[0.08em] text-ink-500; }
+body.configurator-rams .label,
+body.configurator-rams .eyebrow { @apply tracking-[0.08em] text-ink-500; }
 
 /* 6 — Motion says what happened, and nothing else. The score-pop stays stilled
        (a price is read, not celebrated), but the CTA's breath is BACK: it fires
        only once the design is genuinely quotable, so it isn't decoration — it's
        the one moment the interface has something to say. */
-body.togo-rams .togo-score { animation: none; }
+body.configurator-rams .configurator-score { animation: none; }
 
 /* ── "Game feel" motion layer ─────────────────────────────────────────────────
    The Rams skin keeps the chrome quiet; this layer makes the configurator feel
@@ -2078,30 +2078,30 @@ body.togo-rams .togo-score { animation: none; }
    screen bursts confetti. All pure CSS, all collapsed under reduced-motion. */
 
 /* A piece dropped onto the plan springs up from nothing (overshoot easing). */
-@keyframes togo-pop {
+@keyframes configurator-pop {
   0%   { transform: scale(0.55); opacity: 0; }
   55%  { transform: scale(1.07); opacity: 1; }
   100% { transform: scale(1);    opacity: 1; }
 }
-.togo-pop { animation: togo-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.configurator-pop { animation: configurator-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
 
 /* Step screens (form / done / empty-start card) rise into place. */
-@keyframes togo-rise {
+@keyframes configurator-rise {
   from { transform: translateY(10px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
-.togo-rise { animation: togo-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.configurator-rise { animation: configurator-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 /* The reward: a confetti burst on a sent request. Each bit reads its own
    trajectory from CSS custom properties stamped inline (per-bit randomness). */
-@keyframes togo-confetti {
+@keyframes configurator-confetti {
   0%   { transform: translate3d(0, -14vh, 0) rotate(0deg);                 opacity: 1; }
   100% { transform: translate3d(var(--dx, 0), 102vh, 0) rotate(var(--rot, 540deg)); opacity: 0; }
 }
-.togo-confetti > i {
+.configurator-confetti > i {
   position: absolute; top: 0; display: block; border-radius: 2px;
-  animation: togo-confetti var(--dur, 2.6s) cubic-bezier(0.2, 0.6, 0.35, 1) var(--delay, 0s) forwards;
+  animation: configurator-confetti var(--dur, 2.6s) cubic-bezier(0.2, 0.6, 0.35, 1) var(--delay, 0s) forwards;
   will-change: transform, opacity;
 }
 
@@ -2109,27 +2109,27 @@ body.togo-rams .togo-score { animation: none; }
    with a fresh React key, so this replays every time the number changes: a quick
    scale pop that reads like a score ticking up, weighted to its left-bottom
    corner so the figure grows from where it's anchored. */
-@keyframes togo-score {
+@keyframes configurator-score {
   0%   { transform: scale(1); }
   35%  { transform: scale(1.045); }
   100% { transform: scale(1); }
 }
-.togo-score { animation: togo-score 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: left bottom; }
+.configurator-score { animation: configurator-score 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: left bottom; }
 
 /* The hotbar tile that just placed a piece flashes once as tap confirmation —
    visible even on touch, where the :active press never shows: a quick squeeze-in
    with a brand-tinted ring that expands and fades, so a finger tap gets the same
    "it landed" feedback a mouse hover would. */
-@keyframes togo-added {
+@keyframes configurator-added {
   0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgb(var(--brand-500) / 0.35); }
   40%  { transform: scale(0.94); box-shadow: 0 0 0 5px rgb(var(--brand-500) / 0.18); }
   100% { transform: scale(1);    box-shadow: 0 0 0 0 rgb(var(--brand-500) / 0); }
 }
-.togo-added { animation: togo-added 0.42s ease-out; }
+.configurator-added { animation: configurator-added 0.42s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .togo-pop, .togo-rise, .togo-confetti > i,
-  .togo-score, .togo-added { animation: none !important; opacity: 1; }
+  .configurator-pop, .configurator-rise, .configurator-confetti > i,
+  .configurator-score, .configurator-added { animation: none !important; opacity: 1; }
 }
 
 /* Floating glass HUD panel — the chrome of the "game window". Translucent +
@@ -2158,12 +2158,12 @@ body.togo-rams .togo-score { animation: none; }
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
-body.togo-rams .hud-panel-solid {
+body.configurator-rams .hud-panel-solid {
   background: #fff;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   /* The glass border was white-on-white translucency; a solid white pane
-     needs the hairline to separate from the canvas, same as togo-rams .card. */
+     needs the hairline to separate from the canvas, same as configurator-rams .card. */
   border-color: rgb(var(--ink-200));
 }
 /* Keyboard focus INSIDE a clipping HUD panel: the global ring sits 2px outside
@@ -2177,7 +2177,7 @@ button.hud-panel:focus-visible {
    A tool that carries its WORD when the toolbar has room, and folds back to a
    glyph when it doesn't. The fold is driven by a measurement, not a breakpoint:
    the bar stamps data-compact="on" when it and the left-hand cluster would
-   collide (see `useToolbarFit` in TogoEmbed) — which is the only honest test,
+   collide (see `useToolbarFit` in ConfiguratorEmbed) — which is the only honest test,
    since how much room the tools have depends on the collection name, on
    whether undo/redo are showing, and on the locale (the German labels run half
    again as long as the Spanish ones a breakpoint would have been tuned for).
@@ -2234,7 +2234,7 @@ button.hud-panel:focus-visible {
    slender scroll bar similar to the one in the distributor inbox. or use the
    same») — one scrollbar idiom for both surfaces. Its literal black/white
    alphas are the point: a ramp-var thumb (the retired .scroll-brand) turned
-   into a grey slab under the embed's `togo-rams` slate remap. */
+   into a grey slab under the embed's `configurator-rams` slate remap. */
 
 /* ──────────────────────────────────────────────────────────────────────────
    Accounting density — a tighter Palantir / QuickBooks read for the whole

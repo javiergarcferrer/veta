@@ -18,7 +18,7 @@
  *     (CH24: `CH24_seat` = paper cord, `CH24_Beech_Bright_` = the 13 wood
  *     groups; CH25: `ch25_wicker__cray_`, `ch25_oak__tnt_`, `Brushed_Steel_Max`)
  *     and material NAME is exactly what the runtime binds by
- *     (`lib/togo/meshParts.partKeyFor`). Auto-bindable.
+ *     (`lib/configurator/meshParts.partKeyFor`). Auto-bindable.
  *   TIER B — mesh, no `.mtl`. Group names are generic (CH07: `ch07_00…ch07_11`;
  *     CH103: `Cylinder26`, `Line35`), so the only semantic signal in the
  *     archive is the TEXTURE BASENAMES (`beech_bright.png`,
@@ -66,10 +66,10 @@ export interface ChNamedEntry {
 
 /**
  * Mesh formats the existing loader already eats
- * (`components/togo/togoModelLoader.js`: glb|gltf|obj|fbx|dae|3ds), in
+ * (`components/configurator/modelLoader.js`: glb|gltf|obj|fbx|dae|3ds), in
  * PREFERENCE order. `.obj` first because it is the measured 92% and the one
  * that arrives with an MTL; `.3ds` next because the repo already owns its
- * material-group repair (`lib/togo/tdsMaterialGroups.js`).
+ * material-group repair (`lib/configurator/tdsMaterialGroups.js`).
  */
 const MESH_EXTS = ['obj', '3ds', 'fbx', 'dae', 'glb', 'gltf'];
 

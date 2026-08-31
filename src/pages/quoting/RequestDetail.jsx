@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { db, invalidate } from '../../db/database.js';
 import { resolveRequestDetail } from '../../core/quote/index.js';
-import { planToDxf } from '../../lib/togo/planToDxf.js';
-import { planPlacements } from '../../lib/togo/planPreview.js';
+import { planToDxf } from '../../lib/configurator/planToDxf.js';
+import { planPlacements } from '../../lib/configurator/planPreview.js';
 import { downloadText } from '../../lib/csv.js';
 import { formatDateTime } from '../../lib/format.js';
 import { swatchUrl } from '../../lib/swatchImage.js';
@@ -72,7 +72,7 @@ export default function RequestDetail() {
     setBusy(status);
     setError('');
     try {
-      await db.togoRequests.update(id, { status, updatedAt: Date.now() });
+      await db.configuratorRequests.update(id, { status, updatedAt: Date.now() });
       await load();
     } catch (e) {
       setError(e?.message || 'No se pudo actualizar la solicitud.');
@@ -89,7 +89,7 @@ export default function RequestDetail() {
     setError('');
     try {
       const { quote } = await createQuoteFromRequest(id);
-      invalidate('togoRequests');
+      invalidate('configuratorRequests');
       navigate(`/cotizaciones/${quote.id}`);
     } catch (e) {
       setError(e?.message || 'No se pudo crear la cotización.');

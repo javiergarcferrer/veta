@@ -40,7 +40,7 @@
  * to say.
  *
  * SELECTION IS CONTROLLED (`selectedId` / `onSelect`) and owned by the section
- * (pages/admin/TogoCatalog), because the table, the 3D stage and the inspector
+ * (pages/admin/ConfiguratorCatalog), because the table, the 3D stage and the inspector
  * are three views of ONE selection: two of them holding their own copy is
  * exactly how the old master→detail split got out of step with itself.
  *
@@ -56,7 +56,7 @@
  * configurador offers its pieces in, so the dealer arranges it by dragging rows
  * (Alt+↑↓ with the keyboard) — that replaced the inspector's ▲▼, where the piece
  * being ordered was two panes away from the list it was ordering. The math is
- * `planTogoReorder` and it is fed THIS resolver's rows, so what gets renumbered
+ * `planConfiguratorReorder` and it is fed THIS resolver's rows, so what gets renumbered
  * is exactly the sequence on screen. Which is why the affordance is GATED: it
  * only appears while the table is in colección order (ascending) — under «Nombre»
  * or «Actualizado» a drop would mean nothing, and an affordance that lies about
@@ -92,7 +92,7 @@
  * the VM in a `useMemo`.
  *
  * The estado writes stay ADDITIVE BY CONSTRUCTION: one column, `active`,
- * through the VM's own patch — the same flag `resolveTogoModels` and the
+ * through the VM's own patch — the same flag `resolveConfiguratorModels` and the
  * `togo-embed` payload already gate the public palette on, so «borrador» needed
  * no migration and cannot change what the configurador serves for any other row.
  * That flag is also the whole review loop: an upload lands as BORRADOR, shows up
@@ -105,19 +105,19 @@ import type {
 } from 'react';
 import { AlertCircle, AlertTriangle, Boxes, GripVertical, Loader2, PanelLeft, Plus, Sparkles, Table2, Trash2 } from 'lucide-react';
 import { db } from '../../db/database.js';
-import { removeTogoMesh } from '../../db/togoMeshUpload.js';
-import type { TogoModel } from '../../types/domain.js';
+import { removeConfiguratorMesh } from '../../db/configuratorMeshUpload.js';
+import type { ConfiguratorModel } from '../../types/domain.js';
 import {
   collectionCandidates, indexCandidates, mergeCollectionSuggestions, planBulkEstado,
   planCollectionBind, planCollectionChunks, planEstadoToggle, planModelDelete,
-  planTogoReorder, resolveCollectionReview, resolveModelManager,
+  planConfiguratorReorder, resolveCollectionReview, resolveModelManager,
 } from '../../core/quote/index.js';
-import { suggestCollectionSkus } from '../../lib/togo/suggestSku.js';
-import BacklogChips from '../../components/togo/BacklogChips.jsx';
-import type { BacklogKey } from '../../components/togo/BacklogChips.jsx';
-import { ROW_THUMB, useTogoThumbnails } from '../../components/togo/togoThumbnails.js';
-import CollectionSkuReview from '../../components/togo/CollectionSkuReview.jsx';
-import { PART_LABELS } from '../../lib/togo/meshParts.js';
+import { suggestCollectionSkus } from '../../lib/configurator/suggestSku.js';
+import BacklogChips from '../../components/configurator/BacklogChips.jsx';
+import type { BacklogKey } from '../../components/configurator/BacklogChips.jsx';
+import { ROW_THUMB, useConfiguratorThumbnails } from '../../components/configurator/thumbnails.js';
+import CollectionSkuReview from '../../components/configurator/CollectionSkuReview.jsx';
+import { PART_LABELS } from '../../lib/configurator/meshParts.js';
 import { formatDateTime } from '../../lib/format.js';
 import { sanitizeSvg } from '../../lib/sanitizeSvg.js'; // SECURITY (L6): scrub untrusted SVG before innerHTML
 import Modal from '../../components/Modal.jsx';
@@ -164,12 +164,12 @@ type ReviewState = {
 const PAGE = 60;
 
 /**
- * `useTogoThumbnails(models, frame = null)` lives in a .js module, so TS reads
+ * `useConfiguratorThumbnails(models, frame = null)` lives in a .js module, so TS reads
  * its `frame` parameter as `null` off the default rather than as the render
  * frame the JSDoc documents. Aliased once, with the real signature, instead of
  * casting at the call site.
  */
-const useRowThumbnails = useTogoThumbnails as unknown as (
+const useRowThumbnails = useConfiguratorThumbnails as unknown as (
   models: unknown[],
   frame?: { width: number; height: number } | null,
 ) => Record<string, string>;
@@ -363,14 +363,14 @@ const DEFAULT_VISIBLE_COLS: Record<string, boolean> = {
   collection: true, category: false, group: false,
   parts: true, sku: true, mesh: true, dims: true, updated: false, estado: true,
 };
-const COLS_STORAGE_KEY = 'rs.togoModels.cols.v1';
+const COLS_STORAGE_KEY = 'rs.configuratorModels.cols.v1';
 // v2: the widths stored under v1 were MEASURED inside the old ~22rem left
 // column — natural widths for a rail, meaningless across the full-width band,
 // and `table-layout: fixed` would have scaled the cramped set up proportionally
 // (a 4rem thumbnail column at 8rem) instead of re-measuring. A layout change is
 // exactly what a width key version is for.
-const WIDTHS_STORAGE_KEY = 'rs.togoModels.widths.v2';
-const SORT_STORAGE_KEY = 'rs.togoModels.sort.v1';
+const WIDTHS_STORAGE_KEY = 'rs.configuratorModels.widths.v2';
+const SORT_STORAGE_KEY = 'rs.configuratorModels.sort.v1';
 
 /**
  * `useColumns` / `useColumnWidths` / `useLocalPref` live in .js|.jsx modules, so
@@ -406,7 +406,7 @@ const useSortPref = useLocalPref as unknown as (
 
 type Props = {
   /** The section's ONE `togo_models` read — the same rows the stage renders. */
-  models: TogoModel[];
+  models: ConfiguratorModel[];
   /** The selected piece: what the stage shows and the inspector edits. */
   selectedId: string | null;
   /** Selecting IS opening. One click, no second step. */
@@ -558,7 +558,7 @@ export default function ModelManager({
     onOrderChange?.(orderKey ? orderKey.split(',') : []);
   }, [orderKey, onOrderChange]);
   const rawById = useMemo(() => {
-    const m = new Map<string, TogoModel>();
+    const m = new Map<string, ConfiguratorModel>();
     for (const row of models || []) if (row?.id) m.set(row.id, row);
     return m;
   }, [models]);
@@ -656,7 +656,7 @@ export default function ModelManager({
       return n;
     });
     try {
-      await db.togoModels.bulkUpdate(plan.ids, plan.patch);
+      await db.configuratorModels.bulkUpdate(plan.ids, plan.patch);
     } catch {
       setPendingEstado((p) => {
         const n = { ...p };
@@ -681,8 +681,8 @@ export default function ModelManager({
     setError(null);
     setBulkBusy(true);
     try {
-      await db.togoModels.bulkDelete(deletePlan.ids);
-      for (const u of deletePlan.removeUrls) removeTogoMesh(u);
+      await db.configuratorModels.bulkDelete(deletePlan.ids);
+      for (const u of deletePlan.removeUrls) removeConfiguratorMesh(u);
       setCheckedIds(new Set());
       // The stage must not keep editing a row that no longer exists — hand it a
       // SURVIVOR, picked here. Clearing to null would leave the choice to the
@@ -847,13 +847,13 @@ export default function ModelManager({
     setError(null);
     setBinding(true);
     const now = Date.now();
-    const rows: TogoModel[] = [];
+    const rows: ConfiguratorModel[] = [];
     for (const b of binds) {
       const row = rawById.get(b.modelId);
       if (row) rows.push({ ...row, productRoot: b.root, updatedAt: now });
     }
     try {
-      await db.togoModels.bulkPut(rows);
+      await db.configuratorModels.bulkPut(rows);
       setBound(binds.length);
       setReview(null);
       setCheckedIds(new Set());
@@ -900,7 +900,7 @@ export default function ModelManager({
       // `updatedAt` here would make publishing a piece the "freshest word" on
       // its colección's estructura palette (collectionFinishes.rankedRows), and
       // a visibility flip is not a content edit.
-      await db.togoModels.update(plan.id, plan.patch);
+      await db.configuratorModels.update(plan.id, plan.patch);
     } catch {
       setPendingEstado((p) => { const n = { ...p }; delete n[r.id]; return n; });
       setError('No se pudo guardar el estado. Revisa la conexión e inténtalo de nuevo.');
@@ -934,20 +934,20 @@ export default function ModelManager({
     return index < 0 ? null : { index, size: group.length, collection: row.collection };
   }, [catalog.palette]);
 
-  // The write. `planTogoReorder` renumbers the WHOLE displayed order gaplessly
+  // The write. `planConfiguratorReorder` renumbers the WHOLE displayed order gaplessly
   // and hands back ONLY the rows whose position actually changed, so a neighbour
   // swap on a tidy colección is two writes. Per-row `update()` of `sortOrder`
   // (a PATCH) rather than a bulkPut of whole rows: a move can rewrite a dozen
   // rows, and re-putting them would clobber a rename the dealer made seconds
   // earlier from this row's own stale copy.
   const reorderTo = useCallback(async (id: string, toIndex: number) => {
-    const writes = planTogoReorder(catalog.palette, { id, toIndex });
+    const writes = planConfiguratorReorder(catalog.palette, { id, toIndex });
     if (!writes.length) return;
     setError(null);
     const now = Date.now();
     try {
       await Promise.all(writes.map(
-        (w: { id: string; sortOrder: number }) => db.togoModels.update(w.id, { sortOrder: w.sortOrder, updatedAt: now }),
+        (w: { id: string; sortOrder: number }) => db.configuratorModels.update(w.id, { sortOrder: w.sortOrder, updatedAt: now }),
       ));
     } catch {
       setError('No se pudo guardar el orden de la paleta. Revisa la conexión e inténtalo de nuevo.');
@@ -964,7 +964,7 @@ export default function ModelManager({
     if (!dragged || dragged === targetId) return;
     const from = palettePosOf(dragged);
     const to = palettePosOf(targetId);
-    // A piece never leaves its colección (planTogoReorder refuses to move it out
+    // A piece never leaves its colección (planConfiguratorReorder refuses to move it out
     // anyway) — so a cross-colección drop is refused here, before it can be read
     // as an index into the wrong group.
     if (!from || !to || from.collection !== to.collection) return;
@@ -1459,7 +1459,7 @@ export default function ModelManager({
           onKeyDown={onKeyDown}
           className="scroll-thin max-h-[55dvh] min-h-0 flex-1 overflow-auto overscroll-contain focus:outline-none lg:max-h-none"
         >
-          <table ref={tableRef} style={tableStyle} className="table" aria-label="Modelos Togo">
+          <table ref={tableRef} style={tableStyle} className="table" aria-label="Modelos Configurador">
             {/* `sticky` sits on the CELLS (Safari never honours it on a
                 thead/tr), and the background is `!` because `.table th` paints
                 a translucent ink-50 at a higher specificity than a utility —

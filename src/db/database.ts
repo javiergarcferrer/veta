@@ -16,8 +16,8 @@ import type {
   ModelFabrics,
   Product,
   Dealer,
-  TogoModel,
-  TogoRequest,
+  ConfiguratorModel,
+  ConfiguratorRequest,
   VetaQuote,
   LrEtiquetteSync,
   LrEtiquetteConfig,
@@ -97,11 +97,11 @@ const TABLES = {
   // encima (seleccion, renombre, fotos). Ver brands/materialHouses.js.
   brandMaterialSources:   { db: 'brand_material_sources',   pk: 'brandId' },
   brandMaterialOverrides: { db: 'brand_material_overrides', pk: 'brandId' },
-  togoModels:    { db: 'togo_models',   pk: 'id' },
+  configuratorModels:    { db: 'togo_models',   pk: 'id' },
   materials:     { db: 'materials',     pk: 'id' },
   modelFabrics:  { db: 'model_fabrics', pk: 'id' },
   dealers:       { db: 'dealers',       pk: 'id' },
-  togoRequests:  { db: 'togo_requests', pk: 'id' },
+  configuratorRequests:  { db: 'togo_requests', pk: 'id' },
   // EL LIBRO MAYOR DE IMPORTACIONES. Cada corrida de un módulo de marca deja
   // una fila (supabase/functions/_shared/importRun.ts) — un cron que falla
   // deja de ser invisible. READ-ONLY from the browser BY DESIGN: RLS grants
@@ -155,11 +155,11 @@ export interface TableRowMap {
   brandMembers: BrandMember;
   brandMaterialSources: BrandMaterialSource;
   brandMaterialOverrides: BrandMaterialOverride;
-  togoModels: TogoModel;
+  configuratorModels: ConfiguratorModel;
   materials: Material;
   modelFabrics: ModelFabrics;
   dealers: Dealer;
-  togoRequests: TogoRequest;
+  configuratorRequests: ConfiguratorRequest;
   importRuns: ImportRun;
   products: Product;
   lrEtiquetteSync: LrEtiquetteSync;

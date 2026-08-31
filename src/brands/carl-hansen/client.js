@@ -2,7 +2,7 @@
  * EL TRANSPORTE DEL CONFIGURADOR DE CARL HANSEN — cuatro lecturas, sin login.
  *
  * The widget is public (`/configurador/carl-hansen`), so this reaches the Edge
- * Function with the anon key in the query string exactly as `togoEmbed` does —
+ * Function with the anon key in the query string exactly as `configuratorEmbed` does —
  * there is no session to carry.
  *
  * ── WHY FOUR CALLS AND NOT ONE ──────────────────────────────────────────────

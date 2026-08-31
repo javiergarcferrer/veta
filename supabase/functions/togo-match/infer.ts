@@ -2,7 +2,7 @@
  * INFERENCIA DE SKU — the pure half of `togo-match`: what goes to Claude, and
  * what is allowed to come back.
  *
- * The split is deliberate. `src/lib/togo/modelMatch.js` (app side) NARROWS the
+ * The split is deliberate. `src/lib/configurator/modelMatch.js` (app side) NARROWS the
  * ~27k-row catalog down to the handful of roots that could legitimately price a
  * mesh; this function DECIDES among exactly those rows. Claude is not a second
  * ranker — it reads the LR library's own French/English naming against the
@@ -26,7 +26,7 @@
  * root whitelist is per PIECE and not only per pool, and a duplicated root is a
  * warning the reviewer resolves — never something this file decides.
  *
- * Imported across the Deno↔Vite wall by tests/togoMatch.test.js, like
+ * Imported across the Deno↔Vite wall by tests/configuratorMatch.test.js, like
  * claude-chat/tools.ts and meta-capi/events.ts: pure data in, pure data out, no
  * Deno globals, no network, no throw.
  */
@@ -436,9 +436,9 @@ export function fallbackSuggestion(req: MatchRequest, note: string): Suggestion 
  *      reviewer decides.
  */
 
-/** One call's declared ceiling. Mirrored in `src/lib/togo/modelMatch.js`
+/** One call's declared ceiling. Mirrored in `src/lib/configurator/modelMatch.js`
  *  (COLLECTION_MAX_MODELS / COLLECTION_MAX_POOL) across the Deno↔Vite wall and
- *  pinned equal by tests/togoMatch.test.js: the client chunks to these numbers
+ *  pinned equal by tests/configuratorMatch.test.js: the client chunks to these numbers
  *  and the server clamps to them, so a drifted pair would silently swallow the
  *  tail of every batch. Anything past them is CLAMPED AND REPORTED, never
  *  quietly dropped. */
@@ -866,9 +866,9 @@ export function fallbackCollectionAnswer(req: CollectionRequest, note: string): 
  * whole point) — unlike the collection op there is no duplicates report.
  */
 
-/** One call's ceilings. Mirrored in `src/lib/togo/catalogDecompose.js`
+/** One call's ceilings. Mirrored in `src/lib/configurator/catalogDecompose.js`
  *  (DECOMPOSE_MAX_MODELS / DECOMPOSE_MAX_POOL / DECOMPOSE_MAX_EXAMPLES) across
- *  the Deno↔Vite wall and pinned equal by tests/togoMatch.test.js. */
+ *  the Deno↔Vite wall and pinned equal by tests/configuratorMatch.test.js. */
 export const MAX_DECOMPOSE_MODELS = 40;
 export const MAX_DECOMPOSE_POOL = 60;
 export const MAX_DECOMPOSE_EXAMPLES = 8;
@@ -877,7 +877,7 @@ export const MAX_DECOMPOSE_PAIRS = 80;
 export const MAX_DECOMPOSE_ISSUES = 40;
 
 /** The slots this op may fill — the BILLED_ROLES of `meshParts.js`, mirrored
- *  across the wall and pinned equal by tests/togoMatch.test.js: a role only
+ *  across the wall and pinned equal by tests/configuratorMatch.test.js: a role only
  *  one side knows would either drop every answer or write an unbillable slot. */
 export const DECOMPOSE_ROLES = ['cushion', 'bolster', 'armCushion'] as const;
 export type DecomposeRole = (typeof DECOMPOSE_ROLES)[number];

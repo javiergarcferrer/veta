@@ -248,8 +248,8 @@ const catalog = {
  * them. `load()` is what puts them in their own chunk.
  */
 const seeds = {
-  label: 'Piezas de ejemplo Togo',
-  load: () => import('../ligne-roset/seeds.js').then((m) => m.TOGO_SEEDS),
+  label: 'Piezas de ejemplo Configurador',
+  load: () => import('../ligne-roset/seeds.js').then((m) => m.CONFIGURATOR_SEEDS),
 };
 
 export const LIGNE_ROSET_MODULES = defineModuleSet({

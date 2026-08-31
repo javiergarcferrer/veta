@@ -19,6 +19,7 @@ import {
 import {
   CH_BROWSER_LIMIT,
   chModelName,
+  resolveCarlHansenAssets,
   resolveCarlHansenBrowser,
   resolveCarlHansenConfigurator,
   resolveCarlHansenImportPlan,
@@ -28,6 +29,7 @@ import ChConfigurator from '../../components/carlhansen/ChConfigurator.jsx';
 import ChImportBar from '../../components/carlhansen/ChImportBar.jsx';
 import ChBulkImportBar from '../../components/carlhansen/ChBulkImportBar.jsx';
 import ChBulkMeshBar from '../../components/carlhansen/ChBulkMeshBar.jsx';
+import ChStage from '../../components/carlhansen/ChStage.jsx';
 import { BRAND_CARL_HANSEN } from '../../lib/constants.js';
 import VariantBrowser from '../../components/catalog/VariantBrowser.jsx';
 
@@ -626,6 +628,14 @@ function ModelDetail({ page, profileId, userId, onBack }) {
   // and the add-on probes happen TWICE per click. `resolveCarlHansenImportPlan`
   // has no way to take a prebuilt view; reusing one needs a `{ view }` option
   // in core/catalog, which belongs to another agent.
+  // EL 3D DE ESTA PIEZA. Mismo ViewModel que lee ChMeshPanel — un solo hogar
+  // para «qué malla hay y a qué eje responde cada material», así que el
+  // escenario y el panel no pueden discrepar sobre el estado del modelo.
+  const asset3d = useMemo(
+    () => resolveCarlHansenAssets(page, assetQ.data, { axes: view.axes }),
+    [page, assetQ.data, view.axes],
+  );
+
   const plan = useMemo(
     () => resolveCarlHansenImportPlan(specQ.data, page, priceQ.data, selection, { profileId, configId }),
     [specQ.data, page, priceQ.data, selection, profileId, configId],
@@ -680,6 +690,30 @@ function ModelDetail({ page, profileId, userId, onBack }) {
         <div className="card overflow-hidden"><ListLoading rows={5} /></div>
       ) : (
         <>
+          {/* LA PIEZA, EN 3D, MIENTRAS SE CONFIGURA. Se monta sólo cuando hay
+              malla publicada: sin GLB el panel de abajo ya explica en cristiano
+              por qué (≈19% del catálogo no publica 3D utilizable), y un lienzo
+              vacío no es una respuesta. Girarla con el dedo; cada opción que se
+              toca repinta los grupos que ese eje gobierna. */}
+          {asset3d.meshUrl ? (
+            <section className="rounded-xl border border-ink-100 bg-ink-50/40 overflow-hidden">
+              <div className="h-[380px] sm:h-[460px] w-full">
+                <ChStage
+                  meshUrl={asset3d.meshUrl}
+                  axes={view.axes}
+                  binding={asset3d.binding}
+                  className="h-full w-full"
+                />
+              </div>
+              <p className="px-3 py-2 text-micro text-ink-500 border-t border-ink-100">
+                Arrastra para girar · rueda para acercar
+                {asset3d.needsBindingReview
+                  ? ' · el binding de materiales todavía no está confirmado, así que puede haber grupos sin repintar'
+                  : ''}
+              </p>
+            </section>
+          ) : null}
+
           <ChConfigurator
             view={view}
             onSelect={(axisId, key) => setConfig((prev) => ({

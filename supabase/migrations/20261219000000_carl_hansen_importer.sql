@@ -124,7 +124,7 @@ create unique index if not exists carl_hansen_prices_model_market_idx
 -- Tier A = malla + MTL con nombres semánticos (los nombres SON las claves de
 -- parte del binder de Togo). Tier B = malla sin MTL, ligada por basenames de
 -- textura, siempre marcada para revisión. El GLB vive en el bucket público
--- `togo-models` via uploadTogoMesh — sin bucket nuevo, y deliberadamente SIN
+-- `togo-models` via uploadConfiguratorMesh — sin bucket nuevo, y deliberadamente SIN
 -- fila en togo_models (eso colaría sillas Carl Hansen en el configurador
 -- público de Togo).
 create table if not exists public.carl_hansen_assets (

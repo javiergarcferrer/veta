@@ -28,7 +28,7 @@
  * Every fact VETA's renderer wants is here and NAMED. `Product name` is the
  * collection. `Article ID` is `{quality}_{colour}` — the trade reference a
  * quote is written in (`1044-0114`). `Width`/`Height` become `pbr.tileCm` /
- * `pbr.tileCmY`, which `togoSceneBuilder` already tiles by (repeat = 54cm /
+ * `pbr.tileCmY`, which `sceneBuilder` already tiles by (repeat = 54cm /
  * tileCm), so a scan upholsters at its TRUE size instead of the 18cm default.
  * This is the gap the codebase was built around and never filled: `pbr` and
  * `normalUrl` are read end-to-end but every existing adapter hardcodes them

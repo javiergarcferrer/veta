@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Boxes, Loader2, Square, Wand2 } from 'lucide-react';
 import { db, invalidate } from '../../db/database.js';
 import { resolveCarlHansenConfigurator, resolveCarlHansenMeshQueue } from '../../core/catalog/index.js';
-import { ALCOVER_MESH_V } from '../togo/togoModelLoader.js';
+import { ALCOVER_MESH_V } from '../configurator/modelLoader.js';
 import { convertChZip, readChZipDirectory } from './chMeshImport.js';
 import { userMessageFor } from '../../lib/errorMessages.js';
 

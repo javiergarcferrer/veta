@@ -1,6 +1,6 @@
 // THE SLOT KINDS — the Deno side's single home.
 //
-// `src/lib/togo/meshParts.js:PART_KINDS` is canonical and carries the reasoning:
+// `src/lib/configurator/meshParts.js:PART_KINDS` is canonical and carries the reasoning:
 // four kinds (`body` | `component` | `zone` | `finish`) defined by the only two
 // questions the money path asks — does this slot BILL, and does it take a
 // MATERIAL — from which `PART_ROLES`, `MATERIALIZATION_ROLES`, `UNPRICED_ROLES`

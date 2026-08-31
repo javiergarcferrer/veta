@@ -5,13 +5,13 @@
  * one lever, activo ↔ borrador.
  *
  * Pure projection, no React / no db (the layering fitness test enforces it): the
- * View fetches `db.togoModels`, calls `resolveModelManager` in a useMemo and
+ * View fetches `db.configuratorModels`, calls `resolveModelManager` in a useMemo and
  * renders — it derives nothing of its own.
  *
  * THREE THINGS ARE LOAD-BEARING HERE and everything else is display:
  *
  *   1. ESTADO IS `active`, READ THE WAY THE WIDGET READS IT. The public palette
- *      keeps a model when `active !== false` (resolveTogoModels, togo-embed) —
+ *      keeps a model when `active !== false` (resolveConfiguratorModels, togo-embed) —
  *      so a NULL `active` is a LIVE model today, on real rows written before the
  *      column existed. «Borrador» therefore means exactly `active === false` and
  *      nothing else: no migration, no new column, and the manager can never
@@ -33,8 +33,8 @@
  *      wants to SHOW (that row needs work), never a crash that hides the whole
  *      table.
  */
-import { PART_ROLES, structureGroupsOf } from '../../../lib/togo/meshParts.js';
-import { canonicalCollection } from '../../../lib/togo/collections.js';
+import { PART_ROLES, structureGroupsOf } from '../../../lib/configurator/meshParts.js';
+import { canonicalCollection } from '../../../lib/configurator/collections.js';
 
 /** Published to the configurador (`active !== false`) vs held back. */
 export type ModelEstado = 'activo' | 'borrador';
@@ -82,7 +82,7 @@ export type ModelManagerRow = {
    * The row's place in the configurador's palette (`togo_models.sort_order`).
    * Exposed because the board is where that order is EDITED: sorting by
    * colección puts the table in palette order, and dragging a row there hands
-   * `planTogoReorder` this very list — see sorterFor's note.
+   * `planConfiguratorReorder` this very list — see sorterFor's note.
    */
   sortOrder: number;
   provenance: ModelProvenance;
@@ -147,8 +147,8 @@ export type ModelManagerResult = {
   rows: ModelManagerRow[];
   /**
    * The WHOLE catalog in the configurador's own palette order — global
-   * `sortOrder`, exactly how `resolveTogoModelCards` and the `togo-embed`
-   * payload read it. This is the list `planTogoReorder` renumbers when the board
+   * `sortOrder`, exactly how `resolveConfiguratorModelCards` and the `togo-embed`
+   * payload read it. This is the list `planConfiguratorReorder` renumbers when the board
    * drags a row, and it is a separate projection from `rows` on purpose: `rows`
    * is FILTERED and re-sorted by the owner, while a reorder must be planned over
    * everything, in the sequence the numbering actually runs. Hand the planner
@@ -206,7 +206,7 @@ function bagOf(v: unknown): Record<string, unknown> {
 
 /**
  * What the mesh slot holds. The suffix is read off the PATH, not the whole URL:
- * `removeTogoMesh` already splits on '?' for the same reason — a cache-buster or
+ * `removeConfiguratorMesh` already splits on '?' for the same reason — a cache-buster or
  * a signed query says nothing about the format, and a real GLB must not file as
  * a raw export because someone appended `?v=2`.
  */
@@ -236,7 +236,7 @@ function partsSkuCountOf(parts: unknown): number {
 /**
  * Does the ROW ITSELF carry a structure palette?
  *
- * It matters because `resolveTogoModels` INJECTS the colección's estructura at
+ * It matters because `resolveConfiguratorModels` INJECTS the colección's estructura at
  * read time, so the configurador can show acabados on a row that stores none —
  * which is the right behaviour there and the wrong thing to report here. The
  * manager is looking at storage, so it asks the Model's own gate
@@ -290,10 +290,10 @@ function toRow(m: Record<string, unknown>): ModelManagerRow {
  * other way round — see `defaultDirFor`.
  *
  * ⚠️ THE COLECCIÓN SORT IS THE PALETTE ORDER. Within a colección it orders by
- * `sortOrder` — exactly what `resolveTogoModelCards` / the `togo-embed` payload
+ * `sortOrder` — exactly what `resolveConfiguratorModelCards` / the `togo-embed` payload
  * serve the configurador — and NOT by name. That is what makes the board's
  * drag-to-reorder honest: the dealer drags rows in the order the customer sees,
- * and the plan (`planTogoReorder`, fed THIS list) renumbers the same sequence.
+ * and the plan (`planConfiguratorReorder`, fed THIS list) renumbers the same sequence.
  * Order by name here and a drop would land the piece somewhere the dealer never
  * pointed at. Legacy rows all sit on `sortOrder` 0 — a tie — so the name is the
  * tiebreak, and the first move defragments the colección gaplessly.
@@ -405,7 +405,7 @@ export function resolveModelManager(models: unknown[], opts: ModelManagerOpts = 
  * The one write the board plans: flip a row's estado.
  *
  * It returns a PATCH rather than performing one — the VM stays pure and the View
- * hands it to `db.togoModels.update(id, patch)`. `active: false` is precisely
+ * hands it to `db.configuratorModels.update(id, patch)`. `active: false` is precisely
  * today's hide-from-the-widget semantics, which is why «borrador» needed no
  * migration and cannot change what the configurador serves for any other row.
  *

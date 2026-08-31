@@ -40,13 +40,17 @@ export default function BrandLogo({ brand, size = 20, tone = 'surface', classNam
     );
   }
 
+  // On the dark chrome the brand's own colour is unusable for the chip: most
+  // houses here dress in near-black (#1c1c1c), which vanishes against the nav.
+  // The chrome chip stays on the chrome ramp; paper surfaces keep the colour.
+  const chipColor = tone === 'chrome' ? null : color;
   return (
     <span
       title={name}
       aria-label={name}
-      style={{ height: size, minWidth: size, background: color || undefined }}
+      style={{ height: size, minWidth: size, background: chipColor || undefined }}
       className={`shrink-0 inline-flex items-center justify-center rounded px-1.5 text-[10px] font-semibold tracking-wide ${
-        color ? 'text-white' : 'bg-ink-700 text-ink-100'
+        chipColor ? 'text-white' : 'bg-ink-700 text-ink-100'
       } ${className}`}
     >
       {initialsOf(name)}

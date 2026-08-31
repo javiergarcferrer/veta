@@ -1,11 +1,12 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Tags, FileText, LayoutDashboard, Layers, Armchair } from 'lucide-react';
+import { Boxes, Store, Inbox, ExternalLink, LogOut, Loader2, Hourglass, Settings2, FileText, LayoutDashboard, Layers, Armchair } from 'lucide-react';
 import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
 import { AppProvider, useApp } from '../context/AppContext.jsx';
 import { ConfirmProvider } from '../components/ConfirmProvider.jsx';
 import { isPublicRoute } from '../lib/theme.js';
 import { togoShareUrl } from '../lib/togoEmbed.js';
+import { CONFIGURATORS, configuratorPath } from '../brands/configurators/index.js';
 import { safeDynamicImport } from '../lib/dynamicImport.js';
 import SignIn from './SignIn.jsx';
 
@@ -30,28 +31,37 @@ const RequestDetail = lazyPage(() => import('../pages/quoting/RequestDetail.jsx'
 const QuoteShare = lazyPage(() => import('../pages/quoting/QuoteShare.jsx'));
 
 /**
- * The admin shell: the destinations, and nothing else.
+ * The admin shell. Three regions, top to bottom, and only the FIRST one carries
+ * a brand's identity:
  *
- *   Panel            — the dealer's own numbers              (pages/Dashboard)
- *   Modelos          — the 3D studio + model manager   (pages/admin/TogoCatalog)
- *   Distribuidores   — dealer records + install kits   (pages/admin/TogoDealers)
- *   Solicitudes      — leads out of the configurator   (pages/TogoRequests)
- *   Cotizaciones     — the frozen quote documents      (pages/quoting/Quotes)
- *   Marcas           — the brand microenvironments     (pages/admin/Brands)
- *   Configurador     — opens the PUBLIC widget         (/configurator)
+ * 1. VETA — the wordmark. The app's ONLY identity: no brand's logo ever sits
+ *    here, because a mark in the masthead reads as "whose app this is", and
+ *    this app belongs to no manufacturer.
+ * 2. MARCAS — the brand rail (BrandRail): one visible row per brand, the open
+ *    one highlighted. A row selects that brand's whole environment, and a
+ *    brand with a registered configurator carries its own ↗ launcher
+ *    (brands/configurators — Togo owns the bare /configurador; every other
+ *    brand gets its suffixed path). The rail's gear opens «Marcas», where
+ *    brands are created and dressed. EVERYTHING BELOW THE RAIL IS ONE BRAND'S
+ *    ENVIRONMENT — the data layer filters every read and stamps every write to
+ *    the open brand (db/brandScope.ts), so the destinations need no brand
+ *    plumbing of their own:
  *
- * plus one destination per SUPPLIER IMPORT — a source that publishes its own
- * library online, and is therefore a link to paste rather than a folder to
- * drop. They live in the nav rather than inside a brand's ficha because the
- * SOURCE is chosen by the page, not by the brand it fills:
+ *      Panel            — the open brand's numbers          (pages/Dashboard)
+ *      Modelos          — the 3D studio + model manager (pages/admin/TogoCatalog)
+ *      Distribuidores   — dealer records + install kits (pages/admin/TogoDealers)
+ *      Solicitudes      — leads out of the configurator (pages/TogoRequests)
+ *      Cotizaciones     — the frozen quote documents    (pages/quoting/Quotes)
  *
- *   Kvadrat          — a colourway collection → telas   (pages/admin/KvadratImport)
- *   Fredericia       — Anthom's storefront → el catálogo (pages/admin/FredericiaImport)
+ * 3. IMPORTAR — one destination per SUPPLIER SOURCE: a house that publishes its
+ *    own library online, a link to paste rather than a folder to drop. They are
+ *    labelled by the SOURCE, deliberately apart from the brand rail — «Fredericia
+ *    · Anthom» is the distributor's storefront that FILLS the Fredericia brand,
+ *    not the brand itself, and the two reading as one thing is exactly the
+ *    confusion this section exists to end:
  *
- * EVERYTHING BELOW THE BRAND SWITCHER IS ONE BRAND'S ENVIRONMENT. The switcher
- * in the nav picks which manufacturer you are working in; the data layer filters
- * every read and stamps every write to it (db/brandScope.ts), so the
- * destinations above need no brand plumbing of their own.
+ *      Kvadrat            — a colourway collection → telas (pages/admin/KvadratImport)
+ *      Fredericia · Anthom — Anthom's storefront → catálogo (pages/admin/FredericiaImport)
  *
  * Two surfaces skip authentication entirely, because they are the product's
  * public half: the clean `/configurator` URLs (mounted before this file ever
@@ -66,9 +76,11 @@ const NAV = [
   { to: '/distribuidores', label: 'Distribuidores', icon: Store },
   { to: '/solicitudes', label: 'Solicitudes', icon: Inbox },
   { to: '/cotizaciones', label: 'Cotizaciones', icon: FileText },
-  { to: '/marcas', label: 'Marcas', icon: Tags },
+];
+
+const IMPORT_NAV = [
   { to: '/kvadrat', label: 'Kvadrat', icon: Layers },
-  { to: '/fredericia', label: 'Fredericia', icon: Armchair },
+  { to: '/fredericia', label: 'Fredericia · Anthom', icon: Armchair },
 ];
 
 function Loading({ label = 'Cargando…' }) {
@@ -110,46 +122,115 @@ function NavItem({ to, label, icon: Icon, onNavigate, end }) {
 }
 
 /**
- * WHICH MANUFACTURER YOU ARE WORKING IN.
+ * ONE BRAND'S ROW ON THE RAIL. The row body selects that brand's environment;
+ * the ↗ — present only when the registry knows a configurator for this brand —
+ * opens the brand's OWN configurator in a new tab. Togo's rides togoShareUrl()
+ * (the bare path, with its link-preview version pin); every other brand's is
+ * its registered suffixed path, which the Vercel rewrite already serves.
+ */
+function BrandRow({ b, active, onSelect }) {
+  const configurator = CONFIGURATORS.find((c) => c.brandSlug === b.slug) || null;
+  const href = configurator
+    ? (configurator.slug ? `${location.origin}${configuratorPath(configurator)}` : togoShareUrl())
+    : null;
+  return (
+    <div
+      className={`group flex items-center rounded-lg transition-colors shrink-0 ${
+        active ? 'bg-ink-800' : 'hover:bg-ink-800/60'
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={active}
+        title={`Trabajar en ${b.name}`}
+        className={`flex-1 min-w-0 inline-flex items-center gap-2 pl-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+          href ? 'pr-1' : 'pr-3'
+        } ${active ? 'text-ink-50' : 'text-ink-300 group-hover:text-ink-50'}`}
+      >
+        <BrandLogo brand={b} size={16} tone="chrome" />
+        <span className="hidden md:inline truncate">
+          {b.name}
+          {b.active === false ? ' (inactiva)' : ''}
+        </span>
+        <span className="sr-only md:hidden">{b.name}</span>
+      </button>
+      {href && (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          title={`${configurator.label} — abrir en una pestaña nueva`}
+          className={`px-2 py-2 shrink-0 rounded-lg transition-colors ${
+            active ? 'text-ink-300 hover:text-ink-50' : 'text-ink-500 hover:text-ink-50'
+          }`}
+        >
+          <ExternalLink size={14} aria-hidden />
+          <span className="sr-only">Abrir {configurator.label}</span>
+        </a>
+      )}
+    </div>
+  );
+}
+
+/**
+ * THE BRAND RAIL — which manufacturer you are working in, as a VISIBLE list.
  *
  * It sits directly under the wordmark because it governs everything below it:
- * the models, the materials, the distribuidores and the solicitudes on every
- * page are that brand's, and switching re-scopes the whole app (AppContext →
- * db/brandScope). Real rows — the `brands` table, active brands first — never a
- * hardcoded list.
+ * the models, materials, distribuidores and solicitudes on every page are the
+ * highlighted brand's, and selecting a row re-scopes the whole app (AppContext
+ * → db/brandScope). Real rows — the `brands` table — never a hardcoded list.
  *
- * One brand reads as a LABEL, not a control: a picker with a single option is a
- * question with one answer. No brands at all (a database the migration hasn't
- * reached yet) renders nothing, and the app runs exactly as it did before.
+ * A RAIL, not a <select>: the dropdown hid the brands behind a click and wore
+ * the open brand's logo directly under the wordmark, where it read as the
+ * app's own identity. Here every brand is on screen at once, the house brand
+ * first (`is_house`, seeding order as the tiebreak), each with its own
+ * configurator launcher — siloed side by side instead of stacked behind a
+ * control. No brands at all (a database the migration hasn't reached yet)
+ * renders nothing, and the app runs exactly as it did before.
  */
-function BrandSwitcher() {
+function BrandRail() {
   const { brands, brand, selectBrand } = useApp();
   const options = (brands || []).filter((b) => b.active !== false || b.id === brand?.id);
   if (!brand || !options.length) return null;
-  const dot = brand.branding?.primaryColor || null;
-  if (options.length === 1) {
-    return (
-      <div className="px-1 md:px-3 shrink-0 md:mb-3 flex items-center gap-2 max-w-[10rem] md:max-w-none">
-        <BrandLogo brand={brand} size={18} tone="chrome" />
-        <span className="sr-only">{brand.name}</span>
-      </div>
-    );
-  }
+  const rail = [...options].sort(
+    (a, b) =>
+      (b.isHouse === true) - (a.isHouse === true)
+      || String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+      || String(a.name || '').localeCompare(String(b.name || '')),
+  );
   return (
-    <div className="px-1 md:px-3 shrink-0 md:mb-3 flex items-center gap-2 md:block">
-      <BrandLogo brand={brand} size={18} tone="chrome" className="md:mb-2" />
-      <label className="sr-only" htmlFor="brand-switcher">Marca</label>
-      <select
-        id="brand-switcher"
-        value={brand.id}
-        onChange={(e) => selectBrand(e.target.value)}
-        className="w-full cursor-pointer max-w-[11rem] md:max-w-none rounded-lg border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-xs font-medium text-ink-100 hover:border-ink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
-        title="Marca activa — sus modelos, materiales, distribuidores y solicitudes"
-      >
-        {options.map((b) => (
-          <option key={b.id} value={b.id}>{b.name}{b.active === false ? ' (inactiva)' : ''}</option>
-        ))}
-      </select>
+    <div className="shrink-0 md:mb-2 flex items-center gap-1 md:block md:space-y-0.5">
+      <div className="flex items-center gap-1 md:justify-between md:px-3 md:pb-1">
+        <span className="hidden md:inline text-[11px] font-medium uppercase tracking-wider text-ink-500">
+          Marcas
+        </span>
+        <NavLink
+          to="/marcas"
+          title="Administrar marcas"
+          className={({ isActive }) =>
+            `inline-flex items-center rounded-lg p-1.5 transition-colors ${
+              isActive ? 'bg-ink-800 text-ink-50' : 'text-ink-500 hover:bg-ink-800/60 hover:text-ink-50'
+            }`
+          }
+        >
+          <Settings2 size={14} aria-hidden />
+          <span className="sr-only">Administrar marcas</span>
+        </NavLink>
+      </div>
+      {rail.map((b) => (
+        <BrandRow key={b.id} b={b} active={b.id === brand.id} onSelect={() => selectBrand(b.id)} />
+      ))}
+    </div>
+  );
+}
+
+/** A quiet group caption in the chrome — hidden on the mobile strip, where the
+ *  items themselves have to carry the meaning. */
+function NavSection({ label }) {
+  return (
+    <div className="hidden md:block px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-ink-500">
+      {label}
     </div>
   );
 }
@@ -163,20 +244,12 @@ function Nav() {
     <nav className="theme-chrome bg-ink-900 text-ink-100 md:w-56 md:shrink-0 md:h-full md:flex md:flex-col px-3 py-3 md:py-5 gap-3 md:gap-1 flex items-center md:items-stretch overflow-x-auto md:overflow-x-visible pt-safe-area md:pl-safe-area">
       <div className="font-wordmark text-lg tracking-[0.18em] px-1 md:px-3 md:mb-2 shrink-0">VETA</div>
 
-      <BrandSwitcher />
+      <BrandRail />
 
       {NAV.map((item) => <NavItem key={item.to} {...item} />)}
 
-      <a
-        href={togoShareUrl()}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-300 hover:bg-ink-800/60 hover:text-ink-50 transition-colors whitespace-nowrap"
-        title="Abrir el configurador público"
-      >
-        <ExternalLink size={16} aria-hidden />
-        Configurador
-      </a>
+      <NavSection label="Importar" />
+      {IMPORT_NAV.map((item) => <NavItem key={item.to} {...item} />)}
 
       <div className="md:mt-auto md:pt-4 flex items-center gap-2 md:flex-col md:items-stretch">
         {currentProfile?.email && (

@@ -38,6 +38,8 @@ import {
   priceListValidity,
   priceWindowIncoherent,
   parseChDate,
+  chPriceRowId,
+  CH_PRICE_MARKET,
   PRICE_LIST_EXPIRING_DAYS,
 } from '../src/brands/carl-hansen/price.js';
 import { swatchUrlFor, colorwayCode } from '../src/brands/carl-hansen/swatches.js';
@@ -1375,4 +1377,21 @@ test('priceWindowIncoherent — the merge scar reads as a refetch, never as data
   assert.equal(priceWindowIncoherent({ validFromDate: '2026-07-01T00:00:00', validToDate: '2026-12-31T00:00:00' }), false);
   assert.equal(priceWindowIncoherent({ validFrom: null, validTo: '2024-12-31T00:00:00' }), false);
   assert.equal(priceWindowIncoherent(null), false);
+});
+
+test('chPriceRowId — survives being handed to .map(), where the INDEX arrives as the market', () => {
+  // The bulk importer shipped `modelIds.map(chPriceRowId)` and the cache was
+  // silently asked for `CH23:0`, `CH280:1`, … — zero hits, every model «sin
+  // lista de precios», every press re-downloading all 115 lists (caught in
+  // the PostgREST logs, 2026-08-31). The map(parseInt) trap, on money. A
+  // market that is not a usable string is unsaid, never an id segment.
+  assert.deepEqual(
+    ['CH24', 'AJ52'].map(chPriceRowId),
+    [`CH24:${CH_PRICE_MARKET}`, `AJ52:${CH_PRICE_MARKET}`],
+  );
+  assert.equal(chPriceRowId('CH24'), 'CH24:VAT0-USD');
+  assert.equal(chPriceRowId('CH24', 'VAT0-EUR'), 'CH24:VAT0-EUR');
+  assert.equal(chPriceRowId('CH24', 0), 'CH24:VAT0-USD');
+  assert.equal(chPriceRowId('CH24', null), 'CH24:VAT0-USD');
+  assert.equal(chPriceRowId('CH24', '  '), 'CH24:VAT0-USD');
 });

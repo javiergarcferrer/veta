@@ -33,6 +33,29 @@
 import type { ChAxis, ChChoice } from './selectionTree.js';
 import { selectedChoice, templatePlaceholders } from './selectionTree.js';
 
+/** The ONLY market this importer reads: the ex-VAT USD export list. A price in
+ *  any other market is somebody else's money (spec §6). */
+export const CH_PRICE_MARKET = 'VAT0-USD';
+
+/**
+ * PK of a `carl_hansen_prices` row — the function's own key shape
+ * (`<model>:<market>`), named once here so no call site spells it by hand.
+ *
+ * DEFENSIVE ABOUT `market` ON PURPOSE, and it is a money guard, not a nicety:
+ * `modelIds.map(chPriceRowId)` reads naturally and hands the array INDEX as
+ * the second argument — the `map(parseInt)` trap. The bulk importer shipped
+ * exactly that, silently asking the cache for `CH23:0`, `CH280:1`, … — so it
+ * NEVER saw a cached price list, re-downloaded all 115 on every press, and
+ * then skipped every model as «sin lista de precios» (caught in the PostgREST
+ * logs, 2026-08-31). A market that isn't a usable string is therefore treated
+ * as unsaid and takes the default; only a real string can select another
+ * market's money.
+ */
+export function chPriceRowId(modelId: unknown, market: unknown = CH_PRICE_MARKET): string {
+  const m = typeof market === 'string' && market.trim() ? market.trim() : CH_PRICE_MARKET;
+  return `${String(modelId ?? '').trim()}:${m}`;
+}
+
 /**
  * A price list, in EITHER of the two spellings it reaches us in:
  *

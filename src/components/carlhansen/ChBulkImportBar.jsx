@@ -94,9 +94,13 @@ export default function ChBulkImportBar({ profileId, pages, onDone }) {
       // first press of «Importar todo», and the map that keyed rows by the
       // absent field would have called every model missing and re-read ~200
       // masters the cache already held.
+      // NEVER `.map(chPriceRowId)` bare: map hands the array INDEX as the
+      // second argument (the market), and the cache was silently asked for
+      // `CH23:0`, `CH280:1`, … — zero hits, every model «sin lista», forever.
+      const priceRowIds = modelIds.map((modelId) => chPriceRowId(modelId));
       const [specRows, priceRows] = await Promise.all([
         db.carlHansenSpecs.where('id').anyOf(modelIds).toArray(),
-        db.carlHansenPrices.where('id').anyOf(modelIds.map(chPriceRowId)).toArray(),
+        db.carlHansenPrices.where('id').anyOf(priceRowIds).toArray(),
       ]);
       const specById = new Map((specRows || []).map((x) => [String(x?.id || ''), x]));
       const priceById = new Map((priceRows || []).map((x) => [String(x?.id || ''), x]));
@@ -146,7 +150,7 @@ export default function ChBulkImportBar({ profileId, pages, onDone }) {
       // Re-read once (the fetches above filled gaps), then walk model by model.
       const [specRows2, priceRows2] = await Promise.all([
         db.carlHansenSpecs.where('id').anyOf(modelIds).toArray(),
-        db.carlHansenPrices.where('id').anyOf(modelIds.map(chPriceRowId)).toArray(),
+        db.carlHansenPrices.where('id').anyOf(modelIds.map((modelId) => chPriceRowId(modelId))).toArray(),
       ]);
       const spec2 = new Map((specRows2 || []).map((x) => [String(x?.id || ''), x]));
       const price2 = new Map((priceRows2 || []).map((x) => [String(x?.id || ''), x]));

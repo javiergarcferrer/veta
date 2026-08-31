@@ -30,16 +30,13 @@
 // injected supabase function call, defaulting to the app client exactly like
 // lrCatalogSync — which keeps this module testable without a browser.
 import { supabase as defaultClient } from '../db/supabaseClient.js';
+// The market constant and the price-row key live with the PRICE MODEL, where
+// tests can reach them without dragging a browser client along; re-exported
+// here so every existing import site keeps working. `chPriceRowId` is
+// deliberately defensive about its second argument — see its own note.
+import { CH_PRICE_MARKET, chPriceRowId } from '../brands/carl-hansen/price.js';
 
-/** The ONLY market this importer reads: the ex-VAT USD export list. A price in
- *  any other market is somebody else's money (spec §6). */
-export const CH_PRICE_MARKET = 'VAT0-USD';
-
-/** PK of a `carl_hansen_prices` row — the function's own key shape
- *  (`<model>:<market>`), named once here so no call site spells it by hand. */
-export function chPriceRowId(modelId, market = CH_PRICE_MARKET) {
-  return `${String(modelId ?? '').trim()}:${market}`;
-}
+export { CH_PRICE_MARKET, chPriceRowId };
 
 /** The function's refusal when another drain already owns the sweep slot. It is
  *  a WAIT, not a failure: the other tab is doing the work. */

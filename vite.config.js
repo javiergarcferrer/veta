@@ -2,9 +2,14 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { join } from 'node:path';
 
-// Relative asset base, so the built app works under any host path.
-// Override with VITE_BASE when deploying somewhere unusual.
-const base = process.env.VITE_BASE || './';
+// ABSOLUTE asset base. This deploy serves at the domain root, and the public
+// configurator lives on NESTED paths (/configurador/carl-hansen) rewritten to
+// configurator.html — with the old relative './' base the browser resolved
+// ./assets/* against /configurador/, the vercel.json rewrite answered that
+// with HTML, and the page went blank (strict MIME on module scripts). The bare
+// /configurador only worked by being one segment deep. Override with VITE_BASE
+// when hosting under a subpath.
+const base = process.env.VITE_BASE || '/';
 
 // The CLEAN public configurator URLs. Both spellings stay live (links carrying
 // either are already out in the world) and both serve the SAME document —

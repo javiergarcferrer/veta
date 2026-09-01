@@ -1924,16 +1924,10 @@ export default function ModelStudio({
     } catch (e) { setMeshOpErr(e?.message || 'No se pudo regenerar.'); } finally { setMeshBusy(false); }
   };
 
-  // Refresh the stored 2D plan + footprint from the current mesh.
-  const regenPlan = async () => {
-    if (!card?.meshUrl || meshBusy) return;
-    setMeshBusy(true); setMeshOpErr(null);
-    try {
-      const plan = await loadMeshPlan(card.meshUrl, { upAxis: card.meshUpAxis || 'y' });
-      if (plan?.svg) await db.configuratorModels.update(card.id, { svg: plan.svg, widthCm: plan.widthCm, depthCm: plan.depthCm, updatedAt: Date.now() });
-      else setMeshOpErr('El modelo no produjo una planta.');
-    } catch (e) { setMeshOpErr(e?.message || 'No se pudo regenerar la planta.'); } finally { setMeshBusy(false); }
-  };
+  // La planta 2D no tiene UI (pedido del dueño, 2026-09-01): se regenera SOLA
+  // — al importar y al cambiar el eje (toggleAxis, arriba) — porque el embed
+  // público la exige para publicar (`togo-embed` filtra `active && svg`).
+  // Borrar el dato apagaría el catálogo publicado; borrar su vitrina no.
 
   // ── «Optimizar mallas» — the catalogue-wide re-export.
   //
@@ -2652,7 +2646,6 @@ export default function ModelStudio({
               onRemoveMesh={removeMesh}
               onEmbed={() => setEmbedOpen(true)}
               meshOpt={meshOpt}
-              onRegenPlan={regenPlan}
             />
             <ModelFidelityPanel
               row={fidelityRow}
@@ -2753,7 +2746,6 @@ export default function ModelStudio({
                 status={status}
                 busy={meshBusy}
                 onNeedCatalog={onNeedCatalog}
-                onRegenPlan={regenPlan}
                 onDelete={deleteModel}
               />
             )}
@@ -2832,7 +2824,6 @@ const asMb = (bytes) => `${(Number(bytes || 0) / 1048576).toFixed(1)} MB`;
 
 function StageToolbar({
   card, busy, detecting, meshIntake, onToggleAxis, onRemoveMesh, onEmbed, meshOpt = null,
-  onRegenPlan = null,
 }) {
   return (
     // NOT A BAR ANY MORE. It was a slab across the top of the stage, and every
@@ -2857,14 +2848,6 @@ function StageToolbar({
         {card?.meshUrl && (
           <button type="button" onClick={onToggleAxis} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Si el modelo aparece acostado, cambia el eje vertical (regenera la planta)">
             Eje {card.meshUpAxis === 'z' ? 'Z' : 'Y'}
-          </button>
-        )}
-        {/* La planta (el dato que publica el modelo y dibuja el plano) se
-            re-deriva del 3D — mantenimiento del ARCHIVO, así que vive aquí y
-            no en la ficha (la región «Su origen» murió, 2026-09-01). */}
-        {card?.meshUrl && onRegenPlan && (
-          <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
-            <RefreshCw size={11} /> Planta
           </button>
         )}
         {card && (
@@ -2951,7 +2934,7 @@ function ModelInspector({
   // `groups` stays (the base-SKU note asks whether the piece HAS componentes);
   // the part list itself moved out to PartsCard, beside the render.
   groups, draft, status, busy,
-  onNeedCatalog, onRegenPlan, onDelete,
+  onNeedCatalog, onDelete,
 }) {
   const [pickOpen, setPickOpen] = useState(false);
   // Optimistic binding: a global invalidate refetches the (huge) catalog, so the
@@ -3194,12 +3177,10 @@ function ModelInspector({
         />
       </FichaRegion>
 
-      {/* «SU ORIGEN» YA NO EXISTE (pedido del dueño, 2026-09-01): la planta es
-          un DATO del configurador (publica el modelo y dibuja el plano), no una
-          región que el dealer edite — mirarla aquí no informaba ninguna
-          decisión. «Regenerar planta» vive ahora en Malla 3D, con las demás
-          acciones de mantenimiento del archivo 3D; la fuente y su fecha siguen
-          en la fila, sin vitrina. */}
+      {/* «SU ORIGEN» YA NO EXISTE, y la planta 2D no tiene NINGUNA UI (pedido
+          del dueño, 2026-09-01): es un dato interno que el embed exige para
+          publicar y se regenera solo al importar o cambiar el eje. Ni región,
+          ni miniatura, ni botón. */}
 
       {/* ── SU COLECCIÓN, on its own full-width row. Everything above edits ONE
           piece; this edits every model of the colección at once, and that

@@ -79,16 +79,17 @@ test('el grid favorece al 3D y el carril usa las pantallas anchas', () => {
     'el carril del stage perdió su escalón 2xl — ancho muerto en pantallas grandes');
 });
 
-test('«Su origen» está eliminada — y la planta se regenera desde Malla 3D', () => {
-  // Pedido del dueño (2026-09-01): la región entera fuera. La planta es un
-  // DATO (publica el modelo, dibuja el plano del configurador) — el svg y su
-  // regeneración siguen vivos, pero como mantenimiento del archivo 3D en el
-  // carril, no como vitrina en la ficha. Tres regiones llenan xl:grid-cols-3
-  // exacto; resucitar la cuarta columna reabre el hueco.
+test('la planta 2D no tiene NINGUNA UI en el estudio', () => {
+  // Pedido del dueño (2026-09-01, dos veces): «quita toda esa mierda». La
+  // planta es un dato INTERNO — el embed público la exige para publicar
+  // (`togo-embed` filtra `active && svg`) y se regenera sola al importar o
+  // cambiar el eje — así que el dato vive y su vitrina no: ni región «Su
+  // origen», ni miniatura, ni botón «Regenerar». Resucitar cualquiera de los
+  // tres deshace un pedido directo.
   assert.ok(!fnBody('ModelInspector').includes('Su origen'),
     'la región «Su origen» volvió a la ficha — el dueño la pidió eliminada');
-  assert.ok(fnBody('StageToolbar').includes('onRegenPlan'),
-    'StageToolbar perdió «Regenerar planta» — sin él no hay forma de rehacer una planta rota');
+  assert.ok(!STUDIO.includes('onRegenPlan') && !STUDIO.includes('regenPlan'),
+    'reapareció UI de regenerar la planta — el dueño pidió cero rastro; la regeneración es automática (import / eje)');
 });
 
 test('las CSS-columns son SOLO de la ficha de parte — la del modelo es grilla', () => {

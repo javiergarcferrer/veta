@@ -308,6 +308,13 @@ function NotFound() {
 function AdminApp() {
   const { ready, currentProfile, isActive } = useApp();
   const { user, signOut } = useAuth();
+  // El estudio de modelos ancla su grid al viewport en lg+ (ModelStudio.jsx
+  // asume un padre con altura real — su propia cadena lg:h-full/min-h-0). Sin
+  // este eslabón el estudio flotaba en una página con gutter y DOBLE scroll:
+  // el screenshot del 2026-08-31. Calcado del mecanismo `onConfigurator` de
+  // RosetSoft (Layout.jsx). El flush es DE ESTA RUTA: las demás siguen siendo
+  // página que scrollea con su gutter. Hook antes de los early-returns.
+  const onModelos = /^\/modelos(\/|$)/.test(useLocation().pathname);
 
   if (!ready) return <Loading />;
 
@@ -358,7 +365,14 @@ function AdminApp() {
   return (
     <div className="h-full flex flex-col md:flex-row bg-canvas">
       <Nav />
-      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto px-4 py-5 md:px-8 md:py-7 pb-safe-area">
+      <main
+        className={onModelos
+          ? 'flex-1 min-w-0 min-h-0 overflow-y-auto px-4 py-5 pb-safe-area lg:overflow-hidden lg:p-0 lg:pb-0 lg:flex lg:flex-col'
+          : 'flex-1 min-w-0 min-h-0 overflow-y-auto px-4 py-5 md:px-8 md:py-7 pb-safe-area'}
+      >
+        {/* Wrapper transparente para el resto de rutas (block sin clases); en
+            modelos es el tramo que entrega la altura al estudio. */}
+        <div className={onModelos ? 'lg:flex-1 lg:min-h-0 lg:flex lg:flex-col' : undefined}>
         <Suspense fallback={<Loading />}>
           <Routes>
             <Route index element={<Dashboard />} />
@@ -376,6 +390,7 @@ function AdminApp() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </div>
       </main>
     </div>
   );

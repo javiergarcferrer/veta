@@ -77,8 +77,18 @@ test('el grid favorece al 3D y el carril usa las pantallas anchas', () => {
     'el rebalance de filas (1.4fr para el stage) desapareció');
   assert.ok(STUDIO.includes('2xl:w-[23rem]'),
     'el carril del stage perdió su escalón 2xl — ancho muerto en pantallas grandes');
-  assert.ok(STUDIO.includes('2xl:grid-cols-4'),
-    'la ficha perdió su cuarta columna 2xl');
+});
+
+test('«Su origen» está eliminada — y la planta se regenera desde Malla 3D', () => {
+  // Pedido del dueño (2026-09-01): la región entera fuera. La planta es un
+  // DATO (publica el modelo, dibuja el plano del configurador) — el svg y su
+  // regeneración siguen vivos, pero como mantenimiento del archivo 3D en el
+  // carril, no como vitrina en la ficha. Tres regiones llenan xl:grid-cols-3
+  // exacto; resucitar la cuarta columna reabre el hueco.
+  assert.ok(!fnBody('ModelInspector').includes('Su origen'),
+    'la región «Su origen» volvió a la ficha — el dueño la pidió eliminada');
+  assert.ok(fnBody('StageToolbar').includes('onRegenPlan'),
+    'StageToolbar perdió «Regenerar planta» — sin él no hay forma de rehacer una planta rota');
 });
 
 test('las CSS-columns son SOLO de la ficha de parte — la del modelo es grilla', () => {
@@ -88,8 +98,8 @@ test('las CSS-columns son SOLO de la ficha de parte — la del modelo es grilla'
     'el guard de columns desapareció — la ficha del modelo vuelve a ser masonry');
   assert.ok(!fnBody('ModelInspector').includes('FICHA_CARD'),
     'ModelInspector volvió a ser cards — la ficha del modelo es UNA grilla de FichaRegion');
-  assert.ok(fnBody('ModelInspector').includes('2xl:grid-cols-4'),
-    'la grilla de la ficha perdió su cuarta columna');
+  assert.ok(fnBody('ModelInspector').includes('xl:grid-cols-3'),
+    'la grilla de la ficha perdió sus columnas — tres regiones llenan xl:grid-cols-3 exacto');
 });
 
 test('el carril del stage es secciones, no cards anidadas', () => {

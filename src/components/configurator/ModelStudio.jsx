@@ -707,6 +707,12 @@ export default function ModelStudio({
   const [saveErr, setSaveErr] = useState(null);
   const [fanoutErr, setFanoutErr] = useState(0);      // siblings the fan-out couldn't write
   const [saving, setSaving] = useState(false);
+  // «Guardado», dos segundos. La franja decía «Guardando…» y luego DESAPARECÍA:
+  // el único feedback de que el write aterrizó era la ausencia de ruido, y una
+  // ausencia no confirma nada (queja de ergonomía cognitiva, 2026-09-01).
+  const [justSaved, setJustSaved] = useState(false);
+  const savedTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(savedTimerRef.current), []);
 
   const [detecting, setDetecting] = useState(false);
   const [detectErr, setDetectErr] = useState(null);
@@ -845,6 +851,9 @@ export default function ModelStudio({
         baseFinishesRef.current = next?.finishes || null;
         setBaseFinishes(next?.finishes || null);
       }
+      setJustSaved(true);
+      clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setJustSaved(false), 2000);
     } catch (e) {
       // Still on this model ⇒ the draft is unsaved again, exactly as before this
       // save started. Moved on ⇒ the flag now belongs to the model on the stage
@@ -2643,6 +2652,7 @@ export default function ModelStudio({
               onRemoveMesh={removeMesh}
               onEmbed={() => setEmbedOpen(true)}
               meshOpt={meshOpt}
+              onRegenPlan={regenPlan}
             />
             <ModelFidelityPanel
               row={fidelityRow}
@@ -2758,7 +2768,7 @@ export default function ModelStudio({
               is out, what the colección is about to take with it, and what broke.
               Nothing to press: a button that only ever means "yes, do the thing
               you were going to do anyway" is the thing that made this confusing. */}
-          {(dirty || saving || saveErr || fanoutErr > 0) && (
+          {(dirty || saving || saveErr || fanoutErr > 0 || justSaved) && (
             <div role="status" className="border-t border-ink-200 bg-surface px-3 py-2 space-y-1.5">
               {saveErr && (
                 <p className="flex items-start gap-1 text-micro text-red-400">
@@ -2776,11 +2786,17 @@ export default function ModelStudio({
                   Los acabados se aplicarán también a {fanoutCount} modelo{fanoutCount === 1 ? '' : 's'} de {collection}.
                 </p>
               )}
-              {(dirty || saving) && (
+              {(dirty || saving) ? (
                 <p className="flex items-center gap-1.5 text-micro text-ink-400">
                   <Loader2 size={11} className="shrink-0 animate-spin" aria-hidden /> Guardando…
                 </p>
-              )}
+              ) : justSaved && !saveErr ? (
+                // El aterrizaje confirmado — marca Y palabra (§6), dos segundos
+                // y fuera: feedback, no decoración permanente.
+                <p className="flex items-center gap-1.5 text-micro text-ink-400">
+                  <Check size={11} className="shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> Guardado
+                </p>
+              ) : null}
             </div>
           )}
         </aside>
@@ -2816,6 +2832,7 @@ const asMb = (bytes) => `${(Number(bytes || 0) / 1048576).toFixed(1)} MB`;
 
 function StageToolbar({
   card, busy, detecting, meshIntake, onToggleAxis, onRemoveMesh, onEmbed, meshOpt = null,
+  onRegenPlan = null,
 }) {
   return (
     // NOT A BAR ANY MORE. It was a slab across the top of the stage, and every
@@ -2840,6 +2857,14 @@ function StageToolbar({
         {card?.meshUrl && (
           <button type="button" onClick={onToggleAxis} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Si el modelo aparece acostado, cambia el eje vertical (regenera la planta)">
             Eje {card.meshUpAxis === 'z' ? 'Z' : 'Y'}
+          </button>
+        )}
+        {/* La planta (el dato que publica el modelo y dibuja el plano) se
+            re-deriva del 3D — mantenimiento del ARCHIVO, así que vive aquí y
+            no en la ficha (la región «Su origen» murió, 2026-09-01). */}
+        {card?.meshUrl && onRegenPlan && (
+          <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
+            <RefreshCw size={11} /> Planta
           </button>
         )}
         {card && (
@@ -2989,14 +3014,18 @@ function ModelInspector({
        it CAME FROM — and, on its own full-width row because it is the only
        thing here that edits sixty other models, what its COLECCIÓN offers.
        A grid, not `columns-*`: every field keeps one address. */
-    <div className="grid gap-x-6 gap-y-5 px-1 pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid gap-x-6 gap-y-5 px-1 pb-1 sm:grid-cols-2 xl:grid-cols-3">
 
       {/* ── LA PIEZA. Montaje folded in from the card it used to have to
           itself: it is one select describing where the piece sits, and a
           bordered box around one select is a rectangle drawn around a word. */}
       <FichaRegion title="La pieza">
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          <div className="sm:col-span-2">
+        {/* DOS CLUSTERS, no siete campos de corrido: quién es la pieza, y
+            cuánto mide y dónde se asienta — más de cuatro ítems en un grupo
+            dejan de leerse como grupo (§9 / chunking). La separación es el
+            space-y de la región, sin más chrome. */}
+        <div className="grid gap-2.5 sm:grid-cols-3">
+          <div className="sm:col-span-3">
             <label className="label" htmlFor={`configurador-name-${card.id}`}>Nombre</label>
             <input
               id={`configurador-name-${card.id}`}
@@ -3046,7 +3075,9 @@ function ModelInspector({
               onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
             />
           </div>
+        </div>
 
+        <div className="grid gap-2.5 sm:grid-cols-3">
           <MountField card={card} />
 
           <label className="block">
@@ -3163,28 +3194,12 @@ function ModelInspector({
         />
       </FichaRegion>
 
-      {/* ── SU ORIGEN — the 3D file this piece was made from, and the plan
-          derived off it. Both are the same subject (what the export gave us),
-          and they were two cards apart. */}
-      <FichaRegion title="Su origen">
-        <div className="flex items-start gap-3">
-          <div className="grid aspect-[4/3] w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-canvas p-2 text-ink-600 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: sanitizeSvg(card.svg || '') }} />
-          <div className="min-w-0 flex-1">
-            <span className="label">Planta</span>
-            {card.meshUrl && (
-              <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
-                {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Regenerar
-              </button>
-            )}
-          </div>
-        </div>
-        {row?.meshSourceName && (
-          <p className="truncate text-micro text-ink-400" title={row.meshSourceName}>
-            {row.meshSourceName}
-            {row.ingestedAt ? ` · ${new Date(row.ingestedAt).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
-          </p>
-        )}
-      </FichaRegion>
+      {/* «SU ORIGEN» YA NO EXISTE (pedido del dueño, 2026-09-01): la planta es
+          un DATO del configurador (publica el modelo y dibuja el plano), no una
+          región que el dealer edite — mirarla aquí no informaba ninguna
+          decisión. «Regenerar planta» vive ahora en Malla 3D, con las demás
+          acciones de mantenimiento del archivo 3D; la fuente y su fecha siguen
+          en la fila, sin vitrina. */}
 
       {/* ── SU COLECCIÓN, on its own full-width row. Everything above edits ONE
           piece; this edits every model of the colección at once, and that
@@ -3195,7 +3210,7 @@ function ModelInspector({
           Claude» chain; this deploy keeps the collection-level review here —
           the auto-import chain stays out by design (its grammar is one
           manufacturer's price-list vocabulary). */}
-      <div className="sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+      <div className="sm:col-span-2 xl:col-span-3">
         <FichaRegion title={`Colección · ${card.collection}`}>
         <AutoLinkRow
           collection={card.collection}
@@ -3223,7 +3238,7 @@ function ModelInspector({
           bordered card of its very own — the same chrome as «Nombre», landed
           by the masonry wherever it fit. It is quiet, it is last, and it is
           out of the field flow. */}
-      <div className="flex justify-end sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+      <div className="flex justify-end sm:col-span-2 xl:col-span-3">
         <button type="button" onClick={onDelete} className="btn-ghost text-micro text-ink-400 hover:text-red-500" title="Eliminar el modelo del catálogo">
           <Trash2 size={12} /> Eliminar modelo
         </button>
@@ -3249,9 +3264,36 @@ function PartsCard({
   groups, draft, finishStateByKey = {}, factoryGroups = null, status, hasMesh = true,
   onSelectGroup, onHoverGroup,
 }) {
+  const roles = groups.map((g) => partRoleFor(draft, g.key, 0, g.key));
+  // WHAT EVERY ROW SHARES IS SAID ONCE, IN THE HEADING.
+  //
+  // A nine-part model rendered nine rows whose right-hand column read
+  // «Componente» nine times: a whole column of a narrow rail spent on a word
+  // that, precisely BECAUSE it is on every row, distinguishes nothing. The
+  // information in it is one fact about the SET — «todas componente» — and the
+  // rows are then free to carry only what actually differs between them.
+  //
+  // Only when it is genuinely uniform. The moment one part is Estructura, the
+  // word is a difference again and every row gets it back: a list where some
+  // rows are labelled and some are not is worse than one where all of them are.
+  const uniformRole = groups.length > 1 && roles.every((r) => r === roles[0]) ? roles[0] : null;
+  const uniformLabel = uniformRole
+    ? (BILLED_SLOTS.includes(uniformRole) ? 'componente' : String(SLOT_LABELS[uniformRole] || SLOT_LABELS.base).toLowerCase())
+    : null;
+  // …and a uniform role implies a uniform SKU, because `draft.roots` is keyed
+  // BY the role: fold the word out of every row but leave `SKU 12345` on each
+  // one and the column is repeating itself again, one string later.
+  const uniformRoot = uniformRole ? (draft?.roots?.[uniformRole] || '') : '';
   return (
     <section className="space-y-1.5">
       <div className="section-rule"><span>Partes</span></div>
+      {groups.length > 0 && (
+        <p className="text-micro text-ink-400">
+          <span className="tabular-nums">{groups.length}</span>
+          {uniformLabel ? ` · todas ${uniformLabel}` : ''}
+          {uniformRoot ? ` · SKU ${uniformRoot}` : ''}
+        </p>
+      )}
       {groups.length === 0 ? (
         /* Three different "nothing here", and only one of them is «Detectar
            partes»: with no 3D there is nothing to detect FROM, and while the

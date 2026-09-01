@@ -3182,16 +3182,16 @@ function ModelInspector({
           publicar y se regenera solo al importar o cambiar el eje. Ni región,
           ni miniatura, ni botón. */}
 
-      {/* ── SU COLECCIÓN, on its own full-width row. Everything above edits ONE
-          piece; this edits every model of the colección at once, and that
-          difference was invisible when it was the fifth identical card in a
-          masonry. A row of its own is the cheapest way to say «different
-          blast radius».
+      {/* ── COLECCIÓN, la TERCERA columna. Tuvo una fila full-width propia
+          («different blast radius») — y el dueño la marcó en rojo (2026-09-01):
+          al morir la región de origen, la fila 1 dejaba una columna vacía y esta
+          banda cargaba otra franja de aire debajo. Subirla al hueco mata ambos
+          vacíos; que edita a TODA la colección lo dice su título.
           Upstream folded «Auto-vincular» into the table's «Completar con
           Claude» chain; this deploy keeps the collection-level review here —
           the auto-import chain stays out by design (its grammar is one
           manufacturer's price-list vocabulary). */}
-      <div className="sm:col-span-2 xl:col-span-3">
+      <div className="sm:col-span-2 xl:col-span-1">
         <FichaRegion title={`Colección · ${card.collection}`}>
         <AutoLinkRow
           collection={card.collection}

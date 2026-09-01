@@ -63,3 +63,45 @@ test('el estudio conserva su propia cadena de altura', () => {
   assert.ok(STUDIO.includes('lg:flex lg:h-full lg:min-h-0 lg:flex-col'),
     'el root del ModelStudio perdió su cadena lg:h-full/min-h-0');
 });
+
+/** El cuerpo de una función top-level, delimitado por la siguiente `function`. */
+const fnBody = (name) => {
+  const at = STUDIO.indexOf(`function ${name}`);
+  assert.ok(at > -1, `no existe function ${name}`);
+  const next = STUDIO.indexOf('\nfunction ', at + 1);
+  return STUDIO.slice(at, next === -1 ? STUDIO.length : next);
+};
+
+test('el grid favorece al 3D y el carril usa las pantallas anchas', () => {
+  assert.ok(STUDIO.includes('lg:grid-rows-[minmax(0,1.4fr)_minmax(0,1fr)]'),
+    'el rebalance de filas (1.4fr para el stage) desapareció');
+  assert.ok(STUDIO.includes('2xl:w-[23rem]'),
+    'el carril del stage perdió su escalón 2xl — ancho muerto en pantallas grandes');
+  assert.ok(STUDIO.includes('2xl:grid-cols-4'),
+    'la ficha perdió su cuarta columna 2xl');
+});
+
+test('las CSS-columns son SOLO de la ficha de parte — la del modelo es grilla', () => {
+  // La forma exacta del screenshot: cinco cards sueltas balanceadas por un
+  // masonry incondicional, cada campo en una dirección distinta por pieza.
+  assert.match(STUDIO, /\{group \? 'gap-x-2\.5 sm:columns-2 2xl:columns-3' : ''\}/,
+    'el guard de columns desapareció — la ficha del modelo vuelve a ser masonry');
+  assert.ok(!fnBody('ModelInspector').includes('FICHA_CARD'),
+    'ModelInspector volvió a ser cards — la ficha del modelo es UNA grilla de FichaRegion');
+  assert.ok(fnBody('ModelInspector').includes('2xl:grid-cols-4'),
+    'la grilla de la ficha perdió su cuarta columna');
+});
+
+test('el carril del stage es secciones, no cards anidadas', () => {
+  for (const name of ['StageToolbar', 'PartsCard', 'CoverPicker']) {
+    assert.ok(!fnBody(name).includes('FICHA_CARD'),
+      `${name} volvió a ser una card — el carril es secciones con .section-rule (decisión del dueño, 2026-08-31)`);
+    assert.ok(fnBody(name).includes('section-rule'),
+      `${name} perdió su .section-rule`);
+  }
+});
+
+test('la ficha de PARTE conserva sus cards — el flatten era del carril', () => {
+  assert.ok(fnBody('PartInspector').includes('FICHA_CARD'),
+    'PartInspector perdió sus FICHA_CARD — ese masonry las necesita');
+});

@@ -189,11 +189,11 @@ function FidelityBlock({ checks, estado }: { checks: FidelityCheck[]; estado: st
   const live = estado === 'activo';
 
   return (
-    <section className="space-y-2 border-b border-ink-200 px-3 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="label mb-0">Fidelidad</span>
-        <span className="text-micro text-ink-500">Como lo ve el cliente</span>
-      </div>
+    // Sección plana del carril: el padding y el ritmo son del carril, la regla
+    // es el encabezado — una card aquí era chrome sobre chrome (2026-08-31).
+    <section className="space-y-2">
+      <div className="section-rule"><span>Fidelidad</span></div>
+      <p className="text-micro text-ink-500">Como lo ve el cliente.</p>
 
       {/* Live AND broken. Said before the list, because it changes what the
           list below it is: a to-do becomes an outage. The recipe is `<Notice>`

@@ -93,6 +93,7 @@ import Modal from '../Modal.jsx';
 import EmptyState from '../EmptyState.jsx';
 import ModelFidelityPanel, { meshVersionFor } from './ModelFidelityPanel.jsx';
 import { FICHA_CARD } from './fichaCard.js';
+import Pending from './Pending.jsx';
 import ModelBrowser from '../quote-builder/ModelBrowser.jsx';
 import useFileIntake from '../primitives/useFileIntake.js';
 import { db, updateSettings } from '../../db/database.js';
@@ -168,9 +169,9 @@ function CoverPicker({ collection, modelId, modelName, pieces, materials, heroes
     : null;
   if (!collection) return null;
   return (
-    <section className={FICHA_CARD}>
-      <div className="flex items-baseline gap-1.5">
-        <span className="label mb-0">Portada · {collection}</span>
+    <section>
+      <div className="section-rule">
+        <span>Portada · {collection}</span>
         {/* The badge is about THIS PIECE, which is what the card is about.
             It used to light on `pin?.modelId || pin?.code` — i.e. whenever the
             COLECCIÓN had any pin at all — so the card could read
@@ -2357,7 +2358,7 @@ export default function ModelStudio({
         className={`flex flex-col overflow-hidden rounded-2xl border border-ink-200 bg-canvas lg:grid lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-0 ${
  listExpanded
             ? 'lg:grid-cols-1'
-            : 'lg:grid-cols-[minmax(19rem,34%)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(22rem,32%)_minmax(0,1fr)]'
+            : 'lg:grid-cols-[minmax(19rem,34%)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1.4fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(22rem,32%)_minmax(0,1fr)]'
         }`}
       >
         {/* TWO PANES, like every mail client and every messenger: the LIST down
@@ -2627,7 +2628,12 @@ export default function ModelStudio({
           {/* ── EL ESTADO DE LA PIEZA, beside the render. Scrolls on its own so
               a model with three amber checks can never push the portada out of
               reach; below `lg` it simply follows the render down the page. */}
-          <div className="shrink-0 overflow-y-auto overscroll-contain border-t border-ink-200 p-2.5 lg:w-[19rem] lg:border-l lg:border-t-0 xl:w-[21rem]">
+          {/* Secciones planas separadas por .section-rule, no cards anidadas:
+              una card dentro de un carril ya acolchado dibuja rectángulos
+              alrededor de rectángulos y cobra ~30% del ancho en chrome (queja
+              del dueño, 2026-08-31). El padding vive UNA vez, aquí; el ritmo
+              entre secciones es del carril (space-y-3, §9). */}
+          <div className="shrink-0 space-y-3 overflow-y-auto overscroll-contain border-t border-ink-200 p-3 lg:w-[19rem] lg:border-l lg:border-t-0 xl:w-[21rem] 2xl:w-[23rem]">
             <StageToolbar
               card={card}
               busy={meshBusy}
@@ -2678,13 +2684,14 @@ export default function ModelStudio({
         {/* ── BOTTOM RIGHT: la ficha, a band of cards under the stage. */}
         <aside className={`flex min-h-0 flex-col lg:border-t lg:border-ink-200 ${listExpanded ? 'hidden' : ''}`}>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2.5">
-            {/* CSS COLUMNS, not a grid: the cards are of wildly different
-                heights (six checks vs one button) and a grid would leave a hole
-                under every short one. A column flow packs them; each card
-                carries `break-inside-avoid` so none is ever cut in half.
-                One column on a phone, two from `sm`, three on a big screen —
-                the band gets wider, not taller. */}
-            <div className="gap-x-2.5 sm:columns-2 2xl:columns-3">
+            {/* TWO LAYOUTS, because the two inspectors are different shapes.
+                A selected PART is still a stack of cards of wildly different
+                heights (a finish editor vs one button), and a column flow packs
+                those without leaving a hole under every short one.
+                THE MODEL's ficha is not that: it brings its own GRID (see
+                ModelInspector) — a masonry gave every field a position that
+                depended on how tall its neighbour happened to be. */}
+            <div className={group ? 'gap-x-2.5 sm:columns-2 2xl:columns-3' : ''}>
             {/* Only what you EDIT. Fidelidad and portada moved up beside the
                 render: they answer questions about the piece as a whole, and
                 they are what fills the banner's flanks. */}
@@ -2816,8 +2823,8 @@ function StageToolbar({
     // (see the caption in the stage) and what is left — the three things you do
     // to a piece's 3D FILE — is a card in the column beside it, where it fills
     // room the render could not use anyway.
-    <section className={`space-y-1.5 ${FICHA_CARD}`}>
-      <span className="label mb-0">Malla 3D</span>
+    <section className="space-y-1.5">
+      <div className="section-rule"><span>Malla 3D</span></div>
       <div className="flex flex-wrap items-center gap-1">
         {/* Detecting and re-exporting are MAINTENANCE, not decisions — the dealer
             should never have to know that a mesh needs re-exporting or that a
@@ -2883,6 +2890,35 @@ function EmbedModal({ open, onClose, brandName = null }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // INSPECTOR — the MODEL
 
+/**
+ * A REGION of the ficha — a heading, a hairline, and the fields under it.
+ *
+ * The ficha used to be six `FICHA_CARD`s poured into a `columns-*` masonry, and
+ * that is two separate failures wearing one coat. The cards all carried the
+ * SAME chrome (border, fill, padding, 11px caption), so «Nombre» and «Eliminar
+ * modelo» read as equally important and the eye had nowhere to land — §4's
+ * "one recipe per job" inverted into one recipe for every job. And a masonry
+ * flow puts each card wherever the previous one happened to end, so «Montaje»
+ * sat in the third column on one piece and the second on the next: nothing was
+ * ever in the same place twice, which is the one thing §9's spatial grouping
+ * needs in order to mean anything.
+ *
+ * A region is a heading (`.section-rule` — eyebrow plus a fading hairline, the
+ * app's own layer marker) over an unbordered block. Three of them in a FIXED
+ * grid: three entry points instead of six identical boxes, every field at a
+ * stable address, and no nested borders drawing rectangles around rectangles.
+ * (Convergido con RosetSoft, 2026-08-31 — la queja del screenshot era ESTA
+ * pantalla en ESTE repo.)
+ */
+function FichaRegion({ title, children }) {
+  return (
+    <section className="min-w-0 space-y-2.5">
+      <div className="section-rule"><span>{title}</span></div>
+      {children}
+    </section>
+  );
+}
+
 function ModelInspector({
   card, row, collections, cards, families, products, fabricLinks, fabricLinkModule = null,
   brandName = null, profileId,
@@ -2947,20 +2983,23 @@ function ModelInspector({
   };
 
   return (
-    <>
-      {/* ── The model itself. */}
-      <section className={`space-y-2.5 ${FICHA_CARD}`}>
-        {/* IDENTITY, TWO UP. Six one-line fields stacked cost ~250px of a column
-            that already had more to say than it had room for; side by side they
-            cost half that and read as what they are — one block of labels. The
-            name keeps the full width (it is the one you actually read), and the
-            pairing only starts at `sm`: on a phone this pane is the page and a
-            170px input is not a text field. */}
+    /* THREE REGIONS ABOUT THE PIECE, THEN ONE ABOUT ITS COLECCIÓN.
+       The split is by WHAT KIND OF THING each field is, which is the division
+       the old five cards never made: what the piece IS, how it is PRICED, where
+       it CAME FROM — and, on its own full-width row because it is the only
+       thing here that edits sixty other models, what its COLECCIÓN offers.
+       A grid, not `columns-*`: every field keeps one address. */
+    <div className="grid gap-x-6 gap-y-5 px-1 pb-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+
+      {/* ── LA PIEZA. Montaje folded in from the card it used to have to
+          itself: it is one select describing where the piece sits, and a
+          bordered box around one select is a rectangle drawn around a word. */}
+      <FichaRegion title="La pieza">
         <div className="grid gap-2.5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label" htmlFor={`configurador-name-${card.id}`}>Nombre</label>
             <input
-              id={`togo-name-${card.id}`}
+              id={`configurador-name-${card.id}`}
               className="input h-8 py-0 text-sm font-medium"
               defaultValue={card.name}
               onBlur={(e) => e.target.value.trim() && e.target.value !== card.name && db.configuratorModels.update(card.id, { name: e.target.value.trim(), updatedAt: Date.now() })}
@@ -2971,7 +3010,7 @@ function ModelInspector({
           <div>
             <label className="label" htmlFor={`configurador-col-input-${card.id}`}>Colección</label>
             <input
-              id={`togo-col-input-${card.id}`}
+              id={`configurador-col-input-${card.id}`}
               className="input h-8 py-0 text-xs"
               list={`togo-col-${card.id}`}
               defaultValue={card.collection === 'Togo' ? '' : card.collection}
@@ -2987,7 +3026,7 @@ function ModelInspector({
           <div>
             <label className="label" htmlFor={`configurador-group-input-${card.id}`}>Grupo</label>
             <input
-              id={`togo-group-input-${card.id}`}
+              id={`configurador-group-input-${card.id}`}
               className="input h-8 py-0 text-xs"
               defaultValue={row?.productGroup || ''}
               placeholder="Sin grupo"
@@ -2999,7 +3038,7 @@ function ModelInspector({
           <div>
             <label className="label" htmlFor={`configurador-cat-input-${card.id}`}>Categoría</label>
             <input
-              id={`togo-cat-input-${card.id}`}
+              id={`configurador-cat-input-${card.id}`}
               className="input h-8 py-0 text-xs"
               defaultValue={row?.category || ''}
               placeholder="Sin categoría"
@@ -3008,26 +3047,26 @@ function ModelInspector({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="label">Ancho (cm)</span>
-              <input
-                type="number" min="1" className="input h-8 py-0 text-xs tabular-nums"
-                defaultValue={card.widthCm}
-                onBlur={(e) => commitDim('widthCm', e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-              />
-            </label>
-            <label className="block">
-              <span className="label">Fondo (cm)</span>
-              <input
-                type="number" min="1" className="input h-8 py-0 text-xs tabular-nums"
-                defaultValue={card.depthCm}
-                onBlur={(e) => commitDim('depthCm', e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-              />
-            </label>
-          </div>
+          <MountField card={card} />
+
+          <label className="block">
+            <span className="label">Ancho (cm)</span>
+            <input
+              type="number" min="1" className="input h-8 py-0 text-xs tabular-nums"
+              defaultValue={card.widthCm}
+              onBlur={(e) => commitDim('widthCm', e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+            />
+          </label>
+          <label className="block">
+            <span className="label">Fondo (cm)</span>
+            <input
+              type="number" min="1" className="input h-8 py-0 text-xs tabular-nums"
+              defaultValue={card.depthCm}
+              onBlur={(e) => commitDim('depthCm', e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+            />
+          </label>
         </div>
 
         {/* Estado has ONE control on this screen and it is the pill on the
@@ -3042,37 +3081,59 @@ function ModelInspector({
             panes away. On the table the dealer drags a row among the pieces it
             is being ordered against (Alt+↑↓ with the keyboard), against the same
             `planConfiguratorReorder`. */}
-      </section>
+      </FichaRegion>
 
-      {/* ── The model's SKU. ONE binding, TWO prices: the catalog entry for the
+      {/* ── CÓMO SE COTIZA. ONE binding, TWO prices: the catalog entry for the
           whole piece IS the elemento completo, so a monocolor build quotes on
           it alone and a mixed one adds the componentes on top. */}
-      <section className={`space-y-1 ${FICHA_CARD}`}>
-        <span className="label mb-0">SKU base</span>
-        <button
-          type="button"
-          onClick={() => { onNeedCatalog?.(); setPickOpen(true); }}
-          className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left text-micro transition-colors ${
- boundRoot ? 'border-brand-300 bg-brand-500/10 text-brand-700 hover:bg-brand-500/20' : 'border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-          }`}
-          title={`Vincular el producto${brandName ? ` ${brandName}` : ''} que da el precio por grado`}
-        >
-          <Link2 size={12} className="shrink-0" />
-          <span className="min-w-0 truncate">
-            {boundRoot
-              ? `SKU ${boundRoot}${boundFamily ? ` · ${boundFamily.name}` : ''}`
-              : 'Sin vincular — toca para elegir del catálogo'}
-          </span>
-        </button>
+      <FichaRegion title="Cómo se cotiza">
+        <div>
+          {/* The caption NAMES the control, so it is joined to it rather than
+              floating over it: `aria-labelledby` listing the caption and the
+              button itself reads as «SKU base, Sin vincular» instead of a bare
+              «Sin vincular». Not an `aria-label` — that would REPLACE the state
+              the button is showing, which is the one thing on it worth hearing.
+              Not a `<label>` either: this is a button, not a form control. */}
+          <span id={`configurador-sku-cap-${card.id}`} className="label mb-1.5 block">SKU base</span>
+          {/* A FIELD, not a warning. It used to be a filled amber pill reading
+              «Sin vincular — toca para elegir del catálogo»: a tinted band is
+              the recipe for a sentence you must read before acting (§5b), and
+              spending it on a field that is merely EMPTY made "unfinished" as
+              loud as "broken" on a screen where most pieces start unfinished.
+              The amber is now one dot inside an ordinary control, and the half
+              of the string that described the click is gone — the chevron is
+              the affordance, and the whole row is the target. */}
+          <button
+            type="button"
+            id={`togo-sku-btn-${card.id}`}
+            aria-labelledby={`configurador-sku-cap-${card.id} togo-sku-btn-${card.id}`}
+            onClick={() => { onNeedCatalog?.(); setPickOpen(true); }}
+            className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors ${
+              boundRoot
+                ? 'border-brand-300 bg-brand-500/10 text-brand-700 hover:bg-brand-500/20'
+                : 'border-ink-200 text-ink-700 hover:bg-ink-50'
+            }`}
+            title={`Vincular el producto${brandName ? ` ${brandName}` : ''} que da el precio por grado`}
+          >
+            <span className="min-w-0 flex-1">
+              {boundRoot
+                ? <span className="block truncate">SKU {boundRoot}{boundFamily ? ` · ${boundFamily.name}` : ''}</span>
+                : <Pending>Sin vincular</Pending>}
+            </span>
+            <Link2 size={13} className="shrink-0 text-ink-400" aria-hidden />
+          </button>
+        </div>
         {boundFamily?.graded && (
           <p className="text-micro leading-tight text-ink-400">{boundFamily.grades.length} grados de tela.</p>
         )}
-        {/* The rule this ONE SKU carries, in the owner's own words — shown only
-            where there are componentes, since a piece that is all base has a
-            single price and nothing to explain. */}
+        {/* The rule this ONE SKU carries — shown only where there are
+            componentes, since a piece that is all base has a single price and
+            nothing to explain. Trimmed to the half that is a CONSEQUENCE: the
+            dealer does not need the monocolor case spelled out to them, they
+            need to know that mixing materials costs more. */}
         {hasComponents && (
           <p className="text-micro leading-tight text-ink-400">
-            Se cotiza así cuando todos los componentes llevan el mismo material; si se mezclan, se suma cada componente por su SKU (más caro).
+            Si los componentes mezclan materiales, cada uno suma su propio SKU (más caro).
           </p>
         )}
         {pending != null && <p className="text-micro text-ink-400">Guardando…</p>}
@@ -3100,37 +3161,42 @@ function ModelInspector({
           onPick={(m) => bind(m.root)}
           onClear={() => bind('')}
         />
-      </section>
+      </FichaRegion>
 
-      {/* ── The derived plan. */}
-      <section className={`space-y-1.5 ${FICHA_CARD}`}>
-        <div className="flex items-center justify-between gap-2">
-          <span className="label mb-0">Planta</span>
-          {card.meshUrl && (
-            <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
-              {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Regenerar
-            </button>
-          )}
+      {/* ── SU ORIGEN — the 3D file this piece was made from, and the plan
+          derived off it. Both are the same subject (what the export gave us),
+          and they were two cards apart. */}
+      <FichaRegion title="Su origen">
+        <div className="flex items-start gap-3">
+          <div className="grid aspect-[4/3] w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-canvas p-2 text-ink-600 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: sanitizeSvg(card.svg || '') }} />
+          <div className="min-w-0 flex-1">
+            <span className="label">Planta</span>
+            {card.meshUrl && (
+              <button type="button" onClick={onRegenPlan} disabled={busy} className="btn-ghost text-micro disabled:opacity-50" title="Regenerar el plano 2D y la huella desde el modelo 3D">
+                {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Regenerar
+              </button>
+            )}
+          </div>
         </div>
-        <div className="grid aspect-[4/3] w-24 place-items-center overflow-hidden rounded-lg bg-canvas p-2 text-ink-600 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: sanitizeSvg(card.svg || '') }} />
         {row?.meshSourceName && (
           <p className="truncate text-micro text-ink-400" title={row.meshSourceName}>
-            Fuente: {row.meshSourceName}
+            {row.meshSourceName}
             {row.ingestedAt ? ` · ${new Date(row.ingestedAt).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
           </p>
         )}
-      </section>
+      </FichaRegion>
 
-      {/* ── Montaje: where the piece sits on the plan. */}
-      <MountSection card={card} />
-
-      {/* ── Collection-wide tools (they act on every model of this colección).
+      {/* ── SU COLECCIÓN, on its own full-width row. Everything above edits ONE
+          piece; this edits every model of the colección at once, and that
+          difference was invisible when it was the fifth identical card in a
+          masonry. A row of its own is the cheapest way to say «different
+          blast radius».
           Upstream folded «Auto-vincular» into the table's «Completar con
           Claude» chain; this deploy keeps the collection-level review here —
           the auto-import chain stays out by design (its grammar is one
           manufacturer's price-list vocabulary). */}
-      <section className={`space-y-2 ${FICHA_CARD}`}>
-        <span className="label mb-0">Colección · {card.collection}</span>
+      <div className="sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+        <FichaRegion title={`Colección · ${card.collection}`}>
         <AutoLinkRow
           collection={card.collection}
           cards={cards.filter((c) => c.collection === card.collection)}
@@ -3150,14 +3216,19 @@ function ModelInspector({
             profileId={profileId}
           />
         )}
-      </section>
+        </FichaRegion>
+      </div>
 
-      <section className={FICHA_CARD}>
-        <button type="button" onClick={onDelete} className="btn-ghost w-full text-micro text-ink-400 hover:text-red-500" title="Eliminar el modelo del catálogo">
+      {/* ── And the one destructive thing on the screen, which used to get a
+          bordered card of its very own — the same chrome as «Nombre», landed
+          by the masonry wherever it fit. It is quiet, it is last, and it is
+          out of the field flow. */}
+      <div className="flex justify-end sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+        <button type="button" onClick={onDelete} className="btn-ghost text-micro text-ink-400 hover:text-red-500" title="Eliminar el modelo del catálogo">
           <Trash2 size={12} /> Eliminar modelo
         </button>
-      </section>
-    </>
+      </div>
+    </div>
   );
 }
 
@@ -3179,8 +3250,8 @@ function PartsCard({
   onSelectGroup, onHoverGroup,
 }) {
   return (
-    <section className={`space-y-1.5 ${FICHA_CARD}`}>
-      <span className="label mb-0">Partes</span>
+    <section className="space-y-1.5">
+      <div className="section-rule"><span>Partes</span></div>
       {groups.length === 0 ? (
         /* Three different "nothing here", and only one of them is «Detectar
            partes»: with no 3D there is nothing to detect FROM, and while the
@@ -3260,35 +3331,42 @@ function PartsCard({
  * seat height, floats over the plan (no collision/magnet) and drops centred on
  * the last module when added.
  */
-function MountSection({ card }) {
+function MountField({ card }) {
   const seat = card.mount === 'seat';
   const setMount = (v) => db.configuratorModels.update(card.id, { mount: v === 'seat' ? 'seat' : null, updatedAt: Date.now() });
   const setHeight = (v) => {
     const n = Number(v);
     db.configuratorModels.update(card.id, { mountHeightCm: Number.isFinite(n) && n > 0 ? n : null, updatedAt: Date.now() });
   };
+  // A FIELD among fields now, sized like them, instead of a `<section>` with a
+  // border and a caption of its own. The caption WRAPS the select (§12) rather
+  // than pointing at it with `aria-labelledby`: there is nothing else clickable
+  // in the block, so the word itself becomes part of the target — and the
+  // `aria-label` that used to sit on the select is gone with it, since an
+  // aria-label silently OVERRIDES the visible caption and that is exactly how
+  // a control ends up announcing a different word than the one on screen.
   return (
-    <section className={`space-y-1.5 ${FICHA_CARD}`} aria-labelledby={`mount-${card.id}`}>
-      <span id={`mount-${card.id}`} className="label mb-0">Montaje</span>
-      <div className="flex items-center gap-1.5">
-        <select aria-label="Montaje" className="input h-7 w-28 py-0 text-micro" value={seat ? 'seat' : 'floor'} onChange={(e) => setMount(e.target.value)}>
+    <div>
+      <label className="block">
+        <span className="label">Montaje</span>
+        <select className="input h-8 w-full py-0 text-xs" value={seat ? 'seat' : 'floor'} onChange={(e) => setMount(e.target.value)}>
           <option value="floor">Piso</option>
           <option value="seat">Asiento</option>
         </select>
-        {seat && (
-          <label className="flex items-center gap-1 text-micro text-ink-400">
-            altura
-            <input
-              type="number" min="1" className="input h-7 w-16 py-0 text-micro"
-              defaultValue={card.mountHeightCm ?? 40}
-              onBlur={(e) => setHeight(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-            />
-            cm
-          </label>
-        )}
-      </div>
-    </section>
+      </label>
+      {seat && (
+        <label className="mt-1.5 flex items-center gap-1.5 text-micro text-ink-500">
+          Altura
+          <input
+            type="number" min="1" className="input h-7 w-16 py-0 text-micro tabular-nums"
+            defaultValue={card.mountHeightCm ?? 40}
+            onBlur={(e) => setHeight(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          />
+          cm
+        </label>
+      )}
+    </div>
   );
 }
 

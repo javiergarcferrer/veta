@@ -49,7 +49,7 @@ export default function BrandLogo({ brand, size = 20, tone = 'surface', classNam
       title={name}
       aria-label={name}
       style={{ height: size, minWidth: size, background: chipColor || undefined }}
-      className={`shrink-0 inline-flex items-center justify-center rounded px-1.5 text-[10px] font-semibold tracking-wide ${
+      className={`shrink-0 inline-flex items-center justify-center rounded px-1.5 text-micro font-semibold tracking-wide ${
         chipColor ? 'text-white' : 'bg-ink-700 text-ink-100'
       } ${className}`}
     >

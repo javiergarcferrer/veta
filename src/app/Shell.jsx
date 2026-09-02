@@ -211,7 +211,7 @@ function BrandRail() {
   return (
     <div className="shrink-0 md:mb-2 flex items-center gap-1 md:block md:space-y-0.5">
       <div className="flex items-center gap-1 md:justify-between md:px-3 md:pb-1">
-        <span className="hidden md:inline text-[11px] font-medium uppercase tracking-wider text-ink-500">
+        <span className="eyebrow hidden md:inline">
           Marcas
         </span>
         <NavLink
@@ -250,7 +250,7 @@ function BrandRail() {
  *  items themselves have to carry the meaning. */
 function NavSection({ label }) {
   return (
-    <div className="hidden md:block px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-ink-500">
+    <div className="eyebrow hidden md:block px-3 pt-3 pb-1">
       {label}
     </div>
   );
@@ -274,7 +274,7 @@ function Nav() {
 
       <div className="md:mt-auto md:pt-4 flex items-center gap-2 md:flex-col md:items-stretch">
         {currentProfile?.email && (
-          <div className="hidden md:block px-3 text-[11px] text-ink-400 truncate" title={currentProfile.email}>
+          <div className="hidden md:block px-3 text-micro text-ink-400 truncate" title={currentProfile.email}>
             {currentProfile.email}
           </div>
         )}

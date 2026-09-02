@@ -101,7 +101,7 @@ export default function Quotes() {
               key={tb.key}
               type="button"
               onClick={() => setTab(tb.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-micro transition-colors ${
                 tab === tb.key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500 hover:text-ink-800'
               }`}
             >
@@ -126,7 +126,7 @@ export default function Quotes() {
       </div>
 
       {board.noMatches ? (
-        <p className="text-xs text-ink-400 py-8 text-center">Sin cotizaciones para este filtro.</p>
+        <p className="text-xs text-ink-500 py-8 text-center">Sin cotizaciones para este filtro.</p>
       ) : (
         <div className="card overflow-hidden">
           <div className="divide-y divide-ink-100">
@@ -136,34 +136,34 @@ export default function Quotes() {
                 to={`/cotizaciones/${row.id}`}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-ink-50/60 transition-colors"
               >
-                <div className="w-14 shrink-0 text-[13px] tabular-nums text-ink-500">#{row.number}</div>
+                <div className="w-14 shrink-0 text-sm tabular-nums text-ink-500">#{row.number}</div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13px] text-ink-900 truncate">{row.customerName}</div>
-                  <div className="text-[11px] text-ink-500 truncate">
+                  <div className="text-sm text-ink-900 truncate">{row.customerName}</div>
+                  <div className="text-micro text-ink-500 truncate">
                     {[row.brandName, formatDate(row.createdAt ? Date.parse(row.createdAt) : null)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                   {row.unpriced > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-amber-700" title={`${row.unpriced} pieza(s) sin precio`}>
+                    <span className="inline-flex items-center gap-1 text-micro text-amber-700" title={`${row.unpriced} pieza(s) sin precio`}>
                       <AlertTriangle size={11} aria-hidden /> {row.unpriced}
                     </span>
                   )}
                   {row.shared && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-ink-400" title="Enlace del cliente activo">
+                    <span className="inline-flex items-center gap-1 text-micro text-ink-500" title="Enlace del cliente activo">
                       <Link2 size={11} aria-hidden />
                     </span>
                   )}
                   {row.seen && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-ink-500" title={`El cliente lo abrió ${row.viewCount} vez/veces`}>
+                    <span className="inline-flex items-center gap-1 text-micro text-ink-500" title={`El cliente lo abrió ${row.viewCount} vez/veces`}>
                       <Eye size={11} aria-hidden /> {row.viewCount}
                     </span>
                   )}
                 </div>
-                <div className="w-28 text-right shrink-0 text-[13px] tabular-nums text-ink-900">
+                <div className="w-28 text-right shrink-0 text-sm tabular-nums text-ink-900">
                   {row.totalLabel || '—'}
                 </div>
-                <span className={`shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] ${TONE[row.status.tone] || TONE.neutral}`}>
+                <span className={`shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-micro ${TONE[row.status.tone] || TONE.neutral}`}>
                   {row.status.label}
                 </span>
               </Link>

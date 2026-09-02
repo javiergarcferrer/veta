@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Mail, Lock, LogIn, AlertCircle, ArrowLeft, MailCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { userMessageFor } from '../lib/errorMessages.js';
+import Notice from '../components/primitives/Notice.jsx';
 
 /**
  * Sign-in for the admin app. Deliberately minimal: email + password (whatever
@@ -62,20 +63,17 @@ export default function SignIn() {
           <h1 className="font-display text-sm font-semibold text-ink-700">
             {isReset ? 'Restablecer contraseña' : 'Iniciar sesión'}
           </h1>
-          <p className="text-xs text-ink-400 mt-1 leading-relaxed">
+          <p className="text-xs text-ink-500 mt-1 leading-relaxed">
             {isReset ? 'Te enviaremos un enlace para crear una nueva.' : 'Correo y contraseña de tu equipo.'}
           </p>
         </div>
 
         {isReset && resetSent ? (
           <div className="space-y-5">
-            <div role="status" className="flex items-start gap-2.5 text-xs text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 rounded-lg px-3 py-3">
-              <MailCheck size={16} className="flex-shrink-0 mt-0.5" aria-hidden />
-              <span>
-                Si <b className="font-medium">{email.trim()}</b> tiene una cuenta, te enviamos un enlace
-                para restablecer tu contraseña. Revisa tu correo (y la carpeta de spam).
-              </span>
-            </div>
+            <Notice tone="success" icon={MailCheck} className="text-xs">
+              Si <b className="font-medium">{email.trim()}</b> tiene una cuenta, te enviamos un enlace
+              para restablecer tu contraseña. Revisa tu correo (y la carpeta de spam).
+            </Notice>
             <button type="button" onClick={() => switchTo('signin')} className="btn-secondary w-full justify-center">
               <ArrowLeft size={14} aria-hidden /> Volver a iniciar sesión
             </button>
@@ -121,10 +119,7 @@ export default function SignIn() {
             )}
 
             {shownError && (
-              <div role="alert" className="flex items-start gap-2 text-xs text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2.5">
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" aria-hidden />
-                <span>{shownError}</span>
-              </div>
+              <Notice tone="danger" icon={AlertCircle} className="text-xs">{shownError}</Notice>
             )}
 
             <button
@@ -142,7 +137,7 @@ export default function SignIn() {
             <button
               type="button"
               onClick={() => switchTo(isReset ? 'signin' : 'reset')}
-              className="w-full text-center text-[12px] text-ink-500 hover:text-ink-700 inline-flex items-center justify-center gap-1 transition-colors"
+              className="w-full text-center text-xs text-ink-500 hover:text-ink-700 inline-flex items-center justify-center gap-1 transition-colors"
             >
               {isReset ? <><ArrowLeft size={12} aria-hidden /> Volver a iniciar sesión</> : '¿Olvidaste tu contraseña?'}
             </button>

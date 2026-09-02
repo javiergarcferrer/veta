@@ -17,6 +17,7 @@ import PanelCard from '../components/dashboard/PanelCard.jsx';
 import StatTile from '../components/dashboard/StatTile.jsx';
 import CheckRow, { IssueNote } from '../components/dashboard/CheckRow.jsx';
 import { fetchQuotes } from './quoting/api.js';
+import Notice from '../components/primitives/Notice.jsx';
 
 /**
  * EL PANEL — the screen the manufacturer opens the app on.
@@ -83,7 +84,7 @@ function Figure({ value, label, tone = 'neutral', title }) {
       <div className={`font-display text-lg font-semibold tabular-nums leading-none ${TONE_TEXT[tone] || TONE_TEXT.neutral}`}>
         {value}
       </div>
-      <div className="text-[11px] text-ink-500 mt-1 leading-snug">{label}</div>
+      <div className="text-micro text-ink-500 mt-1 leading-snug">{label}</div>
     </div>
   );
 }
@@ -216,7 +217,7 @@ function Masthead({ vm }) {
         </p>
       </div>
       {catalog.total > 0 && (
-        <div className="flex items-center gap-2 text-[11px] text-ink-500">
+        <div className="flex items-center gap-2 text-micro text-ink-500">
           <span className="tabular-nums">
             {catalog.readyPct}% del catálogo listo
           </span>
@@ -258,16 +259,13 @@ function CatalogReadiness({ catalog }) {
       bodyClass="p-5 space-y-4"
     >
       {catalog.allReady ? (
-        <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-          <ShieldCheck size={15} className="shrink-0 mt-px" aria-hidden />
-          <span>
-            Nada bloquea el catálogo: las {catalog.total} piezas tienen plano, están publicadas,
-            llevan SKU y ese SKU tiene precio.
-            {catalog.allPolished ? ' Todas con malla optimizada y miniatura horneada.' : ''}
-          </span>
-        </div>
+        <Notice tone="success" icon={ShieldCheck} className="text-xs">
+          Nada bloquea el catálogo: las {catalog.total} piezas tienen plano, están publicadas,
+          llevan SKU y ese SKU tiene precio.
+          {catalog.allPolished ? ' Todas con malla optimizada y miniatura horneada.' : ''}
+        </Notice>
       ) : catalog.pricePending ? (
-        <p className="text-[11px] text-ink-500 inline-flex items-center gap-1.5">
+        <p className="text-micro text-ink-500 inline-flex items-center gap-1.5">
           <Loader2 size={12} className="animate-spin" aria-hidden />
           Comprobando los precios del catálogo — el conteo de piezas listas es provisional.
         </p>
@@ -300,7 +298,7 @@ function CatalogReadiness({ catalog }) {
         </div>
       </div>
 
-      <p className="text-[10px] text-ink-400 leading-snug">
+      <p className="text-micro text-ink-500 leading-snug">
         Una misma pieza puede aparecer en varias filas: cada una es una comprobación
         independiente sobre la misma fila de datos.
       </p>
@@ -352,8 +350,8 @@ function RequestsPanel({ requests }) {
               <li key={r.id}>
                 <Link to={hrefFor(r.link)} className="flex items-center gap-3 py-2 group">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] text-ink-900 truncate group-hover:underline">{r.name}</div>
-                    <div className="text-[11px] text-ink-500 truncate">
+                    <div className="text-sm text-ink-900 truncate group-hover:underline">{r.name}</div>
+                    <div className="text-micro text-ink-500 truncate">
                       {[
                         r.dealerLabel,
                         `${r.pieces} ${r.pieces === 1 ? 'pieza' : 'piezas'}`,
@@ -362,7 +360,7 @@ function RequestsPanel({ requests }) {
                     </div>
                   </div>
                   {r.estimateLabel && (
-                    <span className="text-[12px] tabular-nums text-ink-600 shrink-0" title={`Estimado que vio el visitante, en ${r.currency}`}>
+                    <span className="text-xs tabular-nums text-ink-600 shrink-0" title={`Estimado que vio el visitante, en ${r.currency}`}>
                       {r.estimateLabel}
                     </span>
                   )}
@@ -373,7 +371,7 @@ function RequestsPanel({ requests }) {
               </li>
             ))}
           </ul>
-          <p className="text-[10px] text-ink-400">
+          <p className="text-micro text-ink-500">
             El estimado es el que vio el visitante, en la moneda de su distribuidor. No se convierte ni se suma.
           </p>
         </>
@@ -395,11 +393,11 @@ function QuotesPanel({ quotes }) {
       bodyClass="p-5 space-y-4"
     >
       {!quotes.loaded ? (
-        <p className="text-[12px] text-ink-500 inline-flex items-center gap-2 py-6">
+        <p className="text-xs text-ink-500 inline-flex items-center gap-2 py-6">
           <Loader2 size={14} className="animate-spin" aria-hidden /> Cargando cotizaciones…
         </p>
       ) : quotes.failed && quotes.empty ? (
-        <p className="text-[12px] text-ink-500 py-6 text-center">
+        <p className="text-xs text-ink-500 py-6 text-center">
           No se pudieron cargar las cotizaciones. Se reintenta solo.
         </p>
       ) : quotes.empty ? (
@@ -427,7 +425,7 @@ function QuotesPanel({ quotes }) {
               <div key={p.currency} className="surface-subtle px-3 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="eyebrow-xs">{p.currency}</span>
-                  <span className="text-[10px] text-ink-400 tabular-nums">
+                  <span className="text-micro text-ink-500 tabular-nums">
                     {p.quotedCount} {p.quotedCount === 1 ? 'cotización viva' : 'cotizaciones vivas'}
                   </span>
                 </div>
@@ -440,7 +438,7 @@ function QuotesPanel({ quotes }) {
             ))}
           </div>
 
-          <p className="text-[10px] text-ink-400 leading-snug">
+          <p className="text-micro text-ink-500 leading-snug">
             {quotes.multiCurrency
               ? 'Cada moneda va por separado: el total de una cotización está congelado en la moneda en que se escribió, y sumarlas sería inventar una cifra. No hay total general.'
               : 'El total de cada cotización está congelado en la moneda en que se escribió; aquí solo se agrupa y se muestra.'}
@@ -456,7 +454,7 @@ function QuotesPanel({ quotes }) {
           )}
 
           {quotes.seen > 0 && (
-            <p className="text-[11px] text-ink-500 inline-flex items-center gap-1.5">
+            <p className="text-micro text-ink-500 inline-flex items-center gap-1.5">
               <Eye size={12} aria-hidden /> {quotes.seen}{' '}
               {quotes.seen === 1 ? 'abierta por su cliente' : 'abiertas por sus clientes'}.
             </p>
@@ -504,7 +502,7 @@ function DealersPanel({ dealers }) {
               <li key={d.id} className="py-2.5 flex flex-wrap items-start gap-x-3 gap-y-1">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[13px] text-ink-900 truncate">{d.name}</span>
+                    <span className="text-sm text-ink-900 truncate">{d.name}</span>
                     {!d.active && <span className="status-pill status-pill-inactive">Inactivo</span>}
                     {d.misconfigured && (
                       <span className="status-pill status-pill-declined inline-flex items-center gap-1">
@@ -512,18 +510,18 @@ function DealersPanel({ dealers }) {
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-ink-500 truncate" title={d.scopeLabel}>
+                  <div className="text-micro text-ink-500 truncate" title={d.scopeLabel}>
                     {d.scopeLabel}
                     <span className="text-ink-400"> · {d.servedPieces} {d.servedPieces === 1 ? 'pieza' : 'piezas'}</span>
                   </div>
                   {d.issue && (
-                    <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 inline-flex items-start gap-1">
+                    <p className="text-micro text-amber-700 dark:text-amber-400 mt-0.5 inline-flex items-start gap-1">
                       <AlertTriangle size={11} className="shrink-0 mt-px" aria-hidden /> {d.issue}
                     </p>
                   )}
                 </div>
 
-                <div className="text-[11px] text-ink-500 shrink-0 text-right">
+                <div className="text-micro text-ink-500 shrink-0 text-right">
                   <div>{d.pricingLabel}</div>
                   <div className="text-ink-400 tabular-nums">
                     {d.priceIdentity
@@ -544,14 +542,14 @@ function DealersPanel({ dealers }) {
           </ul>
 
           {dealers.directOpen > 0 && (
-            <p className="text-[11px] text-ink-500">
+            <p className="text-micro text-ink-500">
               Además, {dealers.directOpen}{' '}
               {dealers.directOpen === 1 ? 'solicitud abierta llega' : 'solicitudes abiertas llegan'} de tu
               propio configurador (Directo).
             </p>
           )}
           {!dealers.catalogKnown && (
-            <p className="text-[11px] text-ink-400">
+            <p className="text-micro text-ink-500">
               Sin piezas publicadas no se puede juzgar el catálogo de ningún distribuidor.
             </p>
           )}
@@ -599,7 +597,7 @@ function MaterialsPanel({ materials }) {
           </div>
 
           {materials.unscanned > 0 && (
-            <p className="text-[11px] text-ink-500 leading-snug">
+            <p className="text-micro text-ink-500 leading-snug">
               {materials.tinted > 0 && `${materials.tinted} ${materials.tinted === 1 ? 'color se tiñe' : 'colores se tiñen'} con su tono medio (sin trama). `}
               {materials.blank > 0 && `${materials.blank} ${materials.blank === 1 ? 'no tiene' : 'no tienen'} ni tono ni textura: el 3D no puede vestirlos.`}
             </p>
@@ -628,7 +626,7 @@ function MaterialsPanel({ materials }) {
             )}
             {materials.discontinued === 0 && materials.notInPriceList === 0
               && materials.withoutColors === 0 && materials.ungraded === 0 && (
-              <span className="text-[11px] text-ink-500 inline-flex items-center gap-1.5">
+              <span className="text-micro text-ink-500 inline-flex items-center gap-1.5">
                 <ShieldCheck size={12} className="text-emerald-600 dark:text-emerald-400" aria-hidden />
                 Todos vigentes y en la lista de precios.
               </span>
@@ -674,7 +672,7 @@ function EnvironmentPanel({ environment: env, catalog }) {
         </IssueNote>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-500">
+      <div className="flex flex-wrap items-center gap-1.5 text-micro text-ink-500">
         <span className="badge">{env.slug}</span>
         <span className="badge">{env.currency}</span>
         <span className="badge">{String(env.locale).toUpperCase()}</span>
@@ -686,7 +684,7 @@ function EnvironmentPanel({ environment: env, catalog }) {
       </div>
 
       {env.setSummary && (
-        <p className="text-[11px] text-ink-500 leading-snug inline-flex items-start gap-1.5">
+        <p className="text-micro text-ink-500 leading-snug inline-flex items-start gap-1.5">
           <Sparkles size={12} className="shrink-0 mt-px text-ink-400" aria-hidden />
           {env.setSummary}
         </p>
@@ -697,13 +695,13 @@ function EnvironmentPanel({ environment: env, catalog }) {
           <div key={c.slot} className="surface-subtle px-3 py-2.5">
             <div className="flex items-baseline justify-between gap-2">
               <span className="eyebrow-xs">{c.title}</span>
-              <span className="text-[11px] text-ink-600 truncate" title={c.label}>{c.label}</span>
+              <span className="text-micro text-ink-600 truncate" title={c.label}>{c.label}</span>
             </div>
             <dl className="mt-1.5 space-y-0.5">
               {c.facts.map((f) => (
-                <div key={f.label} className="flex gap-2 text-[11px]">
+                <div key={f.label} className="flex gap-2 text-micro">
                   <dt className="text-ink-400 shrink-0 w-32">{f.label}</dt>
-                  <dd className="text-ink-600 min-w-0 break-words font-mono text-[10px] pt-px">{f.value}</dd>
+                  <dd className="text-ink-600 min-w-0 break-words font-mono text-micro pt-px">{f.value}</dd>
                 </div>
               ))}
             </dl>
@@ -711,7 +709,7 @@ function EnvironmentPanel({ environment: env, catalog }) {
         ))}
       </div>
 
-      <Link to={SECTION_PATH.marcas} className="text-[11px] text-ink-500 hover:text-ink-900 inline-flex items-center gap-1">
+      <Link to={SECTION_PATH.marcas} className="text-micro text-ink-500 hover:text-ink-900 inline-flex items-center gap-1">
         Cambiar cómo se leen los archivos de esta marca <ArrowRight size={11} aria-hidden />
       </Link>
     </PanelCard>

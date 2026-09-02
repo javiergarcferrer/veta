@@ -4393,17 +4393,17 @@ function AutoLinkRow({ collection, cards, products, onNeedCatalog }) {
   return (
     <div className="space-y-1.5 rounded-lg border border-ink-200 bg-surface px-2 py-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <span className="inline-flex min-w-0 items-center gap-1 text-[10px] text-ink-400">
+        <span className="inline-flex min-w-0 items-center gap-1 text-micro text-ink-400">
           <Sparkles size={11} className="shrink-0" />
           <span className="truncate">{unbound.length} sin SKU</span>
         </span>
         {stage === 'idle' && (
-          <button type="button" onClick={run} className="btn-ghost shrink-0 text-[10px]" title="Analizar los modelos 3D y proponer SKU + nombre desde el catálogo de la marca">
+          <button type="button" onClick={run} className="btn-ghost shrink-0 text-micro" title="Analizar los modelos 3D y proponer SKU + nombre desde el catálogo de la marca">
             <Sparkles size={11} /> Proponer SKUs
           </button>
         )}
         {(stage === 'waiting' || stage === 'probing') && (
-          <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-ink-500">
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-micro text-ink-500">
             <Loader2 size={11} className="animate-spin" />
             {stage === 'waiting' ? 'Cargando catálogo…' : `${Math.min(progress.done + 1, progress.total)}/${progress.total}`}
           </span>
@@ -4411,7 +4411,7 @@ function AutoLinkRow({ collection, cards, products, onNeedCatalog }) {
       </div>
 
       {err && (
-        <div className="inline-flex items-start gap-1 text-[10px] text-red-400">
+        <div className="inline-flex items-start gap-1 text-micro text-red-400">
           <AlertCircle size={11} className="mt-0.5 shrink-0" /> {err}
         </div>
       )}
@@ -4419,7 +4419,7 @@ function AutoLinkRow({ collection, cards, products, onNeedCatalog }) {
       {(stage === 'review' || stage === 'applying') && result && (
         <div className="space-y-1.5">
           {result.proposals.map((p) => (
-            <label key={p.modelId} className="flex cursor-pointer items-start gap-2 text-[10px]">
+            <label key={p.modelId} className="flex cursor-pointer items-start gap-2 text-micro">
               <input
                 type="checkbox"
                 checked={!!picked[p.modelId]}
@@ -4438,15 +4438,15 @@ function AutoLinkRow({ collection, cards, products, onNeedCatalog }) {
             </label>
           ))}
           {result.unmatched.length > 0 && (
-            <p className="text-[10px] leading-tight text-ink-400">
+            <p className="text-micro leading-tight text-ink-400">
               Sin propuesta: {result.unmatched.map(nameOf).join(', ')} — vincúlalos manualmente.
             </p>
           )}
           <div className="flex items-center justify-end gap-2 pt-0.5">
-            <button type="button" onClick={() => { setResult(null); setStage('idle'); }} className="btn-ghost text-[10px]">
+            <button type="button" onClick={() => { setResult(null); setStage('idle'); }} className="btn-ghost text-micro">
               Cancelar
             </button>
-            <button type="button" onClick={apply} disabled={!pickedCount || stage === 'applying'} className="btn-primary text-[10px] disabled:opacity-50">
+            <button type="button" onClick={apply} disabled={!pickedCount || stage === 'applying'} className="btn-primary text-micro disabled:opacity-50">
               {stage === 'applying' ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Aplicar {pickedCount}
             </button>
           </div>
@@ -4527,7 +4527,7 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
   return (
     <div className="space-y-1.5 rounded-lg border border-ink-200 bg-surface px-2 py-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <span className={`inline-flex min-w-0 items-center gap-1 text-[10px] ${current ? 'text-emerald-400' : 'text-ink-400'}`}>
+        <span className={`inline-flex min-w-0 items-center gap-1 text-micro ${current ? 'text-emerald-400' : 'text-ink-400'}`}>
           <Palette size={11} className="shrink-0" />
           <span className="truncate" title={current?.title || undefined}>
             {current
@@ -4537,14 +4537,14 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
         </span>
         <div className="flex shrink-0 items-center gap-1">
           {current?.sourceUrl && (
-            <a href={current.sourceUrl} target="_blank" rel="noreferrer" className="btn-ghost text-[10px]" title={current.title || current.sourceUrl}>
+            <a href={current.sourceUrl} target="_blank" rel="noreferrer" className="btn-ghost text-micro" title={current.title || current.sourceUrl}>
               <ExternalLink size={11} /> Ver
             </a>
           )}
           {current?.sourceUrl && (
             <button
               type="button" onClick={() => apply(current.sourceUrl)} disabled={busy}
-              className="btn-ghost text-[10px] disabled:opacity-50"
+              className="btn-ghost text-micro disabled:opacity-50"
               title="Volver a leer la página y actualizar las telas de todos los modelos de la colección"
             >
               {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />} Actualizar
@@ -4561,7 +4561,7 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
               }
               setEditing((v) => !v); setErr(null); setDone(null);
             }}
-            className="btn-ghost text-[10px]"
+            className="btn-ghost text-micro"
             title="Pegar el enlace de telas disponibles de esta colección"
           >
             <Link2 size={11} /> {current ? 'Cambiar' : 'Vincular'}
@@ -4569,7 +4569,7 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
           {current && (
             <button
               type="button" onClick={clear} disabled={busy}
-              className="p-1 text-ink-400 hover:text-red-500 disabled:opacity-50"
+              className="btn-icon-sm text-ink-500 hover:text-danger"
               title="Quitar el enlace de telas de toda la colección"
             >
               <Trash2 size={12} />
@@ -4581,7 +4581,7 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
       {editing && (
         <div className="flex items-center gap-1.5">
           <input
-            className="input h-7 min-w-0 flex-1 py-0 text-[11px]"
+            className="input h-7 min-w-0 flex-1 py-0 text-micro"
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -4591,7 +4591,7 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
           />
           <button
             type="button" onClick={() => apply(url)} disabled={busy || !url.trim()}
-            className="btn-primary h-7 shrink-0 text-[10px] disabled:opacity-50"
+            className="btn-primary h-7 shrink-0 text-micro disabled:opacity-50"
           >
             {busy ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Aplicar
           </button>
@@ -4599,18 +4599,18 @@ function CollectionFabricsLink({ collection, cards, links, fabricLink, profileId
       )}
 
       {err && (
-        <div className="inline-flex items-start gap-1 text-[10px] text-red-400">
+        <div className="inline-flex items-start gap-1 text-micro text-red-400">
           <AlertCircle size={11} className="mt-0.5 shrink-0" /> {err}
         </div>
       )}
       {done && (
-        <div className="inline-flex items-start gap-1 text-[10px] text-emerald-400">
+        <div className="inline-flex items-start gap-1 text-micro text-emerald-400">
           <Check size={11} className="mt-0.5 shrink-0" />
           {done.fabrics} telas aplicadas a {done.roots} SKU{done.roots === 1 ? '' : 's'} de {collection}.
         </div>
       )}
       {(editing || !current) && (
-        <p className="text-[10px] leading-tight text-ink-400">
+        <p className="text-micro leading-tight text-ink-400">
           Un solo enlace aplica a todos los modelos de la colección: el selector de telas se limita a las
           que el fabricante ofrece para esta familia.{fabricLink.hint ? ` ${fabricLink.hint}.` : ''}
           {unbound > 0 && ` ${unbound} modelo${unbound === 1 ? '' : 's'} sin producto vinculado no restringe${unbound === 1 ? '' : 'n'}.`}

@@ -37,7 +37,7 @@ const TONE = {
 
 function StatusPill({ status }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${TONE[status.tone] || TONE.neutral}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro ${TONE[status.tone] || TONE.neutral}`}>
       {status.label}
     </span>
   );
@@ -127,7 +127,7 @@ export default function RequestDetail() {
           <ArrowLeft size={14} aria-hidden /> Solicitudes
         </Link>
         <div className="flex items-center gap-1.5">
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${vm.dealer.isDirect ? TONE.neutral : TONE.info}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-micro ${vm.dealer.isDirect ? TONE.neutral : TONE.info}`}>
             <Store size={11} aria-hidden /> {vm.dealer.name}
           </span>
           <StatusPill status={vm.status} />
@@ -149,7 +149,7 @@ export default function RequestDetail() {
             <div className="card-pad space-y-3">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="font-display font-semibold text-sm">Piezas</h2>
-                <span className="text-[11px] text-ink-500 tabular-nums">
+                <span className="text-micro text-ink-500 tabular-nums">
                   {vm.totals.pieces} pieza{vm.totals.pieces === 1 ? '' : 's'}
                 </span>
               </div>
@@ -161,14 +161,14 @@ export default function RequestDetail() {
                       ? <img src={swatchUrl(piece.code)} alt="" loading="lazy" decoding="async" className="w-9 h-9 rounded-md object-cover border border-ink-100 shrink-0" />
                       : <div className="w-9 h-9 rounded-md bg-ink-100 shrink-0" aria-hidden />}
                     <div className="min-w-0 flex-1">
-                      <div className="text-[13px] text-ink-900 truncate">{piece.name}</div>
-                      <div className="text-[11px] text-ink-500 truncate">
+                      <div className="text-sm text-ink-900 truncate">{piece.name}</div>
+                      <div className="text-micro text-ink-500 truncate">
                         {[piece.dims, piece.fabric].filter(Boolean).join(' · ')}
                       </div>
                       {piece.parts.length > 0 && (
                         <ul className="mt-1 space-y-0.5">
                           {piece.parts.map((part) => (
-                            <li key={part.role} className="text-[11px] text-ink-500 flex items-center gap-1.5">
+                            <li key={part.role} className="text-micro text-ink-500 flex items-center gap-1.5">
                               {part.code && <img src={swatchUrl(part.code)} alt="" loading="lazy" decoding="async" className="w-3 h-3 rounded-sm object-cover" />}
                               <span className="truncate">{part.label}: {part.fabric || '—'}</span>
                               {piece.complete && <span className="text-ink-400">· incluido</span>}
@@ -177,16 +177,16 @@ export default function RequestDetail() {
                         </ul>
                       )}
                       {piece.finishes.length > 0 && (
-                        <div className="mt-0.5 text-[11px] text-ink-400 truncate">
+                        <div className="mt-0.5 text-micro text-ink-500 truncate">
                           {piece.finishes.map((f) => f.label).join(' · ')}
                         </div>
                       )}
                     </div>
                     <div className="text-right shrink-0">
                       {piece.unpriced ? (
-                        <span className="text-[11px] text-amber-700">sin precio</span>
+                        <span className="text-micro text-amber-700">sin precio</span>
                       ) : (
-                        <span className="text-[13px] tabular-nums text-ink-900">{piece.priceLabel}</span>
+                        <span className="text-sm tabular-nums text-ink-900">{piece.priceLabel}</span>
                       )}
                     </div>
                   </div>
@@ -194,18 +194,18 @@ export default function RequestDetail() {
               </div>
 
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] uppercase tracking-wide text-ink-500">Total</span>
+                <span className="eyebrow">Total</span>
                 <span className="text-lg font-semibold tabular-nums">
                   {vm.totals.totalLabel || '—'}
                 </span>
               </div>
               {vm.totals.estimate != null && (
-                <p className="text-[11px] text-ink-400">
+                <p className="text-micro text-ink-500">
                   El cliente vio un estimado de {vm.totals.estimateLabel} al enviar su diseño.
                 </p>
               )}
               {vm.totals.unpriced > 0 && (
-                <p className="text-[11px] text-amber-700 flex items-start gap-1.5">
+                <p className="text-micro text-amber-700 flex items-start gap-1.5">
                   <AlertTriangle size={13} className="mt-px shrink-0" aria-hidden />
                   {vm.totals.unpriced} pieza{vm.totals.unpriced === 1 ? '' : 's'} sin precio: la tela elegida no está en la
                   lista de precios de ese modelo.
@@ -223,7 +223,7 @@ export default function RequestDetail() {
           {vm.note && (
             <div className="card card-pad">
               <h2 className="font-display font-semibold text-sm mb-1.5">Nota del cliente</h2>
-              <p className="text-[13px] text-ink-600 whitespace-pre-wrap">{vm.note}</p>
+              <p className="text-sm text-ink-600 whitespace-pre-wrap">{vm.note}</p>
             </div>
           )}
         </div>
@@ -233,9 +233,9 @@ export default function RequestDetail() {
           <div className="card card-pad space-y-3">
             <div>
               <div className="font-display font-semibold text-base">{vm.contact.name}</div>
-              <div className="text-[11px] text-ink-500">{formatDateTime(vm.createdAt ? Date.parse(vm.createdAt) : null)}</div>
+              <div className="text-micro text-ink-500">{formatDateTime(vm.createdAt ? Date.parse(vm.createdAt) : null)}</div>
             </div>
-            <div className="flex flex-wrap gap-2 text-[12px]">
+            <div className="flex flex-wrap gap-2 text-xs">
               {vm.contact.phone && (
                 <a href={`https://wa.me/${vm.contact.phoneDigits}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 hover:bg-ink-50">
                   <MessageCircle size={13} className="text-emerald-600" aria-hidden /> {vm.contact.phone}
@@ -248,7 +248,7 @@ export default function RequestDetail() {
               )}
             </div>
 
-            {error && <p className="text-[11px] text-rose-600 dark:text-rose-400" role="alert">{error}</p>}
+            {error && <p className="text-micro text-rose-600 dark:text-rose-400" role="alert">{error}</p>}
 
             {vm.quote && (
               <Link
@@ -270,9 +270,9 @@ export default function RequestDetail() {
                   {busy === 'quote' ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Send size={14} aria-hidden />}
                   {vm.actions.requoting ? 'Cotizar de nuevo' : 'Pasar a cotización'}
                 </button>
-                {vm.actions.quoteBlocked && <p className="text-[11px] text-ink-500">{vm.actions.quoteBlocked}</p>}
+                {vm.actions.quoteBlocked && <p className="text-micro text-ink-500">{vm.actions.quoteBlocked}</p>}
                 {vm.actions.requoting && (
-                  <p className="text-[11px] text-ink-500">
+                  <p className="text-micro text-ink-500">
                     La cotización anterior quedó rechazada: esta crea un documento nuevo con los precios de hoy.
                   </p>
                 )}
@@ -303,7 +303,7 @@ export default function RequestDetail() {
               <h2 className="font-display font-semibold text-sm mb-2">Telas elegidas</h2>
               <div className="flex flex-wrap gap-1.5">
                 {vm.fabrics.map((f) => (
-                  <span key={f.fabric} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-[11px]">
+                  <span key={f.fabric} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-micro">
                     {f.code && <img src={swatchUrl(f.code)} alt="" loading="lazy" decoding="async" className="w-3 h-3 rounded-sm object-cover" />}
                     <span className="truncate max-w-[150px]">{f.fabric}</span>
                   </span>
@@ -319,8 +319,8 @@ export default function RequestDetail() {
                 <li key={step.key} className="flex items-start gap-2.5">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-ink-300 shrink-0" aria-hidden />
                   <div className="min-w-0">
-                    <div className="text-[12px] text-ink-800">{step.label}</div>
-                    <div className="text-[11px] text-ink-400">{formatDateTime(step.at ? Date.parse(step.at) : null)}</div>
+                    <div className="text-xs text-ink-800">{step.label}</div>
+                    <div className="text-micro text-ink-500">{formatDateTime(step.at ? Date.parse(step.at) : null)}</div>
                   </div>
                 </li>
               ))}

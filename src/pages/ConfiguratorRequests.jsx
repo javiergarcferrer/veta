@@ -184,7 +184,7 @@ export default function ConfiguratorRequests() {
       </div>
 
       {board.noMatches ? (
-        <p className="text-xs text-ink-400 py-8 text-center">Sin solicitudes para este filtro.</p>
+        <p className="text-xs text-ink-500 py-8 text-center">Sin solicitudes para este filtro.</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {board.rows.map((row) => (

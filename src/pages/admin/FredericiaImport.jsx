@@ -27,7 +27,7 @@
  * sin conocer Supabase.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Armchair, ExternalLink, Download, UploadCloud, AlertTriangle } from 'lucide-react';
+import { Loader2, Armchair, ExternalLink, Download, UploadCloud } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
 import { db, newId } from '../../db/database.js';
 import { supabase } from '../../db/supabaseClient.js';
@@ -37,6 +37,7 @@ import {
 } from '../../brands/index.js';
 import FredericiaEnrichBar from '../../components/catalog/FredericiaEnrichBar.jsx';
 import Fredericia3dBar from '../../components/catalog/Fredericia3dBar.jsx';
+import Notice from '../../components/primitives/Notice.jsx';
 
 const SOURCE = FREDERICIA_MODULES.catalog.source;
 
@@ -56,7 +57,7 @@ const money = (n) => `$${Number(n || 0).toLocaleString('en-US', { maximumFractio
 function Stat({ label, value, tone = '' }) {
   return (
     <div className="rounded-lg border border-ink-100 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-400">{label}</div>
+      <div className="eyebrow tracking-[0.06em]">{label}</div>
       <div className={`text-base font-semibold ${tone || 'text-ink-900'}`}>{value}</div>
     </div>
   );
@@ -159,7 +160,7 @@ export default function FredericiaImport() {
           <Armchair size={18} className="text-ink-400" aria-hidden />
           <h1 className="text-lg font-semibold text-ink-900">Fredericia</h1>
         </div>
-        <p className="text-[13px] text-ink-500">
+        <p className="text-sm text-ink-500">
           Importa el catálogo Fredericia (y Erik Jørgensen) tal y como lo publica Anthom Design House:
           referencia, grupo de tapizado, precio, fotos y disponibilidad. Se lee primero y se guarda después.
         </p>
@@ -167,7 +168,7 @@ export default function FredericiaImport() {
 
       <div className="rounded-xl border border-ink-100 p-4 space-y-3">
         <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">Marca destino</span>
+          <span className="label">Marca destino</span>
           <select
             value={brandId}
             disabled={busy}
@@ -182,17 +183,21 @@ export default function FredericiaImport() {
               </option>
             ))}
           </select>
-          <span className="mt-1 block text-[11px] text-ink-400">
+          <span className="mt-1 block text-micro text-ink-500">
             {catalogBrand
               ? <>Las referencias entran en el catálogo <code className="font-mono">{catalogBrand}</code>.</>
               : 'Esta marca no tiene catálogo de precios asignado todavía.'}
           </span>
         </label>
 
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">Colección en Anthom</span>
-          <div className="mt-1 flex gap-2">
+        {/* The caption row's field shares its box with a button, so the label
+            binds by id: a <label> that wrapped both would fire the button on
+            every click of the word (design-system §12). */}
+        <div>
+          <label htmlFor="fredericia-source-url" className="label">Colección en Anthom</label>
+          <div className="flex gap-2">
             <input
+              id="fredericia-source-url"
               type="text"
               value={url}
               disabled={busy}
@@ -212,17 +217,17 @@ export default function FredericiaImport() {
               Leer catálogo
             </button>
           </div>
-        </label>
+        </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-ink-400">Colecciones:</span>
+          <span className="text-micro text-ink-500">Colecciones:</span>
           {SHORTCUTS.map((s) => (
             <button
               key={s.handle}
               type="button"
               disabled={busy}
               onClick={() => setUrl(linkFor(s.handle))}
-              className="rounded-full border border-ink-200 px-2 py-0.5 text-[11px] text-ink-600 hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-50"
+              className="rounded-full border border-ink-200 px-2 py-0.5 text-micro text-ink-600 hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-50"
             >
               {s.label}
             </button>
@@ -231,21 +236,21 @@ export default function FredericiaImport() {
             href={linkFor(SHORTCUTS[0].handle)}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1 text-[11px] text-ink-500 hover:text-brand-600"
+            className="ml-auto inline-flex items-center gap-1 text-micro text-ink-500 hover:text-brand-600"
           >
             Ver la tienda <ExternalLink size={11} aria-hidden />
           </a>
         </div>
 
         {busy && stage !== 'writing' && (
-          <div className="text-[12px] text-ink-600">
+          <div className="text-xs text-ink-600">
             {stage === 'reading' && 'Leyendo la colección en anthomdesignhouse.com…'}
             {stage === 'planning' && 'Comparando con el catálogo que ya tienes…'}
           </div>
         )}
         {stage === 'writing' && (
           <div className="space-y-1">
-            <div className="text-[12px] text-ink-600">Guardando {progress.done}/{progress.total}…</div>
+            <div className="text-xs text-ink-600">Guardando {progress.done}/{progress.total}…</div>
             <div className="h-1.5 w-full rounded-full bg-ink-100 overflow-hidden">
               <div className="h-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
             </div>
@@ -253,9 +258,7 @@ export default function FredericiaImport() {
         )}
 
         {error && (
-          <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-[12px] text-red-800 dark:text-red-200">
-            {error}
-          </div>
+          <Notice tone="danger" dense>{error}</Notice>
         )}
       </div>
 
@@ -263,7 +266,7 @@ export default function FredericiaImport() {
         <div className="rounded-xl border border-ink-100 p-4 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-ink-900">Esto es lo que se va a escribir</h2>
-            <span className="text-[11px] text-ink-400">
+            <span className="text-micro text-ink-500">
               {plan.read.products} productos · {plan.read.variants} variantes en la tienda
             </span>
           </div>
@@ -282,7 +285,7 @@ export default function FredericiaImport() {
           {/* Lo que la tienda repite o no pudo decirse: siempre a la vista, para
               que «6.665 de 6.849» nunca sea una diferencia que haya que ir a
               buscar. */}
-          <p className="text-[11px] text-ink-500 leading-relaxed">
+          <p className="text-micro text-ink-500 leading-relaxed">
             {plan.read.duplicates > 0 && (
               <>{plan.read.duplicates} variantes repetían un SKU ya leído (la tienda lista varias piezas
                 dos veces, una de ellas «- ADH»); se importa una sola vez. </>
@@ -298,22 +301,17 @@ export default function FredericiaImport() {
           </p>
 
           {plan.summary.missing > 0 && (
-            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[12px] text-amber-900">
-              <div className="flex items-start gap-1.5">
-                <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden />
-                <div>
-                  <strong>{plan.summary.missing} referencias</strong> del catálogo{' '}
-                  <code className="font-mono">{catalogBrand}</code> ya no aparecen en esta colección.
-                  No se borran ni se desactivan — revísalas antes de darlas por descontinuadas:{' '}
-                  <span className="font-mono">{plan.missing.slice(0, 6).join(' · ')}</span>
-                  {plan.missing.length > 6 && <> … y {plan.missing.length - 6} más</>}.
-                </div>
-              </div>
-            </div>
+            <Notice tone="warn" dense>
+              <strong>{plan.summary.missing} referencias</strong> del catálogo{' '}
+              <code className="code">{catalogBrand}</code> ya no aparecen en esta colección.
+              No se borran ni se desactivan — revísalas antes de darlas por descontinuadas:{' '}
+              <span className="code">{plan.missing.slice(0, 6).join(' · ')}</span>
+              {plan.missing.length > 6 && <> … y {plan.missing.length - 6} más</>}.
+            </Notice>
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-ink-400">
                   <th className="py-1 pr-3 font-medium">Referencia</th>
@@ -348,12 +346,12 @@ export default function FredericiaImport() {
       )}
 
       {result && (
-        <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-[12px] text-emerald-800">
-          {result.total} referencias en <code className="font-mono">{result.catalogBrand}</code>
+        <Notice tone="success" dense>
+          {result.total} referencias en <code className="code">{result.catalogBrand}</code>
           {' · '}{result.created} nuevas
           {result.updated > 0 && <> · {result.updated} actualizadas</>}
           {result.missing > 0 && <> · {result.missing} que ya no están se dejaron intactas</>}
-        </div>
+        </Notice>
       )}
 
       {/* SEGUNDA FUENTE, SEGUNDO PASO: sobre lo que Anthom ya trajo (y precia),
@@ -368,7 +366,7 @@ export default function FredericiaImport() {
           pregunta del 2026-08-31 no encontraba en presscloud. */}
       <Fredericia3dBar profileId={profileId} />
 
-      <p className="text-[11px] text-ink-400 leading-relaxed">
+      <p className="text-micro text-ink-500 leading-relaxed">
         Una referencia Fredericia es <span className="font-mono">FRE-modelo-grupo-acabados</span>, y el
         grupo de tapizado va EN MEDIO — así que la familia que el cotizador agrupa es el SKU con ese hueco
         vacío (<span className="font-mono">FRE-1731--ABL-CH</span>), y cada acabado lleva su propia

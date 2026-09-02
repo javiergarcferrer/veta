@@ -95,11 +95,11 @@ export default function FredericiaEmbed() {
           placeholder="Buscar — spanish chair, spine, trinidad…"
           className="mt-4 w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm"
         />
-        {rows === null && <p className="mt-4 text-sm text-ink-400">Leyendo el catálogo…</p>}
+        {rows === null && <p className="mt-4 text-sm text-ink-500">Leyendo el catálogo…</p>}
         {listError && <p className="mt-4 text-sm text-red-700">{listError}</p>}
         {rows !== null && !listError && (
           <>
-            <p className="mt-4 text-xs text-ink-400">
+            <p className="mt-4 text-xs text-ink-500">
               {families.length} modelos{q ? ' coinciden' : ' publicados'}
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -115,7 +115,7 @@ export default function FredericiaEmbed() {
                   )}
                   <span className="block px-3 py-2">
                     <span className="block text-sm font-medium text-ink-900 truncate">{f.model}</span>
-                    <span className="block text-xs text-ink-400">
+                    <span className="block text-xs text-ink-500">
                       {f.count} variante{f.count === 1 ? '' : 's'}
                       {f.priceMin != null ? ` · desde ${money(f.priceMin)}` : ''}
                     </span>
@@ -140,7 +140,7 @@ export default function FredericiaEmbed() {
         ← Todas las piezas
       </button>
 
-      {!vm && <p className="mt-4 text-sm text-ink-400">Leyendo el modelo…</p>}
+      {!vm && <p className="mt-4 text-sm text-ink-500">Leyendo el modelo…</p>}
 
       {vm && (
         <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_20rem]">
@@ -166,7 +166,7 @@ export default function FredericiaEmbed() {
 
           <aside className="lg:sticky lg:top-4 lg:self-start space-y-3">
             <div className="rounded-xl border border-ink-100 bg-surface p-4">
-              <div className="text-xs uppercase tracking-wide text-ink-400">Precio de lista</div>
+              <div className="text-xs uppercase tracking-wide text-ink-500">Precio de lista</div>
               <div className="text-2xl font-semibold text-ink-900 tabular-nums">
                 {vm.price.state === 'exact' && money(vm.price.usd)}
                 {vm.price.state === 'from' && `${money(vm.price.minUsd)} – ${money(vm.price.maxUsd)}`}
@@ -234,7 +234,7 @@ function Axis({ axis, onPick }) {
     <section>
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-medium text-ink-900">{axis.label}</h2>
-        <span className="text-xs text-ink-400 truncate">
+        <span className="text-xs text-ink-500 truncate">
           {axis.options.find((o) => o.selected)?.label || ''}
         </span>
       </div>

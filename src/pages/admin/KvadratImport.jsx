@@ -25,6 +25,7 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../db/supabaseClie
 import { uploadSwatchTexture, removeSwatchTexture } from '../../db/swatchUpload.js';
 import { useToast } from '../../components/ConfirmProvider.jsx';
 import { KVADRAT_MODULES, planMaterialImport } from '../../brands/index.js';
+import Notice from '../../components/primitives/Notice.jsx';
 
 const SOURCE = KVADRAT_MODULES.materials.source;
 
@@ -145,7 +146,7 @@ export default function KvadratImport() {
           <Layers size={18} className="text-ink-400" aria-hidden />
           <h1 className="text-lg font-semibold text-ink-900">Kvadrat</h1>
         </div>
-        <p className="text-[13px] text-ink-500">
+        <p className="text-sm text-ink-500">
           Importa una colección entera de Kvadrat: cada color llega con su tejido escaneado,
           su tono exacto, el relieve y su tamaño físico real.
         </p>
@@ -153,7 +154,7 @@ export default function KvadratImport() {
 
       <div className="rounded-xl border border-ink-100 p-4 space-y-3">
         <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">Marca destino</span>
+          <span className="label">Marca destino</span>
           <select
             value={brandId}
             disabled={busy}
@@ -165,10 +166,14 @@ export default function KvadratImport() {
           </select>
         </label>
 
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">Enlace de la colección</span>
-          <div className="mt-1 flex gap-2">
+        {/* The caption row's field shares its box with a button, so the label
+            binds by id: a <label> that wrapped both would fire the button on
+            every click of the word (design-system §12). */}
+        <div>
+          <label htmlFor="kvadrat-source-url" className="label">Enlace de la colección</label>
+          <div className="flex gap-2">
             <input
+              id="kvadrat-source-url"
               type="text"
               value={url}
               disabled={busy}
@@ -186,17 +191,17 @@ export default function KvadratImport() {
               Importar
             </button>
           </div>
-        </label>
+        </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-ink-400">Rápido:</span>
+          <span className="text-micro text-ink-500">Rápido:</span>
           {SHORTCUTS.map((s) => (
             <button
               key={s.slug}
               type="button"
               disabled={busy}
               onClick={() => setUrl(`https://www.kvadrat.dk/en/products/upholstery/${s.slug}`)}
-              className="rounded-full border border-ink-200 px-2 py-0.5 text-[11px] text-ink-600 hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-50"
+              className="rounded-full border border-ink-200 px-2 py-0.5 text-micro text-ink-600 hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-50"
             >
               {s.label}
             </button>
@@ -205,7 +210,7 @@ export default function KvadratImport() {
             href="https://www.kvadrat.dk/en/products/upholstery"
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1 text-[11px] text-ink-500 hover:text-brand-600"
+            className="ml-auto inline-flex items-center gap-1 text-micro text-ink-500 hover:text-brand-600"
           >
             Ver catálogo <ExternalLink size={11} aria-hidden />
           </a>
@@ -213,7 +218,7 @@ export default function KvadratImport() {
 
         {busy && (
           <div className="space-y-1">
-            <div className="text-[12px] text-ink-600">
+            <div className="text-xs text-ink-600">
               {state.stage === 'enumerate' && 'Leyendo la colección…'}
               {state.stage === 'importing' && `Bajando ${state.done}/${state.total}${state.current ? ` · ${state.current}` : ''}`}
               {state.stage === 'writing' && 'Guardando materiales…'}
@@ -227,23 +232,21 @@ export default function KvadratImport() {
         )}
 
         {error && (
-          <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-[12px] text-red-800 dark:text-red-200">
-            {error}
-          </div>
+          <Notice tone="danger" dense>{error}</Notice>
         )}
         {result && (
-          <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-[12px] text-emerald-800">
+          <Notice tone="success" dense>
             {result.productName ? <><strong>{result.productName}</strong> · </> : null}
             {result.materials} material{result.materials === 1 ? '' : 'es'} · {result.newColors} colores nuevos
             {result.updatedColors > 0 && <> · {result.updatedColors} actualizados</>}
             {result.stored < result.read && (
               <> · <strong>{result.read - result.stored} sin imagen</strong></>
             )}
-          </div>
+          </Notice>
         )}
       </div>
 
-      <p className="text-[11px] text-ink-400 leading-relaxed">
+      <p className="text-micro text-ink-500 leading-relaxed">
         Cada export son cientos de MB a resolución original; los mapas se reescalan al
         decodificarlos. Importa unas pocas colecciones a la vez.
       </p>

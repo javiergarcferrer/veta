@@ -29,10 +29,18 @@ A brand with no such source is not degraded — it uploads a CSV, which every
 catalog adapter still reads. `source` is a capability, and its absence is
 reported honestly rather than papered over with somebody else's shop.
 
+## Working here
+
+Most changes are made by Claude Code sessions. **Start at `CLAUDE.md`** — the
+fast-start every session reads (the loop, the signal per change type, the hard
+rules) — and `docs/harness.md`, which indexes every file that shapes a session
+and says where a new rule belongs. How it must look is `docs/design-system.md`,
+and every rule there is a test.
+
 ## Running it
 
 ```sh
-npm install
+npm install               # a web session's SessionStart hook does this for you
 cp .env.example .env      # two PUBLIC variables — see the file
 npm run dev
 ```
@@ -45,6 +53,7 @@ npm run dev
 | `npm run typecheck:names` | `checkJs` over `src`, keeping only the **unbound-name** codes (TS2304 + TS2552, the "did you mean" downgrade a typo of a real variable gets) — the root config runs `checkJs:false` for the incremental TS migration, so a free identifier in a `.jsx` compiles, ships, and throws `ReferenceError` on first render. Runs through `scripts/checkUnboundNames.mjs`, which fails loudly when tsc itself can't run instead of reporting a green it never measured |
 | `npm run typecheck:functions` | the same sweep over the Deno Edge Functions, which the root config never included |
 | `npm test` | the whole suite (see below) |
+| `npm run e2e:carl-hansen` | the public Carl Hansen picker in a real Chromium, desktop and phone, against `dist/` with the wire stubbed from `tests/fixtures/carlHansen` — run after `npm run build`; `SHOTS=<dir>` keeps the screenshots. Not part of `npm test` (needs a browser) |
 
 **The tests that need a database.** `tests/schema.test.js` and
 `tests/brandIsolation.test.js` build the entire schema from

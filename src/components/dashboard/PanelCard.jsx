@@ -23,7 +23,7 @@ export default function PanelCard({
             {mark || (Icon && <Icon size={15} className="text-ink-400 shrink-0" aria-hidden />)}
             <span className="truncate">{title}</span>
           </h2>
-          {subtitle && <p className="text-[11px] text-ink-500 mt-0.5 truncate">{subtitle}</p>}
+          {subtitle && <p className="text-micro text-ink-500 mt-0.5 truncate">{subtitle}</p>}
         </div>
         {to && (
           <Link to={to} className="card-header-action shrink-0 whitespace-nowrap">

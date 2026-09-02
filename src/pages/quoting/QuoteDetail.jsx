@@ -131,7 +131,7 @@ export default function QuoteDetail() {
         <Link to="/cotizaciones" className="btn-ghost text-xs text-ink-500">
           <ArrowLeft size={14} aria-hidden /> Cotizaciones
         </Link>
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${TONE[doc.status.tone] || TONE.neutral}`}>
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-micro ${TONE[doc.status.tone] || TONE.neutral}`}>
           {doc.status.label}
         </span>
       </div>
@@ -150,11 +150,11 @@ export default function QuoteDetail() {
             <div className="flex items-baseline justify-between gap-3">
               <div>
                 <h1 className="font-display font-semibold text-base">{doc.title}</h1>
-                <p className="text-[11px] text-ink-500">
+                <p className="text-micro text-ink-500">
                   {doc.labels.preparedFor} {doc.customerName} · {formatDateTime(doc.dates.createdAt ? Date.parse(doc.dates.createdAt) : null)}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1 text-[10px] text-ink-400" title="Los precios de una cotización no se editan: se congelan al crearla.">
+              <span className="inline-flex items-center gap-1 text-micro text-ink-500" title="Los precios de una cotización no se editan: se congelan al crearla.">
                 <Lock size={11} aria-hidden /> Precios congelados
               </span>
             </div>
@@ -166,26 +166,26 @@ export default function QuoteDetail() {
                     ? <img src={swatchUrl(line.code)} alt="" loading="lazy" decoding="async" className="w-9 h-9 rounded-md object-cover border border-ink-100 shrink-0" />
                     : <div className="w-9 h-9 rounded-md bg-ink-100 shrink-0" aria-hidden />}
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] text-ink-900 truncate">{line.name}</div>
-                    <div className="text-[11px] text-ink-500 truncate">
+                    <div className="text-sm text-ink-900 truncate">{line.name}</div>
+                    <div className="text-micro text-ink-500 truncate">
                       {[line.dims, line.fabric].filter(Boolean).join(' · ')}
                     </div>
                     {line.parts.map((part) => (
-                      <div key={part.role} className="mt-0.5 text-[11px] text-ink-500 flex items-center gap-1.5">
+                      <div key={part.role} className="mt-0.5 text-micro text-ink-500 flex items-center gap-1.5">
                         {part.code && <img src={swatchUrl(part.code)} alt="" loading="lazy" decoding="async" className="w-3 h-3 rounded-sm object-cover" />}
                         <span className="truncate">{part.label}: {part.fabric || '—'}</span>
                         {line.complete && <span className="text-ink-400">· {line.completeLabel}</span>}
                       </div>
                     ))}
                     {line.finishes.length > 0 && (
-                      <div className="mt-0.5 text-[11px] text-ink-400 truncate">
+                      <div className="mt-0.5 text-micro text-ink-500 truncate">
                         {line.finishes.map((f) => f.label).join(' · ')}
                       </div>
                     )}
                   </div>
-                  <div className="text-right shrink-0 text-[13px] tabular-nums">
+                  <div className="text-right shrink-0 text-sm tabular-nums">
                     {line.unpriced
-                      ? <span className="text-[11px] text-amber-700">{line.unpricedLabel}</span>
+                      ? <span className="text-micro text-amber-700">{line.unpricedLabel}</span>
                       : line.totalLabel}
                   </div>
                 </div>
@@ -193,19 +193,19 @@ export default function QuoteDetail() {
             </div>
 
             <div className="flex items-baseline justify-between">
-              <span className="text-[11px] uppercase tracking-wide text-ink-500">{doc.totals.label}</span>
+              <span className="eyebrow">{doc.totals.label}</span>
               <span className="text-xl font-semibold tabular-nums">{doc.totals.totalLabel || '—'}</span>
             </div>
             {doc.totals.unpriced > 0 && (
-              <p className="text-[11px] text-amber-700 flex items-start gap-1.5">
+              <p className="text-micro text-amber-700 flex items-start gap-1.5">
                 <AlertTriangle size={13} className="mt-px shrink-0" aria-hidden />
                 {doc.totals.unpriced} pieza{doc.totals.unpriced === 1 ? '' : 's'} quedó sin precio en esta cotización.
               </p>
             )}
             {doc.note && (
               <div>
-                <div className="text-[11px] uppercase tracking-wide text-ink-500 mb-1">{doc.labels.note}</div>
-                <p className="text-[13px] text-ink-600 whitespace-pre-wrap">{doc.note}</p>
+                <div className="eyebrow mb-1">{doc.labels.note}</div>
+                <p className="text-sm text-ink-600 whitespace-pre-wrap">{doc.note}</p>
               </div>
             )}
           </div>
@@ -218,7 +218,7 @@ export default function QuoteDetail() {
             {quote.shareEnabled && shareUrl ? (
               <>
                 <div className="flex items-center gap-1.5">
-                  <input readOnly value={shareUrl} className="input h-9 text-[11px] flex-1 select-text" aria-label="Enlace del cliente" />
+                  <input readOnly value={shareUrl} className="input h-9 text-micro flex-1 select-text" aria-label="Enlace del cliente" />
                   <button type="button" onClick={copyLink} className="btn-secondary text-xs shrink-0" title="Copiar el enlace">
                     {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
                   </button>
@@ -226,14 +226,14 @@ export default function QuoteDetail() {
                     <ExternalLink size={14} aria-hidden />
                   </a>
                 </div>
-                <p className="text-[11px] text-ink-500">
+                <p className="text-micro text-ink-500">
                   {quote.viewCount > 0
                     ? `El cliente lo abrió ${quote.viewCount} ${quote.viewCount === 1 ? 'vez' : 'veces'} · primera vez ${formatDateTime(quote.firstViewedAt ? Date.parse(quote.firstViewedAt) : null)}`
                     : 'El cliente todavía no lo ha abierto.'}
                 </p>
               </>
             ) : (
-              <p className="text-[11px] text-ink-500">
+              <p className="text-micro text-ink-500">
                 El enlace está desactivado: quien lo tenga ya no puede abrir la cotización.
               </p>
             )}
@@ -247,7 +247,7 @@ export default function QuoteDetail() {
 
           <div className="card card-pad space-y-2">
             <h2 className="font-display font-semibold text-sm">Estado</h2>
-            {error && <p className="text-[11px] text-rose-600 dark:text-rose-400" role="alert">{error}</p>}
+            {error && <p className="text-micro text-rose-600 dark:text-rose-400" role="alert">{error}</p>}
             <div className="flex flex-wrap gap-1.5">
               {NEXT_STATUS.filter((s) => s.key !== doc.status.key).map((s) => (
                 <button
@@ -262,7 +262,7 @@ export default function QuoteDetail() {
                 </button>
               ))}
             </div>
-            <ul className="pt-1 space-y-1 text-[11px] text-ink-500">
+            <ul className="pt-1 space-y-1 text-micro text-ink-500">
               {doc.dates.sentAt && <li>Enviada · {formatDateTime(Date.parse(doc.dates.sentAt))}</li>}
               {doc.dates.acceptedAt && <li>Aceptada · {formatDateTime(Date.parse(doc.dates.acceptedAt))}</li>}
               {doc.dates.declinedAt && <li>Rechazada · {formatDateTime(Date.parse(doc.dates.declinedAt))}</li>}
@@ -271,10 +271,10 @@ export default function QuoteDetail() {
 
           <div className="card card-pad space-y-2">
             <h2 className="font-display font-semibold text-sm">Cliente</h2>
-            <div className="text-[13px] text-ink-900">{quote.customer?.name || '—'}</div>
-            {quote.customer?.phone && <div className="text-[12px] text-ink-600">{quote.customer.phone}</div>}
-            {quote.customer?.email && <div className="text-[12px] text-ink-600 break-all">{quote.customer.email}</div>}
-            {quote.brandName && <div className="text-[11px] text-ink-400 pt-1">Cotizada como {quote.brandName}</div>}
+            <div className="text-sm text-ink-900">{quote.customer?.name || '—'}</div>
+            {quote.customer?.phone && <div className="text-xs text-ink-600">{quote.customer.phone}</div>}
+            {quote.customer?.email && <div className="text-xs text-ink-600 break-all">{quote.customer.email}</div>}
+            {quote.brandName && <div className="text-micro text-ink-500 pt-1">Cotizada como {quote.brandName}</div>}
             {quote.requestId && (
               <Link to={`/solicitudes/${quote.requestId}`} className="btn-ghost text-xs text-ink-500 mt-1">
                 <Inbox size={14} aria-hidden /> Ver la solicitud original

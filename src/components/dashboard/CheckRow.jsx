@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, Check, Loader2 } from 'lucide-react';
+import Notice from '../primitives/Notice.jsx';
 
 /**
  * ONE LINE OF THE READINESS LEDGER: how many pieces fail this check, which ones,
@@ -37,23 +38,23 @@ export default function CheckRow({ row, to }) {
         ) : row.ok ? (
           <Check size={14} className="inline text-emerald-600 dark:text-emerald-400" aria-hidden />
         ) : (
-          <span className={`text-[15px] font-semibold tabular-nums ${tone.count}`}>{row.count}</span>
+          <span className={`text-base font-semibold tabular-nums ${tone.count}`}>{row.count}</span>
         )}
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           {!quiet && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.dot}`} aria-hidden />}
-          <span className={`text-[13px] ${quiet ? 'text-ink-500' : 'text-ink-900 font-medium'}`}>
+          <span className={`text-sm ${quiet ? 'text-ink-500' : 'text-ink-900 font-medium'}`}>
             {row.label}
           </span>
-          {row.pending && <span className="text-[11px] text-ink-400">comprobando…</span>}
+          {row.pending && <span className="text-micro text-ink-500">comprobando…</span>}
         </div>
 
-        {!row.ok && <p className="text-[11px] text-ink-500 mt-0.5 leading-snug">{row.detail}</p>}
+        {!row.ok && <p className="text-micro text-ink-500 mt-0.5 leading-snug">{row.detail}</p>}
 
         {row.examples?.length > 0 && (
-          <p className="text-[11px] text-ink-400 mt-1 truncate" title={row.examples.join(' · ')}>
+          <p className="text-micro text-ink-500 mt-1 truncate" title={row.examples.join(' · ')}>
             {row.examples.join(' · ')}
             {row.more > 0 && ` · +${row.more}`}
           </p>
@@ -76,14 +77,16 @@ export default function CheckRow({ row, to }) {
 /** The «algo está mal» banner a card puts above its rows. Same tone tokens. */
 export function IssueNote({ children, to, actionLabel = 'Arreglar' }) {
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-      <AlertTriangle size={13} className="shrink-0 mt-px" aria-hidden />
-      <span className="min-w-0 flex-1 leading-snug">{children}</span>
-      {to && (
+    <Notice
+      tone="warn"
+      dense
+      action={to && (
         <Link to={to} className="shrink-0 underline underline-offset-2 hover:no-underline whitespace-nowrap">
           {actionLabel}
         </Link>
       )}
-    </div>
+    >
+      {children}
+    </Notice>
   );
 }

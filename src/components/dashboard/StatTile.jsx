@@ -1,13 +1,18 @@
-import { Link } from 'react-router-dom';
+import { Stat } from '../quant/Figures.jsx';
 
 /**
- * A KPI tile on EL PANEL — the app's `.stat-card` / `.stat-value` / `.icon-tile`
- * primitives, nothing new.
+ * A KPI tile on EL PANEL — a prop ADAPTER over the one figure recipe
+ * (`components/quant/Figures.jsx` → `<Stat>`), not a second tile. It used to
+ * re-type the tile's shell and headline classes by hand, which is exactly how
+ * RosetSoft grew thirteen label-over-a-number components before it had one;
+ * the design system's §4 rule ("one recipe per job") is pinned by
+ * `tests/designSystem`.
  *
- * The whole tile is the link: every number on this screen goes to the page that
- * changes it. `tone` is a TOKEN resolved by the VM (never a colour decision made
- * here); it only picks which `.tint-*` plate the icon sits on and whether the
- * hint reads as a warning.
+ * The whole tile is the link: every number on this screen goes to the page
+ * that changes it. `tone` is a TOKEN resolved by the VM (never a colour
+ * decision made here); it picks the icon's `.tint-*` plate and whether the
+ * hint reads as a warning — through the measured valence inks, which carry
+ * both themes (§6), not raw Tailwind shades that go to ~3:1 in dark mode.
  */
 
 const TINT = {
@@ -19,35 +24,23 @@ const TINT = {
 };
 
 const HINT = {
-  good: 'text-emerald-700 dark:text-emerald-400',
-  warn: 'text-amber-700 dark:text-amber-400',
-  bad: 'text-rose-700 dark:text-rose-400',
-  info: 'text-ink-500',
-  neutral: 'text-ink-500',
+  good: 'text-status-good-ink',
+  warn: 'text-status-warning-ink',
+  bad: 'text-status-critical-ink',
+  info: '',
+  neutral: '',
 };
 
-export default function StatTile({ icon: Icon, label, value, hint, tone = 'neutral', to }) {
-  const body = (
-    <div className="p-4 flex items-start gap-3">
-      {Icon && (
-        <span className={`icon-tile ${TINT[tone] || TINT.neutral}`} aria-hidden>
-          <Icon size={15} />
-        </span>
-      )}
-      <div className="min-w-0">
-        <div className="stat-value">{value}</div>
-        <div className="eyebrow mt-1.5 truncate" title={label}>{label}</div>
-        {hint && <p className={`text-[11px] mt-1 leading-snug ${HINT[tone] || HINT.neutral}`}>{hint}</p>}
-      </div>
-    </div>
-  );
-  if (!to) return <div className="stat-card">{body}</div>;
+export default function StatTile({ icon, label, value, hint, tone = 'neutral', to }) {
   return (
-    <Link
+    <Stat
+      icon={icon}
+      tint={TINT[tone] || TINT.neutral}
+      label={label}
+      value={value}
+      hint={hint ? <span className={HINT[tone] || ''}>{hint}</span> : undefined}
       to={to}
-      className="stat-card block hover:-translate-y-0.5 hover:border-brand-200 transition-[box-shadow,transform,border-color] duration-200"
-    >
-      {body}
-    </Link>
+      className="h-full"
+    />
   );
 }

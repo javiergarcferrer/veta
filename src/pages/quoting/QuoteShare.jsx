@@ -23,7 +23,7 @@ import { fetchPublicQuote } from './api.js';
  * already in `isPublicRoute`, so the theme boot script never darkens it).
  */
 
-const EYEBROW = 'text-[11px] uppercase tracking-[0.15em] text-neutral-500';
+const EYEBROW = 'text-micro uppercase tracking-[0.15em] text-neutral-500';
 
 export default function QuoteShare() {
   const { token } = useParams();
@@ -115,12 +115,12 @@ export default function QuoteShare() {
                 <div className="min-w-0 flex-1">
                   <div className="text-base leading-snug">{line.name}</div>
                   {(line.dims || line.fabric) && (
-                    <div className="mt-0.5 text-[11px] tracking-wide text-neutral-500">
+                    <div className="mt-0.5 text-micro tracking-wide text-neutral-500">
                       {[line.dims, line.fabric].filter(Boolean).join(' · ')}
                     </div>
                   )}
                   {line.parts.map((part) => (
-                    <div key={part.role} className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500">
+                    <div key={part.role} className="mt-1 flex items-center gap-1.5 text-micro text-neutral-500">
                       {part.code && <img src={swatchUrl(part.code)} alt="" loading="lazy" decoding="async" className="w-3 h-3 object-cover bg-neutral-100" />}
                       <span className="truncate">{part.label}: {part.fabric || '—'}</span>
                       {/* «Incluido»: this piece bills as ONE complete element, so
@@ -129,14 +129,14 @@ export default function QuoteShare() {
                     </div>
                   ))}
                   {line.finishes.length > 0 && (
-                    <div className="mt-1 text-[11px] text-neutral-400">
+                    <div className="mt-1 text-micro text-neutral-400">
                       {line.finishes.map((f) => f.label).join(' · ')}
                     </div>
                   )}
                 </div>
                 <div className="shrink-0 text-sm tabular-nums text-right">
                   {line.unpriced
-                    ? <span className="text-[11px] text-neutral-400">{line.unpricedLabel}</span>
+                    ? <span className="text-micro text-neutral-400">{line.unpricedLabel}</span>
                     : line.totalLabel}
                 </div>
               </div>

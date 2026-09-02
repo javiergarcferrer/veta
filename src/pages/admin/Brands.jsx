@@ -23,6 +23,7 @@ import {
   moduleSetOptions, moduleSetFor, planMaterialImport, planPriceListImport, readCsvRecords,
   relPathOf, resolveBrandDraft, resolveBrandEnvironment, resolveBrandsList, tallyByBrand,
 } from '../../brands/index.js';
+import Notice from '../../components/primitives/Notice.jsx';
 
 /**
  * MARCAS — the brand microenvironments.
@@ -65,7 +66,7 @@ const BRAND_COLUMNS = [
   {
     key: 'slug',
     label: 'Identificador',
-    tdClass: 'text-ink-400 font-mono text-xs whitespace-nowrap',
+    tdClass: 'text-ink-500 font-mono text-xs whitespace-nowrap',
     cell: ({ r }) => r.slug,
   },
   {
@@ -75,7 +76,7 @@ const BRAND_COLUMNS = [
     cell: ({ r }) => (
       <span className="inline-flex items-center gap-1.5">
         {r.moduleLabel}
-        {r.mixed && <span className="rounded-full bg-ink-100 px-1.5 py-px text-[10px] text-ink-500">mixto</span>}
+        {r.mixed && <span className="rounded-full bg-ink-100 px-1.5 py-px text-micro text-ink-500">mixto</span>}
         {r.moduleFellBack && (
           <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300" title="El juego guardado no existe; se usa el de Ligne Roset">
             <AlertTriangle size={11} /> revisar
@@ -281,7 +282,7 @@ export default function Brands() {
           <span className="icon-tile tint-brand w-9 h-9 rounded-xl shrink-0"><Tags size={17} /></span>
           <div className="min-w-0">
             <h2 className="font-display font-semibold text-sm">Marcas</h2>
-            <p className="text-[11px] text-ink-500 leading-snug">
+            <p className="text-micro text-ink-500 leading-snug">
               Cada marca es un entorno aparte — sus modelos, materiales, distribuidores y solicitudes — con sus propios
               módulos de importación: cómo se lee SU biblioteca 3D, SUS muestras y SU lista de precios.
             </p>
@@ -328,15 +329,15 @@ export default function Brands() {
                   <span className="text-sm font-medium text-ink-900 truncate">{r.name}</span>
                   <span className={`status-pill ${r.statusCls} shrink-0`}>{r.statusLabel}</span>
                 </div>
-                <div className="text-[11px] text-ink-400 font-mono truncate">{r.slug}</div>
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-500">
+                <div className="text-micro text-ink-500 font-mono truncate">{r.slug}</div>
+                <div className="flex flex-wrap items-center gap-1.5 text-micro text-ink-500">
                   <span className="inline-flex items-center gap-1"><Boxes size={11} /> {r.models} modelos</span>
                   <span className="inline-flex items-center gap-1"><Palette size={11} /> {r.materials} materiales</span>
                   <span className="truncate">· {r.moduleLabel}</span>
                 </div>
               </button>
             ))}
-            {list.noMatches && <p className="card card-pad text-center text-sm text-ink-400">Sin resultados.</p>}
+            {list.noMatches && <p className="card card-pad text-center text-sm text-ink-500">Sin resultados.</p>}
           </div>
 
           <div className="hidden md:block card overflow-hidden">
@@ -352,7 +353,7 @@ export default function Brands() {
                     </tr>
                   ))}
                   {list.noMatches && (
-                    <tr><td colSpan={cols.length} className="text-center text-sm text-ink-400 py-6">Sin resultados.</td></tr>
+                    <tr><td colSpan={cols.length} className="text-center text-sm text-ink-500 py-6">Sin resultados.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -395,7 +396,7 @@ export default function Brands() {
             onToast={toast}
           />
         ) : (
-          <div className="py-10 text-center text-sm text-ink-400"><Loader2 size={16} className="animate-spin inline-block" /></div>
+          <div className="py-10 text-center text-sm text-ink-500"><Loader2 size={16} className="animate-spin inline-block" /></div>
         )}
       </Modal>
     </div>
@@ -450,7 +451,7 @@ function BrandEditor({ title, brand, brands, onClose, onSaved }) {
       size="lg"
       footer={(
         <div className="flex items-center justify-between gap-3 w-full">
-          <p className="text-[11px] text-ink-400 min-w-0 truncate">
+          <p className="text-micro text-ink-500 min-w-0 truncate">
             {draft.issues.length > 0 ? draft.issues[0].text : draft.capabilities.summary}
           </p>
           <div className="flex items-center gap-2 shrink-0">
@@ -489,7 +490,7 @@ function BrandEditor({ title, brand, brands, onClose, onSaved }) {
               onBlur={(e) => set({ slug: brandSlugify(e.target.value) })}
               placeholder="ligne-roset"
             />
-            <p className="mt-1 text-[11px] text-ink-400">Se usa en enlaces y como catálogo de precios por defecto.</p>
+            <p className="mt-1 text-micro text-ink-500">Se usa en enlaces y como catálogo de precios por defecto.</p>
           </div>
           <div>
             <label className="label" htmlFor="brand-locale">Idioma</label>
@@ -553,7 +554,7 @@ function BrandEditor({ title, brand, brands, onClose, onSaved }) {
             onChange={(e) => set({ catalogBrand: e.target.value })}
             placeholder={form.slug || 'ligne-roset'}
           />
-          <p className="mt-1 text-[11px] text-ink-400">
+          <p className="mt-1 text-micro text-ink-500">
             Qué catálogo de productos ve esta marca. Vacío = usa su propio identificador, que empieza sin SKU — nunca los
             precios de otra marca.
           </p>
@@ -565,7 +566,7 @@ function BrandEditor({ title, brand, brands, onClose, onSaved }) {
         <div className="rounded-xl border border-ink-100 p-3 space-y-3">
           <div>
             <span className="label">Módulos de importación</span>
-            <p className="text-[11px] text-ink-500 -mt-1">
+            <p className="text-micro text-ink-500 -mt-1">
               Cómo se leen los archivos de esta marca: su biblioteca 3D, sus muestras de material y su lista de precios.
             </p>
           </div>
@@ -582,8 +583,8 @@ function BrandEditor({ title, brand, brands, onClose, onSaved }) {
                     active ? 'border-brand-400 ring-2 ring-brand-400 bg-brand-50/40' : 'border-ink-200 hover:border-brand-300'
                   }`}
                 >
-                  <span className="block text-[13px] font-semibold text-ink-800">{s.label}</span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-ink-500">{s.summary}</span>
+                  <span className="block text-sm font-semibold text-ink-800">{s.label}</span>
+                  <span className="mt-0.5 block text-micro leading-snug text-ink-500">{s.summary}</span>
                 </button>
               );
             })}
@@ -603,16 +604,16 @@ function ModuleCapabilityCards({ capabilities, form, onChange }) {
   return (
     <div className="space-y-2">
       {capabilities.fellBack && (
-        <p className="rounded-md border border-amber-200 bg-amber-50/60 px-2.5 py-1.5 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:border-amber-900/40 dark:text-amber-200">
+        <Notice tone="warn" dense>
           El juego de módulos guardado no existe en esta versión; se está usando el de Ligne Roset.
-        </p>
+        </Notice>
       )}
       {capabilities.cards.map((c) => (
         <div key={c.slot} className="rounded-lg border border-ink-100 bg-surface p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">{c.title}</span>
+            <span className="eyebrow tracking-[0.06em]">{c.title}</span>
             <select
-              className="input h-7 py-0 text-[11px] max-w-[14rem]"
+              className="input h-7 py-0 text-micro max-w-[14rem]"
               value={c.id}
               onChange={(e) => onChange({ [c.slot]: e.target.value })}
               aria-label={`Módulo de ${c.title}`}
@@ -622,17 +623,17 @@ function ModuleCapabilityCards({ capabilities, form, onChange }) {
               ))}
             </select>
           </div>
-          <p className="mt-1 text-[11px] leading-snug text-ink-500">{c.summary}</p>
+          <p className="mt-1 text-micro leading-snug text-ink-500">{c.summary}</p>
           <dl className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
             {c.facts.map((f) => (
               <div key={f.label} className="flex items-baseline gap-1.5 min-w-0">
-                <dt className="text-[10px] uppercase tracking-wide text-ink-400 shrink-0">{f.label}</dt>
-                <dd className="text-[11px] text-ink-700 font-mono truncate" title={f.value}>{f.value}</dd>
+                <dt className="eyebrow shrink-0">{f.label}</dt>
+                <dd className="text-micro text-ink-700 font-mono truncate" title={f.value}>{f.value}</dd>
               </div>
             ))}
           </dl>
           {form[c.slot] && form[c.slot] !== c.id && (
-            <p className="mt-1 text-[11px] text-amber-700">Ese módulo no existe; se usa {c.label}.</p>
+            <p className="mt-1 text-micro text-amber-700">Ese módulo no existe; se usa {c.label}.</p>
           )}
         </div>
       ))}
@@ -657,7 +658,7 @@ function BrandEnvironmentPanel({
               {vm.active ? 'Activa' : 'Inactiva'}
             </span>
           </div>
-          <p className="text-[11px] text-ink-400 font-mono">{vm.slug}</p>
+          <p className="text-micro text-ink-500 font-mono">{vm.slug}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {!isActiveBrand && vm.active && (
@@ -678,13 +679,13 @@ function BrandEnvironmentPanel({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {vm.counts.map((c) => (
           <div key={c.key} className="rounded-lg border border-ink-100 px-2.5 py-2">
-            <div className="text-[10px] uppercase tracking-wide text-ink-400">{c.label}</div>
+            <div className="eyebrow">{c.label}</div>
             <div className="text-lg font-semibold tabular-nums text-ink-900">{c.value}</div>
           </div>
         ))}
       </div>
       {vm.catalogBrand && (
-        <p className="text-[11px] text-ink-500">
+        <p className="text-micro text-ink-500">
           Catálogo <b className="font-mono text-ink-700">{vm.catalogBrand}</b>
           {vm.productCount == null ? ' — contando…' : ` — ${vm.productCount.toLocaleString('es-DO')} SKU`}
         </p>
@@ -692,7 +693,7 @@ function BrandEnvironmentPanel({
       {vm.gaps.length > 0 && (
         <ul className="space-y-1">
           {vm.gaps.map((g, i) => (
-            <li key={`${g.key}-${i}`} className="flex items-start gap-1.5 text-[11px] text-amber-800 dark:text-amber-200">
+            <li key={`${g.key}-${i}`} className="flex items-start gap-1.5 text-micro text-amber-800 dark:text-amber-200">
               <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {g.text}
             </li>
           ))}
@@ -700,16 +701,16 @@ function BrandEnvironmentPanel({
       )}
 
       <div className="rounded-xl border border-ink-100 p-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500 mb-2">
+        <div className="eyebrow tracking-[0.06em] mb-2">
           Módulos de importación — {vm.modules.label}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {vm.modules.cards.map((c) => (
             <div key={c.slot} className="rounded-lg bg-ink-50 p-2">
-              <div className="text-[10px] uppercase tracking-wide text-ink-400">{c.title}</div>
-              <div className="text-[12px] font-medium text-ink-800">{c.label}</div>
+              <div className="eyebrow">{c.title}</div>
+              <div className="text-xs font-medium text-ink-800">{c.label}</div>
               {c.facts.map((f) => (
-                <div key={f.label} className="mt-0.5 text-[10px] text-ink-500 truncate" title={`${f.label}: ${f.value}`}>
+                <div key={f.label} className="mt-0.5 text-micro text-ink-500 truncate" title={`${f.label}: ${f.value}`}>
                   {f.label}: <span className="font-mono text-ink-600">{f.value}</span>
                 </div>
               ))}
@@ -819,9 +820,9 @@ function MaterialImportPanel({ brand, profileId, onToast }) {
     <div className="rounded-xl border border-ink-100 p-3 space-y-2">
       <div className="flex items-center gap-2">
         <Palette size={14} className="text-ink-400" aria-hidden />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">Importar materiales</span>
+        <span className="eyebrow tracking-[0.06em]">Importar materiales</span>
       </div>
-      <p className="text-[11px] text-ink-500">{adapter.summary}</p>
+      <p className="text-micro text-ink-500">{adapter.summary}</p>
       <div
         {...intake.rootProps}
         onClick={intake.open}
@@ -845,16 +846,14 @@ function MaterialImportPanel({ brand, profileId, onToast }) {
         )}
       </div>
       {error && (
-        <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-[11px] text-red-800 dark:text-red-200">
-          {error}
-        </div>
+        <Notice tone="danger" dense>{error}</Notice>
       )}
       {result && (
-        <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800">
+        <Notice tone="success" dense>
           {result.materials} material{result.materials === 1 ? '' : 'es'} · {result.newColors} colores nuevos
           {result.updatedColors > 0 && <> · {result.updatedColors} actualizados</>}
           {result.skipped > 0 && <> · {result.skipped} archivo{result.skipped === 1 ? '' : 's'} sin código, omitido{result.skipped === 1 ? '' : 's'}</>}
-        </div>
+        </Notice>
       )}
     </div>
   );
@@ -959,9 +958,9 @@ function KvadratCollectionPanel({ brand, profileId, onToast }) {
     <div className="rounded-xl border border-ink-100 p-3 space-y-2">
       <div className="flex items-center gap-2">
         <Boxes size={14} className="text-ink-400" aria-hidden />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">{source.label}</span>
+        <span className="eyebrow tracking-[0.06em]">{source.label}</span>
       </div>
-      <p className="text-[11px] text-ink-500">{source.hint}</p>
+      <p className="text-micro text-ink-500">{source.hint}</p>
       <div className="flex gap-2">
         <input
           type="url"
@@ -982,22 +981,20 @@ function KvadratCollectionPanel({ brand, profileId, onToast }) {
         </button>
       </div>
       {busy && (
-        <div className="text-[11px] text-ink-500">
+        <div className="text-micro text-ink-500">
           {state.stage === 'enumerate' && 'Leyendo la colección…'}
           {state.stage === 'importing' && `Bajando ${state.done}/${state.total}${state.current ? ` · ${state.current}` : ''}`}
           {state.stage === 'writing' && 'Guardando materiales…'}
         </div>
       )}
       {error && (
-        <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-[11px] text-red-800 dark:text-red-200">
-          {error}
-        </div>
+        <Notice tone="danger" dense>{error}</Notice>
       )}
       {result && (
-        <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800">
+        <Notice tone="success" dense>
           {result.materials} material{result.materials === 1 ? '' : 'es'} · {result.newColors} colores nuevos
           {result.updatedColors > 0 && <> · {result.updatedColors} actualizados</>}
-        </div>
+        </Notice>
       )}
     </div>
   );
@@ -1073,9 +1070,9 @@ function PriceListImportPanel({ brand, profileId, onToast }) {
     <div className="rounded-xl border border-ink-100 p-3 space-y-2">
       <div className="flex items-center gap-2">
         <FileText size={14} className="text-ink-400" aria-hidden />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-500">Importar lista de precios</span>
+        <span className="eyebrow tracking-[0.06em]">Importar lista de precios</span>
       </div>
-      <p className="text-[11px] text-ink-500">
+      <p className="text-micro text-ink-500">
         {adapter.summary} Columnas: <span className="font-mono text-ink-600">{adapter.priceColumns.join(',')}</span>.
       </p>
       <div
@@ -1096,15 +1093,13 @@ function PriceListImportPanel({ brand, profileId, onToast }) {
         )}
       </div>
       {error && (
-        <div role="alert" className="rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-2 text-[11px] text-red-800 dark:text-red-200">
-          {error}
-        </div>
+        <Notice tone="danger" dense>{error}</Notice>
       )}
       {result && (
-        <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-[11px] text-emerald-800">
+        <Notice tone="success" dense>
           {result.created} SKU nuevos · {result.updated} actualizados
           {result.skipped > 0 && <> · {result.skipped} fila{result.skipped === 1 ? '' : 's'} sin precio, omitida{result.skipped === 1 ? '' : 's'}</>}
-        </div>
+        </Notice>
       )}
     </div>
   );

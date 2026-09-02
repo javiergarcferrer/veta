@@ -710,7 +710,7 @@ function AddModelModal({
               <b>colección</b>. El plano 2D y la huella se generan del propio modelo.
             </p>
             {modules?.geometry && (
-              <p className="text-[11px] text-ink-400">
+              <p className="text-micro text-ink-500">
                 Módulo de importación: <b className="text-ink-600">{modules.geometry.label}</b> — {modules.geometry.summary}
               </p>
             )}

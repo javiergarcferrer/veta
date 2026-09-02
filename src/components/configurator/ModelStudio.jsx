@@ -124,6 +124,7 @@ import { loadSceneFile, splitScene, exportPieceGlb, optimizeGlbUrl, isOptimizabl
 import { loadConfiguratorModels, ALCOVER_MESH_V } from './modelLoader.js';
 import { renderConfiguratorThumb, configuratorThumbStoreKey, bakedThumbUrl, TILE_THUMB } from './thumbnails.js';
 import { setupConfiguratorStage, disposeGroup, maskToOutline } from './sceneBuilder.js';
+import { maskRectFor, MASK_MAX } from '../../lib/configurator/maskRect.js';
 import {
   PART_ROLES, MATERIALIZATION_ROLES, BILLED_ROLES, COUNT_MAX, partKeysFor, classifyPartGroups, bodySignature,
   partCount, partMeshCount, accessoryRoleFor, mergedKeyOf, partLabelOf, partRoleFor,
@@ -1236,9 +1237,6 @@ export default function ModelStudio({
         // target; `maskToOutline` traces the readback — the true silhouette,
         // every concavity included, robust to any dealer mesh.
         const MASK_LAYER = 30;
-        const MASK_MAX = 512;
-        const MASK_CELL = 2;
-        const _mv = new THREE.Vector3();
         const _mbox = new THREE.Box3();
         const _b = new THREE.Box3();
         const maskOutlineFor = (meshes, cw, ch) => {
@@ -1251,21 +1249,15 @@ export default function ModelStudio({
           _mbox.makeEmpty();
           for (const m of meshes) { _b.setFromObject(m); if (!_b.isEmpty()) _mbox.union(_b); }
           if (_mbox.isEmpty()) return null;
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          for (let i = 0; i < 8; i++) {
-            _mv.set(i & 1 ? _mbox.max.x : _mbox.min.x, i & 2 ? _mbox.max.y : _mbox.min.y, i & 4 ? _mbox.max.z : _mbox.min.z).project(camera);
-            const x = (_mv.x * 0.5 + 0.5) * cw, y = (-_mv.y * 0.5 + 0.5) * ch;
-            if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-            if (x < minX) minX = x; if (x > maxX) maxX = x;
-            if (y < minY) minY = y; if (y > maxY) maxY = y;
-          }
-          if (!(maxX > minX) || !(maxY > minY)) return null;
-          const cell = Math.max(MASK_CELL, (maxX - minX + 12) / (MASK_MAX - 2), (maxY - minY + 12) / (MASK_MAX - 2));
-          const rx = Math.floor((minX - 3 * cell) / cell) * cell;
-          const ry = Math.floor((minY - 3 * cell) / cell) * cell;
-          const gw = Math.min(MASK_MAX, Math.ceil((maxX + 3 * cell - rx) / cell));
-          const gh = Math.min(MASK_MAX, Math.ceil((maxY + 3 * cell - ry) / cell));
-          if (gw < 2 || gh < 2) return null;
+          // Where the pass looks: `maskRectFor` — the one authority, shared with the
+          // stage — bounds the box's corners, clips that to the viewport (off-screen
+          // cover is never seen, so the lattice never spends cells on it, and the
+          // cell stays fine however close the camera is) and falls back to the whole
+          // viewport when a corner sits behind the eye, where `project` would mirror
+          // it and box a sliver. Null = nothing of it can be on screen.
+          const rect = maskRectFor(_mbox, camera, cw, ch);
+          if (!rect) return null;
+          const { rx, ry, gw, gh, cell } = rect;
           const bg = scene.background;
           const override = scene.overrideMaterial;
           const camLayers = camera.layers.mask;

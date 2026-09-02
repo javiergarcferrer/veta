@@ -7,6 +7,7 @@ import { inferConfiguratorForm, CONFIGURATOR_HEIGHT_CM } from '../../lib/configu
 import { mountOf } from '../../lib/configurator/meshParts.js';
 import { footprintOf, snapPlacementInfo, resolvePlacement, effectivePartMaterials } from '../../core/quote/index.js';
 import { loadConfiguratorModels, descForPiece } from './modelLoader.js';
+import { maskRectFor, MASK_MAX } from '../../lib/configurator/maskRect.js';
 import { buildConfiguratorGroup, setupConfiguratorStage, disposeGroup, makeFabricMaps, sampleSwatchColor, makeTintedWeave, makeWeaveNormal, imageColorfulness, maskToOutline, buildRoomGroup, disposeRoomGroup, correctScanToSwatch, fabricAnisotropy, loadScanExtras } from './sceneBuilder.js';
 
 const DEFAULT_FINISH = { sheen: 0.7, sheenRoughness: 0.6, roughness: 0.85, repeat: 3, normalScale: 0.45 };
@@ -1448,9 +1449,6 @@ export default function ConfiguratorStage({
       // translating piece translates its mask rigidly — no re-anchoring jitter;
       // stateless per frame — exact through any zoom.
       const MASK_LAYER = 30;                       // reserved for the mask pass
-      const MASK_MAX = 512;                        // offscreen target side (px)
-      const MASK_CELL = 2;                         // CSS px per mask cell (min)
-      const _mv = new THREE.Vector3();
       const _mbox = new THREE.Box3();
       // `focus` (from focusMeshesFor) narrows the pass to a part's meshes — the
       // outline then hugs every island of it (all the cushions) instead of the
@@ -1471,23 +1469,15 @@ export default function ConfiguratorStage({
         if (focus) { _mbox.makeEmpty(); for (const o of focus) _mbox.expandByObject(o); }
         else _mbox.setFromObject(pg);
         if (_mbox.isEmpty()) return null;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (let i = 0; i < 8; i++) {
-          _mv.set(i & 1 ? _mbox.max.x : _mbox.min.x, i & 2 ? _mbox.max.y : _mbox.min.y, i & 4 ? _mbox.max.z : _mbox.min.z).project(camera);
-          const x = (_mv.x * 0.5 + 0.5) * cw, y = (-_mv.y * 0.5 + 0.5) * ch;
-          if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-          if (x < minX) minX = x; if (x > maxX) maxX = x;
-          if (y < minY) minY = y; if (y > maxY) maxY = y;
-        }
-        if (!(maxX > minX) || !(maxY > minY)) return null;
-        // Cell size (grows past MASK_MAX cells) + lattice-snapped rect, with a
-        // margin so the outward bias and smoothing never clip at the mask edge.
-        const cell = Math.max(MASK_CELL, (maxX - minX + 12) / (MASK_MAX - 2), (maxY - minY + 12) / (MASK_MAX - 2));
-        const rx = Math.floor((minX - 3 * cell) / cell) * cell;
-        const ry = Math.floor((minY - 3 * cell) / cell) * cell;
-        const gw = Math.min(MASK_MAX, Math.ceil((maxX + 3 * cell - rx) / cell));
-        const gh = Math.min(MASK_MAX, Math.ceil((maxY + 3 * cell - ry) / cell));
-        if (gw < 2 || gh < 2) return null;
+        // Where the pass looks: `maskRectFor` — the one authority, shared with the
+        // studio — bounds the box's corners, clips that to the viewport (off-screen
+        // cover is never seen, so the lattice never spends cells on it, and the
+        // cell stays fine however close the camera is) and falls back to the whole
+        // viewport when a corner sits behind the eye, where `project` would mirror
+        // it and box a sliver. Null = nothing of it can be on screen.
+        const rect = maskRectFor(_mbox, camera, cw, ch);
+        if (!rect) return null;
+        const { rx, ry, gw, gh, cell } = rect;
         // Render the piece alone: its meshes (never the invisible grab pad) join
         // the mask layer for this pass only; everything else stays on layer 0.
         const bg = scene.background;

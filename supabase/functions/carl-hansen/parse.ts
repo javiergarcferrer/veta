@@ -191,3 +191,105 @@ export function slimPage(pageData: Record<string, unknown> | null | undefined) {
     Variants: Array.isArray(p.Variants) ? p.Variants : [],
   };
 }
+
+/* ───────────────────────────── the picker's face ────────────────────────── */
+
+/**
+ * What the page cache lends a picker row. The columns come out of
+ * `carl_hansen_pages` through PostgREST's JSON-path select, so the heavy
+ * `variants` document (41 variants × their renders for a Wishbone, ≈58 KB per
+ * page) never crosses the wire — only the three urls that can be a cover.
+ */
+export interface ChPickerPageRow {
+  model_id?: unknown;
+  name?: unknown;
+  designer?: unknown;
+  breadcrumb?: unknown;
+  hero?: unknown;
+  variant0?: unknown;
+  variant1?: unknown;
+  fetched_at?: unknown;
+}
+
+/** One row of the public model picker. */
+export interface ChPickerModel {
+  modelId: string;
+  path: string;
+  /** The page's product name, `"CH24 | Wishbone Chair"` — split on the client
+   *  by `chModelName`, the ONE splitter, so no second grammar lives here. */
+  name: string | null;
+  designer: string | null;
+  /** The shelf the page sits on as the manufacturer titles it ("Dining
+   *  Chairs") — the last breadcrumb. The client keys its labels off the path
+   *  slug and falls back to this title, so a shelf we never met still reads. */
+  shelf: string | null;
+  imageSrc: string | null;
+}
+
+/** The PostgREST select that yields a `ChPickerPageRow` — exported so the
+ *  read and the shape it feeds are pinned side by side. */
+export const PICKER_PAGE_SELECT =
+  'model_id, name, designer, breadcrumb, fetched_at, '
+  + 'hero:media->0->>Url, variant0:variants->0->Images->0->>Url, variant1:variants->1->Images->0->>Url';
+
+const text = (v: unknown): string | null => {
+  const s = String(v ?? '').replace(/\s+/g, ' ').trim();
+  return s || null;
+};
+
+/**
+ * The cover, by the same rule the back-office grid uses (`coverImage` in
+ * `core/catalog/carlHansen.js`): the curated hero when the page published
+ * one, else the first variant render. MEASURED there: 45% of furniture pages
+ * publish an EMPTY MediaList and every one of them carries variant renders —
+ * reading only the hero put «sin foto» on half the catalogue. Parity with that
+ * rule is pinned by `tests/carlHansenConfigurator.test.js`.
+ */
+export function pickerCover(row: ChPickerPageRow | null | undefined): string | null {
+  if (!row) return null;
+  return text(row.hero) || text(row.variant0) || text(row.variant1);
+}
+
+/**
+ * The sitemap's models wearing the page cache's face.
+ *
+ * THE SITEMAP DECIDES WHO IS IN THE LIST — never the cache. A model the
+ * back-office has not swept yet is still a chair the manufacturer publishes,
+ * so it stays in the picker with its code and its shelf (both read off the
+ * path) and no photo: a bare card is the honest shape of "not swept yet", and
+ * hiding it would be the no-vanish rule failing on a public surface. And the
+ * cache decides NOTHING about money: the price list is read live per model, as
+ * before — this join lends photography and names, which are descriptions of
+ * the chair, not of its price.
+ *
+ * Two cached rows for one model (a re-swept url, a second profile) resolve to
+ * the freshest `fetched_at`; the row keeps no profile, because the picker is
+ * public and the manufacturer's photography is nobody's tenant data.
+ */
+export function pickerModels(
+  sitemap: Array<{ modelId: string; path: string }>,
+  rows: ChPickerPageRow[] | null | undefined,
+): ChPickerModel[] {
+  const byModel = new Map<string, ChPickerPageRow>();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const id = safeModelId(row?.model_id);
+    if (!id) continue;
+    const prev = byModel.get(id);
+    const newer = !prev
+      || String(row.fetched_at ?? '') > String(prev.fetched_at ?? '');
+    if (newer) byModel.set(id, row);
+  }
+  return sitemap.map(({ modelId, path }) => {
+    const row = byModel.get(modelId) || null;
+    const crumbs = Array.isArray(row?.breadcrumb) ? (row!.breadcrumb as Array<Record<string, unknown>>) : [];
+    const last = crumbs.length ? crumbs[crumbs.length - 1] : null;
+    return {
+      modelId,
+      path,
+      name: text(row?.name),
+      designer: text(row?.designer),
+      shelf: text(last?.Title ?? last?.title),
+      imageSrc: pickerCover(row),
+    };
+  });
+}

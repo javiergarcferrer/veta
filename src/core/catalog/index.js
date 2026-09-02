@@ -27,7 +27,9 @@ export {
 export { chSurfaceFor } from '../../brands/carl-hansen/surface.js';
 // La proyección PÚBLICA: qué 3D puede pintar de verdad, y qué se le dice a un
 // cliente (el ViewModel habla el idioma del importador — ver el módulo).
-export { chBindingPaints, chPublicNotice } from './carlHansenPublic.js';
+export {
+  chBindingPaints, chPublicNotice, resolveChPicker, chShelfSlug, CH_SHELVES, CH_PICKER_PAGE,
+} from './carlHansenPublic.js';
 export {
   resolveCarlHansenBulkPlan,
   resolveCarlHansenModelPlan,

@@ -1,0 +1,2058 @@
+[
+ {
+  "modelId": "CH20",
+  "path": "/en/en/collection/chairs/dining-chairs/ch20",
+  "name": "CH20 | Elbow Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH23",
+  "path": "/en/en/collection/chairs/dining-chairs/ch23",
+  "name": "CH23 | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH24",
+  "path": "/en/en/collection/chairs/dining-chairs/ch24",
+  "name": "CH24 | Wishbone Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": "https://admincms.carlhansen.com/globalassets/products/chairs/ch24/oak/ch24_oak_oil_papercord_natural_detail.jpg"
+ },
+ {
+  "modelId": "CH88P",
+  "path": "/en/en/collection/chairs/dining-chairs/ch88p",
+  "name": "CH88P | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "PK1",
+  "path": "/en/en/collection/chairs/dining-chairs/pk1",
+  "name": "PK1 stol RAL 9005 Natural paper cord 2,5 mm Hard glider | Chair",
+  "designer": "Poul Kjærholm",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH29P",
+  "path": "/en/en/collection/chairs/dining-chairs/ch29p",
+  "name": "CH29P | Sawbuck Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH36",
+  "path": "/en/en/collection/chairs/dining-chairs/ch36",
+  "name": "CH36 | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E005",
+  "path": "/en/en/collection/chairs/dining-chairs/e005",
+  "name": "E005 | Embrace Armchair",
+  "designer": "EOOS",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH26",
+  "path": "/en/en/collection/chairs/dining-chairs/ch26",
+  "name": "CH26 | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH33P",
+  "path": "/en/en/collection/chairs/dining-chairs/ch33p",
+  "name": "CH33P | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH33T",
+  "path": "/en/en/collection/chairs/dining-chairs/ch33t",
+  "name": "CH33T | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH37",
+  "path": "/en/en/collection/chairs/dining-chairs/ch37",
+  "name": "CH37 | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH88T",
+  "path": "/en/en/collection/chairs/dining-chairs/ch88t",
+  "name": "CH88T | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK39490",
+  "path": "/en/en/collection/chairs/dining-chairs/kk39490",
+  "name": "KK39490 | Small red chair",
+  "designer": "Kaare Klint",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK37580",
+  "path": "/en/en/collection/chairs/dining-chairs/kk37580",
+  "name": "KK37580 | Large Red Chair",
+  "designer": "Kaare Klint",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK37581",
+  "path": "/en/en/collection/chairs/dining-chairs/kk37581",
+  "name": "KK37581 | Large Red Armchair",
+  "designer": "Kaare Klint",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK96620",
+  "path": "/en/en/collection/chairs/dining-chairs/kk96620",
+  "name": "KK96620 | Faaborg Chair",
+  "designer": "Kaare Klint",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH111",
+  "path": "/en/en/collection/chairs/dining-chairs/ch111",
+  "name": "CH111 | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM1106",
+  "path": "/en/en/collection/chairs/dining-chairs/bm1106",
+  "name": "BM1106 | Huntsman Chair",
+  "designer": "Børge Mogensen",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH30P",
+  "path": "/en/en/collection/chairs/dining-chairs/ch30p",
+  "name": "CH30P | Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E004",
+  "path": "/en/en/collection/chairs/dining-chairs/e004",
+  "name": "E004 | Embrace Chair",
+  "designer": "EOOS",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH24P",
+  "path": "/en/en/collection/chairs/dining-chairs/ch24p",
+  "name": "Wishbone Chair beech oil FSC®70% loke 7050 | Wishbone Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "FH38",
+  "path": "/en/en/collection/chairs/dining-chairs/fh38",
+  "name": "FH38 | Windsor Chair",
+  "designer": "Frits Henningsen",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA26T",
+  "path": "/en/en/collection/chairs/dining-chairs/vla26t",
+  "name": "VLA26T | Vega Chair",
+  "designer": "Vilhelm Lauritzen",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA26P",
+  "path": "/en/en/collection/chairs/dining-chairs/vla26p",
+  "name": "VLA26P | Vega Chair",
+  "designer": "Vilhelm Lauritzen",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BA004T",
+  "path": "/en/en/collection/chairs/dining-chairs/ba004t",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA61",
+  "path": "/en/en/collection/chairs/dining-chairs/vla61",
+  "name": "VLA61 | Monarch Chair",
+  "designer": "Vilhelm Lauritzen",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH621",
+  "path": "/en/en/collection/chairs/dining-chairs/ch621",
+  "name": "CH621 | Swivel Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH101",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch101",
+  "name": "CH101 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH07",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch07",
+  "name": "CH07 | Shell Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH22",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch22",
+  "name": "CH22 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH25",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch25",
+  "name": "CH25 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH28P",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch28p",
+  "name": "CH28P | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH44",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch44",
+  "name": "CH44 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH445",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch445",
+  "name": "CH445 | Wing Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH468",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch468",
+  "name": "CH468 | Oculus Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E015",
+  "path": "/en/en/collection/chairs/lounge-chairs/e015",
+  "name": "E015 | Embrace Lounge Chair",
+  "designer": "EOOS",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "FH419",
+  "path": "/en/en/collection/chairs/lounge-chairs/fh419",
+  "name": "FH419 | Heritage Chair",
+  "designer": "Frits Henningsen",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "FH429",
+  "path": "/en/en/collection/chairs/lounge-chairs/fh429",
+  "name": "FH429 | Signature Chair",
+  "designer": "Frits Henningsen",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "LM92T",
+  "path": "/en/en/collection/chairs/lounge-chairs/lm92t",
+  "name": "LM92T walnut oil sif 98 | Metropolitan Chair",
+  "designer": "Larsen & Bender Madsen",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "LM92P",
+  "path": "/en/en/collection/chairs/lounge-chairs/lm92p",
+  "name": "LM92P oak oil Saddle leather black Black | Metropolitan Chair",
+  "designer": "Larsen & Bender Madsen",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "MG501",
+  "path": "/en/en/collection/chairs/lounge-chairs/mg501",
+  "name": "Cuba Chair Teak untreated FSC-100 FlatRope Charcoal Stainles | Cuba Chair",
+  "designer": "Morten Gøttler",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK43960",
+  "path": "/en/en/collection/chairs/lounge-chairs/kk43960",
+  "name": "KK43960 | Mix Chair",
+  "designer": "Kaare Klint",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK47000",
+  "path": "/en/en/collection/chairs/lounge-chairs/kk47000",
+  "name": "KK47000 Safari stol ash white oil , FSC™Mix 70% , canvas nat | Safari Chair",
+  "designer": "Kaare Klint",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK53130",
+  "path": "/en/en/collection/chairs/lounge-chairs/kk53130",
+  "name": "KK53130 | Easy Chair",
+  "designer": "Kaare Klint",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW149",
+  "path": "/en/en/collection/chairs/lounge-chairs/ow149",
+  "name": "OW149 | Colonial Chair",
+  "designer": "Ole Wanscher",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "TA001P",
+  "path": "/en/en/collection/chairs/lounge-chairs/ta001p",
+  "name": "TA001P | Dream Chair",
+  "designer": "Tadao Ando",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH71",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch71",
+  "name": "CH71 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH78",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch78",
+  "name": "CH78 | Mama Bear Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "MG501-PAPERCORD",
+  "path": "/en/en/collection/chairs/lounge-chairs/mg501-papercord",
+  "name": "MG501 Paper cord | Cuba Chair",
+  "designer": "Morten Gøttler",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "FK10",
+  "path": "/en/en/collection/chairs/lounge-chairs/fk10",
+  "name": "FK10 | Plico Chair",
+  "designer": "Fabricius & Kastholm",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "FK11",
+  "path": "/en/en/collection/chairs/lounge-chairs/fk11",
+  "name": "FK11 | Plico Chair",
+  "designer": "Fabricius & Kastholm",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "LP92C",
+  "path": "/en/en/collection/chairs/lounge-chairs/lp92c",
+  "name": "Metropolitan Chair oak oil natural cord | Metropolitan Chair",
+  "designer": "Larsen & Bender Madsen",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA76",
+  "path": "/en/en/collection/chairs/lounge-chairs/vla76",
+  "name": "VLA76 | Foyer Chair",
+  "designer": "Vilhelm Lauritzen",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH45",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch45",
+  "name": "CH45 | Rocking Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF1904",
+  "path": "/en/en/collection/chairs/lounge-chairs/rf1904",
+  "name": "RF1904 | Sideways Lounge Chair",
+  "designer": "Rikke Frost",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH290",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch290",
+  "name": "CH290 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH291",
+  "path": "/en/en/collection/chairs/lounge-chairs/ch291",
+  "name": "CH291 | Lounge Chair",
+  "designer": "Hans J. Wegner",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "FK64",
+  "path": "/en/en/collection/chairs/lounge-chairs/fk64",
+  "name": "FK64 | Scimitar Chair",
+  "designer": "Fabricius & Kastholm",
+  "shelf": "Lounge Chairs",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM1160",
+  "path": "/en/en/collection/tables-desks/dining-tables/bm1160",
+  "name": "BM1160 | Hunting Table | 210x82 cm",
+  "designer": "Børge Mogensen",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH337",
+  "path": "/en/en/collection/tables-desks/dining-tables/ch337",
+  "name": "CH337 | Dining Table 115 x 140",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH338",
+  "path": "/en/en/collection/tables-desks/dining-tables/ch338",
+  "name": "CH338 | Dining Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH339",
+  "path": "/en/en/collection/tables-desks/dining-tables/ch339",
+  "name": "CH339 | Dining Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH327",
+  "path": "/en/en/collection/tables-desks/dining-tables/ch327",
+  "name": "CH327 | Dining Table | 190x95 cm",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH002",
+  "path": "/en/en/collection/tables-desks/dining-tables/ch002",
+  "name": "CH002 | Dining Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH006",
+  "path": "/en/en/collection/tables-desks/dining-tables/ch006",
+  "name": "CH006 | Dining Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "SH900",
+  "path": "/en/en/collection/tables-desks/dining-tables/sh900",
+  "name": "SH900 | Extend Table | 300x100",
+  "designer": "Strand & Hvass",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BA103",
+  "path": "/en/en/collection/tables-desks/dining-tables/ba103",
+  "name": "BA103 | Preludia Dining Table",
+  "designer": "Brad Ascalon",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E020-110",
+  "path": "/en/en/collection/tables-desks/dining-tables/e020-110",
+  "name": "E020 | Embrace Table | Ø110",
+  "designer": "EOOS",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E020-1395",
+  "path": "/en/en/collection/tables-desks/dining-tables/e020-1395",
+  "name": "E020 | Embrace Table | Ø139,5",
+  "designer": "EOOS",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E020-795",
+  "path": "/en/en/collection/tables-desks/dining-tables/e020-795",
+  "name": "E020 | Embrace Table | Ø79,5",
+  "designer": "EOOS",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0698",
+  "path": "/en/en/collection/tables-desks/dining-tables/bm0698",
+  "name": "Asserbo Table 72x95x190 cm Eucalyptus Grandis Dark oil FSC-1 | Asserbo Table",
+  "designer": "Børge Mogensen",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW224",
+  "path": "/en/en/collection/tables-desks/dining-tables/ow224",
+  "name": "OW224 | Rungstedlund Dining Table",
+  "designer": "Ole Wanscher",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0121",
+  "path": "/en/en/collection/tables-desks/dining-tables/bm0121",
+  "name": "BM0121 | Dining Table",
+  "designer": "Børge Mogensen",
+  "shelf": "Dining Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "PK52",
+  "path": "/en/en/collection/tables-desks/desks/pk52",
+  "name": "PK52 | Professor Desk",
+  "designer": "Poul Kjærholm",
+  "shelf": "Desks",
+  "imageSrc": null
+ },
+ {
+  "modelId": "PK52A",
+  "path": "/en/en/collection/tables-desks/desks/pk52a",
+  "name": "PK52A | Student Desk",
+  "designer": "Poul Kjærholm",
+  "shelf": "Desks",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH110",
+  "path": "/en/en/collection/tables-desks/desks/ch110",
+  "name": "CH110 | Desk",
+  "designer": "Hans J. Wegner",
+  "shelf": "Desks",
+  "imageSrc": null
+ },
+ {
+  "modelId": "AJ52-160X70",
+  "path": "/en/en/collection/tables-desks/desks/aj52-160x70",
+  "name": "AJ52 | Society Table",
+  "designer": "Arne Jacobsen",
+  "shelf": "Desks",
+  "imageSrc": null
+ },
+ {
+  "modelId": "AB019",
+  "path": "/en/en/collection/tables-desks/desks/ab019",
+  "name": "AB019 | Wall Desk",
+  "designer": "Anker Bak",
+  "shelf": "Desks",
+  "imageSrc": null
+ },
+ {
+  "modelId": "ML10097",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ml10097",
+  "name": "ML10097 | Egyptian Table | Ø100",
+  "designer": "Mogens Lassen",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH011",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch011",
+  "name": "CH011 | Coffee Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH417",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch417",
+  "name": "CH417 | Tray Table | Ø62",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH415",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch415",
+  "name": "CH415 | Coffee Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW449",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ow449",
+  "name": "OW449 | Colonial Coffee Table | 60x60",
+  "designer": "Ole Wanscher",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH008",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch008",
+  "name": "CH008 | Coffee Table | Ø78",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH108",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch108",
+  "name": "CH108 | Coffee Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH106",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch106",
+  "name": "CH106 | Coffee Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E021-48",
+  "path": "/en/en/collection/tables-desks/coffee-tables/e021-48",
+  "name": "E021 | Embrace Lounge Table | Ø48",
+  "designer": "EOOS",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E021-80",
+  "path": "/en/en/collection/tables-desks/coffee-tables/e021-80",
+  "name": "E021 | Embrace Lounge Table | Ø80",
+  "designer": "EOOS",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0488",
+  "path": "/en/en/collection/tables-desks/coffee-tables/bm0488",
+  "name": "BM0488L | Table Bench | 138x46",
+  "designer": "Børge Mogensen",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0488S",
+  "path": "/en/en/collection/tables-desks/coffee-tables/bm0488s",
+  "name": "BM0488S | Table Bench | 69x46",
+  "designer": "Børge Mogensen",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH004",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch004",
+  "name": "CH004 | Nesting Tables",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK66870",
+  "path": "/en/en/collection/tables-desks/coffee-tables/kk66870",
+  "name": "KK66870 | Coffee Table",
+  "designer": "Kaare Klint",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK44860",
+  "path": "/en/en/collection/tables-desks/coffee-tables/kk44860",
+  "name": "KK44860 | Sidetable",
+  "designer": "Kaare Klint",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0489S",
+  "path": "/en/en/collection/tables-desks/coffee-tables/bm0489s",
+  "name": "BM0489S | Table Bench",
+  "designer": "Børge Mogensen",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0489L",
+  "path": "/en/en/collection/tables-desks/coffee-tables/bm0489l",
+  "name": "BM0489L | Table Bench",
+  "designer": "Børge Mogensen",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF1905",
+  "path": "/en/en/collection/tables-desks/coffee-tables/rf1905",
+  "name": "RF1905 Ø69 cm | Sideways Coffee Table",
+  "designer": "Rikke Frost",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "ND55",
+  "path": "/en/en/collection/tables-desks/coffee-tables/nd55",
+  "name": "ND55 | Coffee Table",
+  "designer": "Nanna Ditzel & Jørgen Ditzel",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH086",
+  "path": "/en/en/collection/tables-desks/coffee-tables/ch086",
+  "name": "CH086 | Coffee Table",
+  "designer": "Hans J. Wegner",
+  "shelf": "Coffee Tables",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0703-TEAK",
+  "path": "/en/en/collection/accessories/kitchen-tableware/bm0703-teak",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0703-OAK",
+  "path": "/en/en/collection/accessories/kitchen-tableware/bm0703-oak",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0568",
+  "path": "/en/en/collection/accessories/kitchen-tableware/bm0568",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0702",
+  "path": "/en/en/collection/accessories/kitchen-tableware/bm0702",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK75755",
+  "path": "/en/en/collection/accessories/decoration/kk75755",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK75754",
+  "path": "/en/en/collection/accessories/decoration/kk75754",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK75753",
+  "path": "/en/en/collection/accessories/decoration/kk75753",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK75752",
+  "path": "/en/en/collection/accessories/decoration/kk75752",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK75751",
+  "path": "/en/en/collection/accessories/decoration/kk75751",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "FB001",
+  "path": "/en/en/collection/accessories/decoration/fb001",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA62",
+  "path": "/en/en/collection/accessories/decoration/vla62",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "FB001S",
+  "path": "/en/en/collection/accessories/decoration/fb001s",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BT1001",
+  "path": "/en/en/collection/lighting/pendant-lamps/bt1001",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BT1041",
+  "path": "/en/en/collection/lighting/pendant-lamps/bt1041",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BT1091",
+  "path": "/en/en/collection/lighting/pendant-lamps/bt1091",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "MO330",
+  "path": "/en/en/collection/lighting/pendant-lamps/mo330",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BT101",
+  "path": "/en/en/collection/lighting/pendant-lamps/bt101",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "EK61",
+  "path": "/en/en/collection/lighting/pendant-lamps/ek61",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HJW37",
+  "path": "/en/en/collection/lighting/pendant-lamps/hjw37",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HJW38",
+  "path": "/en/en/collection/lighting/pendant-lamps/hjw38",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HK20",
+  "path": "/en/en/collection/lighting/pendant-lamps/hk20",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "MT221",
+  "path": "/en/en/collection/lighting/pendant-lamps/mt221",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "OS111-BEGONYA",
+  "path": "/en/en/collection/lighting/pendant-lamps/os111-begonya",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "EM82-PORCELIGHT",
+  "path": "/en/en/collection/lighting/pendant-lamps/em82-porcelight",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "MO320",
+  "path": "/en/en/collection/lighting/floor-lamps/mo320",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HJW03",
+  "path": "/en/en/collection/lighting/floor-lamps/hjw03",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "MO310",
+  "path": "/en/en/collection/lighting/table-lamps/mo310",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF200",
+  "path": "/en/en/collection/lighting/table-lamps/rf200",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HJW01",
+  "path": "/en/en/collection/lighting/table-lamps/hjw01",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HJW02",
+  "path": "/en/en/collection/lighting/table-lamps/hjw02",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "HK21",
+  "path": "/en/en/collection/lighting/table-lamps/hk21",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "MO300",
+  "path": "/en/en/collection/lighting/wall-lamps/mo300",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH56",
+  "path": "/en/en/collection/chairs/bar-stools/ch56",
+  "name": "CH56 | Bar Stool",
+  "designer": "Hans J. Wegner",
+  "shelf": "Bar Stools",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH58",
+  "path": "/en/en/collection/chairs/bar-stools/ch58",
+  "name": "CH58 | Bar Stool",
+  "designer": "Hans J. Wegner",
+  "shelf": "Bar Stools",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E006",
+  "path": "/en/en/collection/chairs/bar-stools/e006",
+  "name": "E006 | Embrace Bar Stool",
+  "designer": "EOOS",
+  "shelf": "Bar Stools",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E007",
+  "path": "/en/en/collection/chairs/bar-stools/e007",
+  "name": "E007 | Embrace Bar Stool",
+  "designer": "EOOS",
+  "shelf": "Bar Stools",
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA75",
+  "path": "/en/en/collection/benches/vla75",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA75S",
+  "path": "/en/en/collection/benches/vla75s",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0253-SHELVINGSYSTEM",
+  "path": "/en/en/collection/collections/bm0253-shelvingsystem",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK10",
+  "path": "/en/en/collection/outdoor-furniture/bk10",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK15",
+  "path": "/en/en/collection/outdoor-furniture/bk15",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK16",
+  "path": "/en/en/collection/outdoor-furniture/bk16",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK12",
+  "path": "/en/en/collection/outdoor-furniture/bk12",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK14",
+  "path": "/en/en/collection/outdoor-furniture/bk14",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK11",
+  "path": "/en/en/collection/outdoor-furniture/bk11",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BK17",
+  "path": "/en/en/collection/outdoor-furniture/bk17",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM1871",
+  "path": "/en/en/collection/outdoor-furniture/bm1871",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM1771",
+  "path": "/en/en/collection/outdoor-furniture/bm1771",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM5868",
+  "path": "/en/en/collection/outdoor-furniture/bm5868",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM5768",
+  "path": "/en/en/collection/outdoor-furniture/bm5768",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM1069",
+  "path": "/en/en/collection/outdoor-furniture/bm1069",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM4570",
+  "path": "/en/en/collection/outdoor-furniture/bm4570",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM3670",
+  "path": "/en/en/collection/outdoor-furniture/bm3670",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM5568",
+  "path": "/en/en/collection/outdoor-furniture/bm5568",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM5565",
+  "path": "/en/en/collection/outdoor-furniture/bm5565",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH501",
+  "path": "/en/en/collection/outdoor-furniture/ah501",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH502",
+  "path": "/en/en/collection/outdoor-furniture/ah502",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH603",
+  "path": "/en/en/collection/outdoor-furniture/ah603",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH604",
+  "path": "/en/en/collection/outdoor-furniture/ah604",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH604F",
+  "path": "/en/en/collection/outdoor-furniture/ah604f",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH701",
+  "path": "/en/en/collection/outdoor-furniture/ah701",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH901",
+  "path": "/en/en/collection/outdoor-furniture/ah901",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH902",
+  "path": "/en/en/collection/outdoor-furniture/ah902",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH912",
+  "path": "/en/en/collection/outdoor-furniture/ah912",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "GL101",
+  "path": "/en/en/collection/outdoor-furniture/gl101",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E022-O80",
+  "path": "/en/en/collection/outdoor-furniture/e022-o80",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E022-O110",
+  "path": "/en/en/collection/outdoor-furniture/e022-o110",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E022-O140",
+  "path": "/en/en/collection/outdoor-furniture/e022-o140",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E008",
+  "path": "/en/en/collection/outdoor-furniture/e008",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E023",
+  "path": "/en/en/collection/outdoor-furniture/e023",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E500",
+  "path": "/en/en/collection/outdoor-furniture/e500",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E510",
+  "path": "/en/en/collection/outdoor-furniture/e510",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E511",
+  "path": "/en/en/collection/outdoor-furniture/e511",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E520",
+  "path": "/en/en/collection/outdoor-furniture/e520",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E530",
+  "path": "/en/en/collection/outdoor-furniture/e530",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E540",
+  "path": "/en/en/collection/outdoor-furniture/e540",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E541",
+  "path": "/en/en/collection/outdoor-furniture/e541",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E018",
+  "path": "/en/en/collection/outdoor-furniture/e018",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E0232",
+  "path": "/en/en/collection/outdoor-furniture/e0232",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW2000",
+  "path": "/en/en/collection/footrests-stools/ow2000",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW149F",
+  "path": "/en/en/collection/footrests-stools/ow149f",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK87830",
+  "path": "/en/en/collection/footrests-stools/kk87830",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK97170",
+  "path": "/en/en/collection/footrests-stools/kk97170",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "FH430",
+  "path": "/en/en/collection/footrests-stools/fh430",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "FH420",
+  "path": "/en/en/collection/footrests-stools/fh420",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "E016",
+  "path": "/en/en/collection/footrests-stools/e016",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH446",
+  "path": "/en/en/collection/footrests-stools/ch446",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH53-H43",
+  "path": "/en/en/collection/footrests-stools/ch53-h43",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH53-H39",
+  "path": "/en/en/collection/footrests-stools/ch53-h39",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF1903F",
+  "path": "/en/en/collection/footrests-stools/rf1903f",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH290F",
+  "path": "/en/en/collection/footrests-stools/ch290f",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "ND550F",
+  "path": "/en/en/collection/footrests-stools/nd550f",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH280F",
+  "path": "/en/en/collection/footrests-stools/ch280f",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH825",
+  "path": "/en/en/collection/bookcases-cabinets/ch825",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0235-1",
+  "path": "/en/en/collection/bookcases-cabinets/bm0235-1",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0235-2",
+  "path": "/en/en/collection/bookcases-cabinets/bm0235-2",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0235-3",
+  "path": "/en/en/collection/bookcases-cabinets/bm0235-3",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0235-4",
+  "path": "/en/en/collection/bookcases-cabinets/bm0235-4",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0235-5",
+  "path": "/en/en/collection/bookcases-cabinets/bm0235-5",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "FK63-CABINET",
+  "path": "/en/en/collection/bookcases-cabinets/fk63-cabinet",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0057",
+  "path": "/en/en/collection/bookcases-cabinets/bm0057",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH411",
+  "path": "/en/en/collection/childrens-furniture/ch411",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH410",
+  "path": "/en/en/collection/childrens-furniture/ch410",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "ND54",
+  "path": "/en/en/collection/childrens-furniture/nd54",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "ND54S",
+  "path": "/en/en/collection/childrens-furniture/nd54s",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH24-CHILD",
+  "path": "/en/en/collection/childrens-furniture/ch24-child",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AJ52-LAMP",
+  "path": "/en/en/collection/furniture-accessories/aj52-lamp",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK87831",
+  "path": "/en/en/collection/furniture-accessories/kk87831",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "PK115",
+  "path": "/en/en/collection/furniture-accessories/pk115",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "TK8-PILLOW",
+  "path": "/en/en/collection/furniture-accessories/tk8-pillow",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH338I-CH339I",
+  "path": "/en/en/collection/furniture-accessories/ch338i-ch339i",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH332I",
+  "path": "/en/en/collection/furniture-accessories/ch332i",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK47002",
+  "path": "/en/en/collection/furniture-accessories/kk47002",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK47004",
+  "path": "/en/en/collection/furniture-accessories/kk47004",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK47005",
+  "path": "/en/en/collection/furniture-accessories/kk47005",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM5270L",
+  "path": "/en/en/collection/furniture-accessories/bm5270l",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM5270S",
+  "path": "/en/en/collection/furniture-accessories/bm5270s",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0865-STRAPS",
+  "path": "/en/en/collection/furniture-accessories/bm0865-straps",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH337I",
+  "path": "/en/en/collection/furniture-accessories/ch337i",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK47003",
+  "path": "/en/en/collection/furniture-accessories/kk47003",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH327T",
+  "path": "/en/en/collection/furniture-accessories/ch327t",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0701",
+  "path": "/en/en/collection/furniture-accessories/bm0701",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW224I",
+  "path": "/en/en/collection/furniture-accessories/ow224i",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0121I",
+  "path": "/en/en/collection/furniture-accessories/bm0121i",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AB020D",
+  "path": "/en/en/collection/furniture-accessories/ab020D",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AB020S",
+  "path": "/en/en/collection/furniture-accessories/ab020s",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "NUP003",
+  "path": "/en/en/collection/rugs/nup003",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH102",
+  "path": "/en/en/collection/sofas-daybeds/ch102",
+  "name": "CH102 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH104",
+  "path": "/en/en/collection/sofas-daybeds/ch104",
+  "name": "CH104 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW149-2",
+  "path": "/en/en/collection/sofas-daybeds/ow149-2",
+  "name": "OW149-2 | Colonial Sofa",
+  "designer": "Ole Wanscher",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "OW150",
+  "path": "/en/en/collection/sofas-daybeds/ow150",
+  "name": "OW150 | Daybed",
+  "designer": "Ole Wanscher",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "TK8",
+  "path": "/en/en/collection/sofas-daybeds/tk8",
+  "name": "TK8 | Daybed",
+  "designer": "Thomas Bo Kastholm",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH163",
+  "path": "/en/en/collection/sofas-daybeds/ch163",
+  "name": "CH163 oak oil HR FSC™Mix 70% thor 301 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH162",
+  "path": "/en/en/collection/sofas-daybeds/ch162",
+  "name": "CH162 oak oil HR FSC™Mix 70% thor 301 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH103",
+  "path": "/en/en/collection/sofas-daybeds/ch103",
+  "name": "CH103 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK41180",
+  "path": "/en/en/collection/sofas-daybeds/kk41180",
+  "name": "KK41180 | Sofa with high sides",
+  "designer": "Kaare Klint",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK41181",
+  "path": "/en/en/collection/sofas-daybeds/kk41181",
+  "name": "KK41181 | Sofa with high sides",
+  "designer": "Kaare Klint",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK48650",
+  "path": "/en/en/collection/sofas-daybeds/kk48650",
+  "name": "KK48650 | Addition Sofa",
+  "designer": "Kaare Klint",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "KK48651",
+  "path": "/en/en/collection/sofas-daybeds/kk48651",
+  "name": "KK48651 | Addition Sofa",
+  "designer": "Kaare Klint",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH72",
+  "path": "/en/en/collection/sofas-daybeds/ch72",
+  "name": "CH72 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "BM0865",
+  "path": "/en/en/collection/sofas-daybeds/bm0865",
+  "name": "BM0865 | Daybed",
+  "designer": "Børge Mogensen",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF1903",
+  "path": "/en/en/collection/sofas-daybeds/rf1903",
+  "name": "RF1903R | Sideways Sofa",
+  "designer": "Rikke Frost",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF1903-L",
+  "path": "/en/en/collection/sofas-daybeds/rf1903-l",
+  "name": "RF1903L | Sideways Sofa",
+  "designer": "Rikke Frost",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "E300",
+  "path": "/en/en/collection/sofas-daybeds/e300",
+  "name": "E300 | Embrace Sofa",
+  "designer": "EOOS",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "VLA77",
+  "path": "/en/en/collection/sofas-daybeds/vla77",
+  "name": "VLA77 | Foyer Sofa",
+  "designer": "Vilhelm Lauritzen",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH292",
+  "path": "/en/en/collection/sofas-daybeds/ch292",
+  "name": "CH292 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH293",
+  "path": "/en/en/collection/sofas-daybeds/ch293",
+  "name": "CH293 | Sofa",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "ND52-2",
+  "path": "/en/en/collection/sofas-daybeds/nd52-2",
+  "name": "ND52-2 | Vita Sofa",
+  "designer": "Nanna Ditzel & Jørgen Ditzel",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "ND52-3",
+  "path": "/en/en/collection/sofas-daybeds/nd52-3",
+  "name": "ND52-3 | Vita Sofa",
+  "designer": "Nanna Ditzel & Jørgen Ditzel",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH280A",
+  "path": "/en/en/collection/sofas-daybeds/ch280a",
+  "name": "CH280A | Armrest section",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH280M",
+  "path": "/en/en/collection/sofas-daybeds/ch280m",
+  "name": "CH280M | Middle section",
+  "designer": "Hans J. Wegner",
+  "shelf": "Sofas Daybeds",
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH24-LOW",
+  "path": "/ja-jp/jajp/collection/chairs/dining-chairs/ch24-low",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH4682",
+  "path": "/ja-jp/jajp/collection/chairs/lounge-chairs/ch4682",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "LM92C",
+  "path": "/ja-jp/jajp/collection/chairs/lounge-chairs/lm92c",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AH911",
+  "path": "/ja-jp/jajp/collection/outdoor-furniture/ah911",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "AJ52-L",
+  "path": "/ja-jp/jajp/collection/furniture-accessories/aj52-l",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "CH322I",
+  "path": "/ja-jp/jajp/collection/furniture-accessories/ch322i",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ },
+ {
+  "modelId": "RF1903-R",
+  "path": "/ja-jp/jajp/collection/sofas-daybeds/rf1903-r",
+  "name": null,
+  "designer": null,
+  "shelf": null,
+  "imageSrc": null
+ }
+]

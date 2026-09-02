@@ -1,6 +1,7 @@
 // carl-hansen — backs the PUBLIC, no-login Carl Hansen configurator.
 //
-//   { op: 'models' }                   → every product page the sitemap lists
+//   { op: 'models' }                   → every product page the sitemap lists, wearing the
+//                                        name, designer, shelf and cover the page cache holds
 //   { op: 'model',  modelId }          → the MASTER: selection trees + price templates
 //   { op: 'prices', modelId, market? } → one market's price list (default VAT0-USD)
 //   { op: 'page',   modelId }          → the product page's variants + photography
@@ -23,17 +24,28 @@
 // converted (already in a public bucket) and the material→axis binding, which
 // is a description of the mesh, not of money.
 //
-// THE CATALOG ITSELF IS NOT CACHED IN OUR DATABASE, deliberately. The dealer back-office
+// THE PRICES ARE NOT CACHED IN OUR DATABASE, deliberately. The dealer back-office
 // caches this data because it imports a catalog from it; a configurator reads
 // one model at a time and the manufacturer's own CDN is the freshest copy
 // there is. A cache here would be a second place for a price to go stale.
+//
+// The PICKER is the one read that does lean on that cache — for the face of a
+// model, never its price. The sitemap names 257 products by code alone, and a
+// wall of «CH24 · dining-chairs» is unreadable to a visitor who knows the
+// chair as the Wishbone; the swept page rows already hold the name, the
+// designer, the shelf and the photography. `pickerModels` (parse.ts) does the
+// join; the sitemap keeps deciding WHO is listed, so a model nobody swept yet
+// still appears, bare.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { readAllPages } from '../_shared/readAllPages.ts';
 import {
   SITE_ROOT, SITEMAP_URL, DEFAULT_MARKET, ALLOWED_HOSTS,
   safeModelId, safeMarket, modelUrl, pricesUrl,
   productPagesFromSitemap, parseNextData, slimPage,
+  pickerModels, PICKER_PAGE_SELECT,
 } from './parse.ts';
+import type { ChPickerPageRow } from './parse.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -99,13 +111,47 @@ const fetchText = async (href: string): Promise<string | null> => {
   try { return await res.text(); } catch { return null; }
 };
 
-/** Every product page the sitemap lists — the configurator's model picker. */
+/**
+ * Every product page the sitemap lists — the configurator's model picker —
+ * wearing whatever face the page cache holds for it.
+ *
+ * The cache read is BEST-EFFORT and bounded: paged through `readAllPages`
+ * (PostgREST stops at 1000 rows and reports success; the swept table is ~530
+ * rows today and grows with the manufacturer's range), selecting only the
+ * JSON paths a card needs so the 58 KB variant documents stay in the database.
+ * A failed read degrades to the bare list rather than blanking the picker —
+ * and says so in `faces: 'unavailable'`, because a picker with no photos on a
+ * day the table was down should not read as "nothing swept yet".
+ */
 async function opModels(): Promise<Response> {
   const xml = await fetchText(SITEMAP_URL);
   if (!xml) return json({ ok: false, error: 'El sitemap de Carl Hansen no respondió.' }, 502);
-  const models = productPagesFromSitemap(xml);
-  if (!models.length) return json({ ok: false, error: 'El sitemap no listó ningún producto.' }, 502);
-  return json({ ok: true, models, count: models.length });
+  const sitemap = productPagesFromSitemap(xml);
+  if (!sitemap.length) return json({ ok: false, error: 'El sitemap no listó ningún producto.' }, 502);
+  const rows = await pickerPageRows();
+  const models = pickerModels(sitemap, rows);
+  return json({ ok: true, models, count: models.length, faces: rows ? 'cached' : 'unavailable' });
+}
+
+/** The page cache's picker columns, or null when it cannot be read. */
+async function pickerPageRows(): Promise<ChPickerPageRow[] | null> {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return null;
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  try {
+    return await readAllPages<ChPickerPageRow>(
+      (from, to) => admin
+        .from('carl_hansen_pages')
+        .select(PICKER_PAGE_SELECT)
+        .not('model_id', 'is', null)
+        .order('id')
+        .range(from, to) as unknown as Promise<{ data: ChPickerPageRow[] | null; error: { message: string } | null }>,
+      'carl_hansen_pages',
+    );
+  } catch {
+    return null;
+  }
 }
 
 /** The master: selection trees and price templates. */

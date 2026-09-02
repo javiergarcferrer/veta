@@ -135,8 +135,12 @@ function ChModelCard({ card, selected, onSelect }) {
  * no-op TODO right now: it returns exactly `card.imageSrc` rather than invent a
  * 15-digit key that would 404 (see `CH_PRESSCLOUD_KEYS`). The plumbing is here
  * so filling that table is a data change, not a component change.
+ *
+ * EXPORTED because the public picker (`pages/embed/CarlHansenEmbed.jsx`) shows
+ * the same covers to a visitor: one photo primitive, one lazy-loading defence,
+ * one placeholder — not a second copy that forgets `fetchpriority`.
  */
-function ChPhoto({ src, alt }) {
+export function ChPhoto({ src, alt }) {
   const [dead, setDead] = useState(false);
   const show = !!src && !dead;
   return (

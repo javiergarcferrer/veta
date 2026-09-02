@@ -290,3 +290,63 @@ test('cada eje dice de qué está hecho, para que la UI elija instrumento', () =
     assert.equal(axis.options.filter((o) => o.selected).length, 1, `${axis.label}: una sola selección`);
   }
 });
+
+/* ───────────────────────── el picker: la cara del modelo ───────────────── */
+
+import { pickerModels, pickerCover, PICKER_PAGE_SELECT } from '../supabase/functions/carl-hansen/parse.ts';
+
+const SITEMAP_ROWS = [
+  { modelId: 'CH24', path: '/en/en/collection/chairs/dining-chairs/ch24' },
+  { modelId: 'CH20', path: '/en/en/collection/chairs/dining-chairs/ch20' },
+  { modelId: 'BA103', path: '/en/en/collection/chairs/lounge-chairs/ba103' },
+];
+
+test('pickerModels: el sitemap decide quién está; la caché presta la cara', () => {
+  const rows = [
+    {
+      model_id: 'CH24', name: 'CH24 | Wishbone Chair', designer: 'Hans J. Wegner',
+      breadcrumb: PAGE.Breadcrumb, fetched_at: '2026-09-01T00:00:00Z',
+      hero: null, variant0: 'https://admincms.carlhansen.com/ch24_front.png', variant1: 'https://x/ch24_b.png',
+    },
+    // A cached page for a model the sitemap no longer lists: NOT in the picker.
+    { model_id: 'GHOST', name: 'GHOST | Nothing', designer: '', breadcrumb: [], hero: 'https://x/g.png' },
+  ];
+  const out = pickerModels(SITEMAP_ROWS, rows);
+  assert.deepEqual(out.map((m) => m.modelId), ['CH24', 'CH20', 'BA103']);
+  assert.deepEqual(out[0], {
+    modelId: 'CH24', path: '/en/en/collection/chairs/dining-chairs/ch24',
+    name: 'CH24 | Wishbone Chair', designer: 'Hans J. Wegner', shelf: 'Dining Chairs',
+    imageSrc: 'https://admincms.carlhansen.com/ch24_front.png',
+  });
+  // Nobody swept CH20: bare, never invented, never dropped.
+  assert.deepEqual(out[1], {
+    modelId: 'CH20', path: '/en/en/collection/chairs/dining-chairs/ch20',
+    name: null, designer: null, shelf: null, imageSrc: null,
+  });
+});
+
+test('pickerModels: dos filas para un modelo → gana la más fresca; sin filas → lista pelada', () => {
+  const rows = [
+    { model_id: 'CH24', name: 'CH24 | Old', fetched_at: '2026-01-01T00:00:00Z', hero: 'https://x/old.png' },
+    { model_id: 'CH24', name: 'CH24 | Wishbone Chair', fetched_at: '2026-09-01T00:00:00Z', hero: 'https://x/new.png' },
+    { model_id: 'not a code!', name: 'junk' },
+  ];
+  assert.equal(pickerModels(SITEMAP_ROWS, rows)[0].name, 'CH24 | Wishbone Chair');
+  assert.equal(pickerModels(SITEMAP_ROWS, rows)[0].imageSrc, 'https://x/new.png');
+  assert.equal(pickerModels(SITEMAP_ROWS, null).length, 3);
+  assert.equal(pickerModels(SITEMAP_ROWS, null)[0].name, null);
+});
+
+test('pickerCover: héroe primero, si no el primer render de variante (paridad con coverImage)', () => {
+  // The rule the back-office grid measured: 45% of pages publish an EMPTY
+  // MediaList and every one carries variant renders. Same order here.
+  assert.equal(pickerCover({ hero: 'https://x/hero.png', variant0: 'https://x/v0.png' }), 'https://x/hero.png');
+  assert.equal(pickerCover({ hero: '', variant0: 'https://x/v0.png' }), 'https://x/v0.png');
+  assert.equal(pickerCover({ hero: null, variant0: null, variant1: 'https://x/v1.png' }), 'https://x/v1.png');
+  assert.equal(pickerCover({}), null);
+  assert.equal(pickerCover(null), null);
+  // The select reads exactly those three paths and nothing heavier.
+  assert.match(PICKER_PAGE_SELECT, /hero:media->0->>Url/);
+  assert.match(PICKER_PAGE_SELECT, /variant0:variants->0->Images->0->>Url/);
+  assert.doesNotMatch(PICKER_PAGE_SELECT, /(^|,\s*)variants(,|$)/, 'the 58 KB variant document must not cross the wire');
+});

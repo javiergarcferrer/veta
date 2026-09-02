@@ -47,7 +47,10 @@ async function call(body) {
   }
 }
 
-/** Every product Carl Hansen's sitemap lists: `[{ modelId, path }]` (370 today). */
+/** Every product Carl Hansen's sitemap lists (257 today), each wearing the
+ *  face the page cache holds for it: `[{ modelId, path, name, designer,
+ *  shelf, imageSrc }]` — the last four null for a model nobody swept yet.
+ *  `resolveChPicker` turns the list into the picker. */
 export const fetchChModels = () => call({ op: 'models' });
 
 /** One model's master — the selection trees and the price templates. */
